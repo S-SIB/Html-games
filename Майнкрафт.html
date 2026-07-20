@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>3D Minecraft Mobile - Копай и Строй</title>
+    <style>
+        :root {
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            touch-action: manipulation;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            inset: 0;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        /* Десктопный захват */
+        #desktop-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            pointer-events: all;
+        }
+        #desktop-overlay .box {
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 30px 40px;
+            text-align: center;
+            color: #fff;
+            max-width: 90%;
+        }
+        #desktop-overlay h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        #desktop-overlay p {
+            font-size: 1em;
+            opacity: 0.85;
+            line-height: 1.5;
+        }
+        #desktop-overlay .btn {
+            display: inline-block;
+            margin-top: 18px;
+            padding: 12px 30px;
+            background: #4caf50;
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        #desktop-overlay .btn:active {
+            background: #388e3c;
+            transform: scale(0.96);
+        }
+        /* Крестик прицела */
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 28px;
+            color: #fff;
+            text-shadow: 0 0 6px #000;
+            pointer-events: none;
+            z-index: 11;
+            opacity: 0.8;
+        }
+        /* HUD */
+        #hud-top {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(6px);
+            border-radius: 30px;
+            padding: 6px 12px;
+            pointer-events: all;
+            z-index: 12;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .slot {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            background: rgba(255,255,255,0.1);
+            transition: 0.15s;
+            cursor: pointer;
+            position: relative;
+        }
+        .slot.active {
+            border-color: #fff;
+            background: rgba(255,255,255,0.3);
+            box-shadow: 0 0 12px rgba(255,255,255,0.5);
+        }
+        .slot .count {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            font-size: 10px;
+            background: #000;
+            color: #fff;
+            border-radius: 10px;
+            padding: 1px 5px;
+        }
+        /* Мобильные контролы */
+        #mobile-controls {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 15;
+            display: none;
+        }
+        .touch-area {
+            position: absolute;
+            pointer-events: all;
+        }
+        #joystick-zone {
+            bottom: 30px;
+            left: 30px;
+            width: 110px;
+            height: 110px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.25);
+            backdrop-filter: blur(4px);
+        }
+        #joystick-thumb {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            background: rgba(255,255,255,0.45);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            transition: 0.05s;
+        }
+        #action-buttons {
+            position: absolute;
+            bottom: 40px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .action-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.18);
+            backdrop-filter: blur(6px);
+            border: 2px solid rgba(255,255,255,0.35);
+            color: #fff;
+            font-size: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: all;
+            cursor: pointer;
+            transition: 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .action-btn:active {
+            background: rgba(255,255,255,0.4);
+            transform: scale(0.9);
+        }
+        #progress-bar-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 6px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 4px;
+            pointer-events: none;
+            z-index: 16;
+            display: none;
+        }
+        #progress-bar-fill {
+            height: 100%;
+            background: #ffeb3b;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.05s linear;
+        }
+        @media (max-width: 768px) {
+            #desktop-overlay {
+                display: none !important;
+            }
+            #mobile-controls {
+                display: block;
+            }
+            #crosshair {
+                font-size: 22px;
+            }
+            #hud-top {
+                top: 10px;
+                padding: 4px 10px;
+                gap: 4px;
+            }
+            .slot {
+                width: 34px;
+                height: 34px;
+                font-size: 16px;
+            }
+        }
+        @media (min-width: 769px) {
+            #mobile-controls {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Десктопный оверлей -->
+    <div id="desktop-overlay">
+        <div class="box">
+            <h2>🎮 Кликни, чтобы играть</h2>
+            <p>WASD / Стрелки — движение<br>Мышь — обзор<br>🪓 ЛКМ — копать | 🧱 ПКМ — ставить<br>1-5 — выбор блока</p>
+            <button class="btn" id="play-btn">▶ Играть</button>
+        </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud-top">
+        <div class="slot active" data-block="grass" title="Трава">🌿</div>
+        <div class="slot" data-block="dirt" title="Земля">🟫</div>
+        <div class="slot" data-block="stone" title="Камень">🪨</div>
+        <div class="slot" data-block="wood" title="Дерево">🪵</div>
+        <div class="slot" data-block="leaves" title="Листья">🍃</div>
+    </div>
+    <div id="crosshair">✚</div>
+
+    <!-- Мобильные контролы -->
+    <div id="mobile-controls">
+        <div class="touch-area" id="joystick-zone">
+            <div id="joystick-thumb"></div>
+        </div>
+        <div id="action-buttons">
+            <button class="action-btn" id="btn-mine" title="Копать (удерживать)">⛏️</button>
+            <button class="action-btn" id="btn-place" title="Ставить">🧱</button>
+        </div>
+    </div>
+
+    <!-- Прогресс разрушения -->
+    <div id="progress-bar-container">
+        <div id="progress-bar-fill"></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // ──────────────────────────────────
+        // ОПРЕДЕЛЕНИЕ УСТРОЙСТВА
+        // ──────────────────────────────────
+        const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || 
+                         ('ontouchstart' in window && window.innerWidth < 1024);
+
+        // ──────────────────────────────────
+        // DOM ЭЛЕМЕНТЫ
+        // ──────────────────────────────────
+        const desktopOverlay = document.getElementById('desktop-overlay');
+        const playBtn = document.getElementById('play-btn');
+        const crosshair = document.getElementById('crosshair');
+        const mobileControls = document.getElementById('mobile-controls');
+        const joystickZone = document.getElementById('joystick-zone');
+        const joystickThumb = document.getElementById('joystick-thumb');
+        const btnMine = document.getElementById('btn-mine');
+        const btnPlace = document.getElementById('btn-place');
+        const progressContainer = document.getElementById('progress-bar-container');
+        const progressFill = document.getElementById('progress-bar-fill');
+        const hudSlots = document.querySelectorAll('.slot');
+
+        // Показываем нужные элементы
+        if (isMobile) {
+            desktopOverlay.style.display = 'none';
+            mobileControls.style.display = 'block';
+        } else {
+            mobileControls.style.display = 'none';
+            desktopOverlay.style.display = 'flex';
+        }
+
+        // ──────────────────────────────────
+        // THREE.JS НАСТРОЙКИ
+        // ──────────────────────────────────
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 35, 80);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 120);
+        camera.position.set(0, 12, 20);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        document.body.appendChild(renderer.domElement);
+
+        // ──────────────────────────────────
+        // ОСВЕЩЕНИЕ
+        // ──────────────────────────────────
+        const ambient = new THREE.AmbientLight(0x8899bb, 0.7);
+        scene.add(ambient);
+        const sun = new THREE.DirectionalLight(0xfff5e8, 1.0);
+        sun.position.set(50, 60, 30);
+        sun.castShadow = true;
+        sun.shadow.mapSize.width = 1024;
+        sun.shadow.mapSize.height = 1024;
+        sun.shadow.camera.near = 0.5;
+        sun.shadow.camera.far = 150;
+        sun.shadow.camera.left = -40;
+        sun.shadow.camera.right = 40;
+        sun.shadow.camera.top = 40;
+        sun.shadow.camera.bottom = -40;
+        scene.add(sun);
+
+        // ──────────────────────────────────
+        // ТЕКСТУРЫ БЛОКОВ (Canvas)
+        // ──────────────────────────────────
+        function createCanvasTexture(w, h, drawFn) {
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            drawFn(ctx, w, h);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.magFilter = THREE.NearestFilter;
+            tex.minFilter = THREE.NearestFilter;
+            return tex;
+        }
+
+        function noise(ctx, w, h, base, amp) {
+            const imgData = ctx.getImageData(0, 0, w, h);
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                const r = (Math.random() - 0.5) * amp;
+                imgData.data[i] = Math.min(255, Math.max(0, imgData.data[i] + r));
+                imgData.data[i+1] = Math.min(255, Math.max(0, imgData.data[i+1] + r));
+                imgData.data[i+2] = Math.min(255, Math.max(0, imgData.data[i+2] + r));
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // Трава (верх зелёный, бока земляные с зелёной полосой)
+        const texGrassTop = createCanvasTexture(16, 16, (ctx, w, h) => {
+            ctx.fillStyle = '#7cb342';
+            ctx.fillRect(0, 0, w, h);
+            noise(ctx, w, h, null, 25);
+        });
+        const texGrassSide = createCanvasTexture(16, 16, (ctx, w, h) => {
+            ctx.fillStyle = '#8B5A2B';
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#7cb342';
+            ctx.fillRect(0, 0, w, 4);
+            noise(ctx, w, h, null, 20);
+        });
+        const materialsGrass = [
+            new THREE.MeshStandardMaterial({ map: texGrassSide, roughness: 0.9 }), // +X
+            new THREE.MeshStandardMaterial({ map: texGrassSide, roughness: 0.9 }), // -X
+            new THREE.MeshStandardMaterial({ map: texGrassTop, roughness: 0.85 }), // +Y
+            new THREE.MeshStandardMaterial({ map: texGrassSide, roughness: 0.9 }), // -Y (дно)
+            new THREE.MeshStandardMaterial({ map: texGrassSide, roughness: 0.9 }), // +Z
+            new THREE.MeshStandardMaterial({ map: texGrassSide, roughness: 0.9 }), // -Z
+        ];
+
+        // Земля
+        const texDirt = createCanvasTexture(16, 16, (ctx, w, h) => {
+            ctx.fillStyle = '#8B5A2B';
+            ctx.fillRect(0, 0, w, h);
+            noise(ctx, w, h, null, 30);
+        });
+        const matDirt = new THREE.MeshStandardMaterial({ map: texDirt, roughness: 0.95 });
+
+        // Камень
+        const texStone = createCanvasTexture(16, 16, (ctx, w, h) => {
+            ctx.fillStyle = '#7F7F7F';
+            ctx.fillRect(0, 0, w, h);
+            noise(ctx, w, h, null, 35);
+            // Прожилки
+            ctx.strokeStyle = '#5a5a5a';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(3, 2); ctx.lineTo(8, 7); ctx.lineTo(12, 5);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(10, 10); ctx.lineTo(14, 13);
+            ctx.stroke();
+        });
+        const matStone = new THREE.MeshStandardMaterial({ map: texStone, roughness: 0.85 });
+
+        // Дерево
+        const texWoodSide = createCanvasTexture(16, 16, (ctx, w, h) => {
+            ctx.fillStyle = '#8B6B4A';
+            ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = '#6B4F3A';
+            for (let y = 0; y < h; y += 3) {
+                ctx.fillRect(0, y, w, 1);
+            }
+            noise(ctx, w, h, null, 15);
+        });
+        const texWoodTop = createCanvasTexture(16, 16, (ctx, w, h) => {
+            ctx.fillStyle = '#C49A6C';
+            ctx.fillRect(0, 0, w, h);
+            ctx.strokeStyle = '#8B6B4A';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(8, 8, 5, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(8, 8, 3, 0, Math.PI*2);
+            ctx.stroke();
+            noise(ctx, w, h, null, 12);
+        });
+        const materialsWood = [
+            new THREE.MeshStandardMaterial({ map: texWoodSide, roughness: 0.9 }),
+            new THREE.MeshStandardMaterial({ map: texWoodSide, roughness: 0.9 }),
+            new THREE.MeshStandardMaterial({ map: texWoodTop, roughness: 0.85 }),
+            new THREE.MeshStandardMaterial({ map: texWoodSide, roughness: 0.9 }),
+            new THREE.MeshStandardMaterial({ map: texWoodSide, roughness: 0.9 }),
+            new THREE.MeshStandardMaterial({ map: texWoodSide, roughness: 0.9 }),
+        ];
+
+        // Листья
+        const texLeaves = createCanvasTexture(16, 16, (ctx, w, h) => {
+            ctx.fillStyle = '#3e7a28';
+            ctx.fillRect(0, 0, w, h);
+            noise(ctx, w, h, null, 40);
+            // Пятна
+            ctx.fillStyle = '#2d5a1e';
+            for (let i = 0; i < 10; i++) {
+                const x = Math.random() * w;
+                const y = Math.random() * h;
+                ctx.beginPath();
+                ctx.arc(x, y, 2 + Math.random()*2, 0, Math.PI*2);
+                ctx.fill();
+            }
+        });
+        const matLeaves = new THREE.MeshStandardMaterial({ map: texLeaves, roughness: 0.8, transparent: true, opacity: 0.9 });
+
+        // ──────────────────────────────────
+        // БЛОКИ И МИР
+        // ──────────────────────────────────
+        const BLOCK_SIZE = 1;
+        const WORLD_SIZE = 48;
+        const HALF = WORLD_SIZE / 2;
+
+        const BLOCK_TYPES = {
+            grass:  { id: 'grass',  name: 'Трава',  emoji: '🌿', hardness: 0.8 },
+            dirt:   { id: 'dirt',   name: 'Земля',  emoji: '🟫', hardness: 0.6 },
+            stone:  { id: 'stone',  name: 'Камень', emoji: '🪨', hardness: 1.2 },
+            wood:   { id: 'wood',   name: 'Дерево', emoji: '🪵', hardness: 1.0 },
+            leaves: { id: 'leaves', name: 'Листья', emoji: '🍃', hardness: 0.3 },
+        };
+
+        let selectedBlock = BLOCK_TYPES.grass;
+        const world = new Map(); // "x,y,z" -> { type, mesh }
+
+        function getBlockMaterial(type) {
+            switch(type.id) {
+                case 'grass': return materialsGrass;
+                case 'dirt': return matDirt;
+                case 'stone': return matStone;
+                case 'wood': return materialsWood;
+                case 'leaves': return matLeaves;
+                default: return matDirt;
+            }
+        }
+
+        function createBlock(x, y, z, type) {
+            const mat = getBlockMaterial(type);
+            const geom = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            const mesh = new THREE.Mesh(geom, Array.isArray(mat) ? mat : mat);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { type: type.id };
+            scene.add(mesh);
+            world.set(`${x},${y},${z}`, { type, mesh });
+            return mesh;
+        }
+
+        // Простой псевдо-шум для генерации рельефа
+        function terrainHeight(x, z) {
+            const fx = x * 0.08;
+            const fz = z * 0.08;
+            let h = Math.sin(fx * 1.3) * Math.cos(fz * 1.7) * 3;
+            h += Math.sin(fx * 2.5 + 1) * Math.cos(fz * 2.1) * 2;
+            h += Math.cos(fx * 4.1) * Math.sin(fz * 3.8) * 1.5;
+            return Math.round(h);
+        }
+
+        function generateWorld() {
+            const surfaceMap = new Map(); // запоминаем верхний блок для травы
+            for (let x = -HALF; x < HALF; x++) {
+                for (let z = -HALF; z < HALF; z++) {
+                    const h = terrainHeight(x, z);
+                    // Ниже уровня 0 всегда земля/камень
+                    const groundLevel = Math.max(0, h);
+                    for (let y = -5; y <= groundLevel; y++) {
+                        let type;
+                        if (y === groundLevel && y >= 0) {
+                            type = BLOCK_TYPES.grass;
+                        } else if (y >= -1) {
+                            type = BLOCK_TYPES.dirt;
+                        } else {
+                            type = BLOCK_TYPES.stone;
+                        }
+                        createBlock(x, y, z, type);
+                    }
+                    surfaceMap.set(`${x},${z}`, groundLevel);
+                }
+            }
+            // Деревья
+            const treePositions = [];
+            for (let i = 0; i < 35; i++) {
+                const tx = Math.floor(Math.random() * WORLD_SIZE) - HALF;
+                const tz = Math.floor(Math.random() * WORLD_SIZE) - HALF;
+                const key = `${tx},${tz}`;
+                const groundY = surfaceMap.get(key) || 0;
+                if (groundY < 1) continue;
+                const trunkY = groundY + 1;
+                if (world.has(`${tx},${trunkY},${tz}`)) continue;
+                // Ствол
+                for (let ty = 0; ty < 4; ty++) {
+                    createBlock(tx, trunkY + ty, tz, BLOCK_TYPES.wood);
+                }
+                // Листья
+                const leafBase = trunkY + 3;
+                for (let dx = -2; dx <= 2; dx++) {
+                    for (let dz = -2; dz <= 2; dz++) {
+                        for (let dy = -1; dy <= 2; dy++) {
+                            if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && Math.random() > 0.4) continue;
+                            if (Math.abs(dx) === 2 && dy === 2) continue;
+                            if (Math.abs(dz) === 2 && dy === 2) continue;
+                            const lx = tx + dx;
+                            const lz = tz + dz;
+                            const ly = leafBase + dy;
+                            if (!world.has(`${lx},${ly},${lz}`)) {
+                                createBlock(lx, ly, lz, BLOCK_TYPES.leaves);
+                            }
+                        }
+                    }
+                }
+                treePositions.push({ x: tx, z: tz });
+            }
+            console.log(`🌍 Мир сгенерирован: ${world.size} блоков, ${treePositions.length} деревьев`);
+        }
+
+        // ──────────────────────────────────
+        // УПРАВЛЕНИЕ КАМЕРОЙ
+        // ──────────────────────────────────
+        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        euler.x = -0.3;
+        euler.y = 0.5;
+        camera.quaternion.setFromEuler(euler);
+
+        let isLocked = false;
+        const mouseSensitivity = 0.002;
+        const touchSensitivity = 0.003;
+
+        // Десктоп: Pointer Lock
+        function requestLock() {
+            renderer.domElement.requestPointerLock();
+        }
+        playBtn.addEventListener('click', requestLock);
+        renderer.domElement.addEventListener('click', () => {
+            if (!isMobile && !isLocked) requestLock();
+        });
+        document.addEventListener('pointerlockchange', () => {
+            isLocked = document.pointerLockElement === renderer.domElement;
+            if (isLocked) {
+                desktopOverlay.style.display = 'none';
+            } else if (!isMobile) {
+                desktopOverlay.style.display = 'flex';
+            }
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isLocked || isMobile) return;
+            euler.x -= e.movementY * mouseSensitivity;
+            euler.y -= e.movementX * mouseSensitivity;
+            euler.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, euler.x));
+            camera.quaternion.setFromEuler(euler);
+        });
+
+        // Мобильное: свайпы для обзора
+        let touchLookActive = false;
+        let lastTouchLook = { x: 0, y: 0 };
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            if (!isMobile) return;
+            // Если касание вне джойстика и кнопок — вращение
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (target && (target.closest('#joystick-zone') || target.closest('#action-buttons') || target.closest('#hud-top'))) {
+                return;
+            }
+            if (e.touches.length === 1) {
+                touchLookActive = true;
+                lastTouchLook = { x: touch.clientX, y: touch.clientY };
+            }
+        }, { passive: false });
+        renderer.domElement.addEventListener('touchmove', (e) => {
+            if (!isMobile || !touchLookActive) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const dx = touch.clientX - lastTouchLook.x;
+            const dy = touch.clientY - lastTouchLook.y;
+            euler.x -= dy * touchSensitivity;
+            euler.y -= dx * touchSensitivity;
+            euler.x = Math.max(-Math.PI/2.2, Math.min(Math.PI/2.2, euler.x));
+            camera.quaternion.setFromEuler(euler);
+            lastTouchLook = { x: touch.clientX, y: touch.clientY };
+        }, { passive: false });
+        renderer.domElement.addEventListener('touchend', () => {
+            touchLookActive = false;
+        });
+
+        // ──────────────────────────────────
+        // ВИРТУАЛЬНЫЙ ДЖОЙСТИК (мобильный)
+        // ──────────────────────────────────
+        let joystickActive = false;
+        let joystickId = null;
+        let joystickVec = { x: 0, y: 0 };
+        const joystickMaxDist = 38;
+
+        function updateJoystickThumb() {
+            const tx = 50 + joystickVec.x * joystickMaxDist;
+            const ty = 50 - joystickVec.y * joystickMaxDist;
+            joystickThumb.style.left = tx + '%';
+            joystickThumb.style.top = ty + '%';
+        }
+
+        joystickZone.addEventListener('touchstart', (e) => {
+            if (!isMobile) return;
+            e.preventDefault();
+            joystickActive = true;
+            joystickId = e.changedTouches[0].identifier;
+            updateJoystickFromTouch(e.changedTouches[0]);
+        });
+        joystickZone.addEventListener('touchmove', (e) => {
+            if (!isMobile || !joystickActive) return;
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickId) {
+                    updateJoystickFromTouch(e.changedTouches[i]);
+                }
+            }
+        });
+        joystickZone.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickId) {
+                    joystickActive = false;
+                    joystickVec = { x: 0, y: 0 };
+                    updateJoystickThumb();
+                }
+            }
+        });
+
+        function updateJoystickFromTouch(touch) {
+            const rect = joystickZone.getBoundingClientRect();
+            const cx = rect.left + rect.width/2;
+            const cy = rect.top + rect.height/2;
+            let dx = touch.clientX - cx;
+            let dy = touch.clientY - cy;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const maxDist = rect.width/2 - 10;
+            if (dist > maxDist) {
+                dx = dx / dist * maxDist;
+                dy = dy / dist * maxDist;
+            }
+            joystickVec = {
+                x: dx / maxDist,
+                y: -dy / maxDist
+            };
+            updateJoystickThumb();
+        }
+
+        // ──────────────────────────────────
+        // ДВИЖЕНИЕ ИГРОКА
+        // ──────────────────────────────────
+        const keyState = {};
+        window.addEventListener('keydown', e => { keyState[e.code] = true; });
+        window.addEventListener('keyup', e => { keyState[e.code] = false; });
+
+        const moveSpeed = 5.5;
+        const playerRadius = 0.25;
+        const playerHeight = 1.8;
+        const eyeHeight = 1.6;
+
+        function checkCollision(newPos) {
+            const checks = [
+                [playerRadius, 0, playerRadius], [-playerRadius, 0, playerRadius],
+                [playerRadius, 0, -playerRadius], [-playerRadius, 0, -playerRadius],
+                [0, playerHeight - eyeHeight, 0], [0, -eyeHeight, 0]
+            ];
+            for (const [dx, dy, dz] of checks) {
+                const px = Math.round(newPos.x + dx);
+                const py = Math.round(newPos.y + dy);
+                const pz = Math.round(newPos.z + dz);
+                if (world.has(`${px},${py},${pz}`)) return true;
+            }
+            return false;
+        }
+
+        function getMovementInput() {
+            const input = new THREE.Vector3();
+            if (isMobile && joystickActive) {
+                input.x = joystickVec.x;
+                input.z = -joystickVec.y;
+            }
+            if (!isMobile || isLocked) {
+                if (keyState['KeyW'] || keyState['ArrowUp']) input.z -= 1;
+                if (keyState['KeyS'] || keyState['ArrowDown']) input.z += 1;
+                if (keyState['KeyA'] || keyState['ArrowLeft']) input.x -= 1;
+                if (keyState['KeyD'] || keyState['ArrowRight']) input.x += 1;
+            }
+            if (input.length() > 1) input.normalize();
+            return input;
+        }
+
+        function updateMovement(delta) {
+            const input = getMovementInput();
+            if (input.length() === 0) return;
+            const speed = moveSpeed * delta;
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+            forward.y = 0; forward.normalize();
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+            right.y = 0; right.normalize();
+            const movement = new THREE.Vector3()
+                .add(forward.clone().multiplyScalar(input.z * speed))
+                .add(right.clone().multiplyScalar(input.x * speed));
+            const newPos = camera.position.clone().add(movement);
+            if (!checkCollision(newPos)) {
+                camera.position.copy(newPos);
+            } else {
+                const moveX = new THREE.Vector3(movement.x, 0, 0);
+                const newPosX = camera.position.clone().add(moveX);
+                if (!checkCollision(newPosX)) camera.position.copy(newPosX);
+                const moveZ = new THREE.Vector3(0, 0, movement.z);
+                const newPosZ = camera.position.clone().add(moveZ);
+                if (!checkCollision(newPosZ)) camera.position.copy(newPosZ);
+            }
+        }
+
+        // ──────────────────────────────────
+        // ВЗАИМОДЕЙСТВИЕ С МИРОМ
+        // ──────────────────────────────────
+        const raycaster = new THREE.Raycaster();
+        raycaster.far = 7;
+        const highlightCube = new THREE.Mesh(
+            new THREE.BoxGeometry(BLOCK_SIZE * 1.005, BLOCK_SIZE * 1.005, BLOCK_SIZE * 1.005),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.35 })
+        );
+        highlightCube.visible = false;
+        scene.add(highlightCube);
+
+        function getTargetBlock() {
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            return intersects.find(i => i.object.userData && i.object.userData.type);
+        }
+
+        function removeBlock(intersect) {
+            const mesh = intersect.object;
+            const pos = mesh.position;
+            const key = `${pos.x},${pos.y},${pos.z}`;
+            spawnParticles(pos, world.get(key)?.type || BLOCK_TYPES.dirt);
+            scene.remove(mesh);
+            world.delete(key);
+        }
+
+        function placeBlock(intersect) {
+            if (!intersect) return;
+            const normal = intersect.face.normal;
+            const pos = intersect.object.position.clone().add(normal);
+            const key = `${pos.x},${pos.y},${pos.z}`;
+            if (world.has(key)) return;
+            if (pos.distanceTo(camera.position) < 1.2) return;
+            createBlock(pos.x, pos.y, pos.z, selectedBlock);
+        }
+
+        // Система удержания для разрушения
+        let miningBlock = null;
+        let miningProgress = 0;
+        let miningTarget = null;
+
+        function startMining(intersect) {
+            if (!intersect) return;
+            miningTarget = intersect;
+            miningBlock = intersect.object;
+            miningProgress = 0;
+            progressContainer.style.display = 'block';
+            updateProgressPosition();
+        }
+
+        function stopMining() {
+            miningBlock = null;
+            miningTarget = null;
+            miningProgress = 0;
+            progressContainer.style.display = 'none';
+            progressFill.style.width = '0%';
+        }
+
+        function updateMining(delta) {
+            if (!miningBlock || !miningTarget) return;
+            const typeId = miningBlock.userData?.type;
+            const blockType = Object.values(BLOCK_TYPES).find(b => b.id === typeId) || BLOCK_TYPES.dirt;
+            miningProgress += delta / blockType.hardness;
+            progressFill.style.width = Math.min(100, miningProgress * 100) + '%';
+            updateProgressPosition();
+            if (miningProgress >= 1) {
+                removeBlock(miningTarget);
+                stopMining();
+            }
+        }
+
+        function updateProgressPosition() {
+            if (!miningBlock) return;
+            const screenPos = new THREE.Vector3();
+            miningBlock.getWorldPosition(screenPos);
+            screenPos.project(camera);
+            const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-screenPos.y * 0.5 + 0.5) * window.innerHeight;
+            progressContainer.style.left = x + 'px';
+            progressContainer.style.top = (y - 30) + 'px';
+        }
+
+        // Кнопки действий (мобильные)
+        btnMine.addEventListener('pointerdown', (e) => {
+            if (!isMobile) return;
+            e.preventDefault();
+            const intersect = getTargetBlock();
+            if (intersect) startMining(intersect);
+        });
+        btnMine.addEventListener('pointerup', (e) => {
+            if (!isMobile) return;
+            e.preventDefault();
+            stopMining();
+        });
+        btnMine.addEventListener('pointerleave', () => {
+            if (isMobile) stopMining();
+        });
+
+        btnPlace.addEventListener('pointerdown', (e) => {
+            if (!isMobile) return;
+            e.preventDefault();
+            const intersect = getTargetBlock();
+            placeBlock(intersect);
+        });
+
+        // Десктоп: мышь
+        window.addEventListener('mousedown', (e) => {
+            if (!isLocked || isMobile) return;
+            const intersect = getTargetBlock();
+            if (e.button === 0) {
+                if (intersect) startMining(intersect);
+            } else if (e.button === 2) {
+                placeBlock(intersect);
+            }
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (!isLocked || isMobile) return;
+            if (e.button === 0) stopMining();
+        });
+        window.addEventListener('contextmenu', e => e.preventDefault());
+
+        // ──────────────────────────────────
+        // ЧАСТИЦЫ
+        // ──────────────────────────────────
+        const particles = [];
+        function spawnParticles(position, blockType) {
+            const color = new THREE.Color(getBlockMaterial(blockType).color || 
+                          (Array.isArray(getBlockMaterial(blockType)) ? 
+                          getBlockMaterial(blockType)[0].color : 0x8B5A2B));
+            for (let i = 0; i < 8; i++) {
+                const geom = new THREE.BoxGeometry(0.15, 0.15, 0.15);
+                const mat = new THREE.MeshBasicMaterial({ color });
+                const particle = new THREE.Mesh(geom, mat);
+                particle.position.copy(position);
+                particle.position.x += (Math.random() - 0.5) * 0.8;
+                particle.position.y += (Math.random() - 0.5) * 0.8;
+                particle.position.z += (Math.random() - 0.5) * 0.8;
+                particle.userData = {
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 4,
+                        Math.random() * 5 + 2,
+                        (Math.random() - 0.5) * 4
+                    ),
+                    life: 0.6 + Math.random() * 0.5
+                };
+                scene.add(particle);
+                particles.push(particle);
+            }
+        }
+
+        function updateParticles(delta) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.userData.life -= delta;
+                if (p.userData.life <= 0) {
+                    scene.remove(p);
+                    particles.splice(i, 1);
+                    continue;
+                }
+                p.userData.velocity.y -= 9.8 * delta;
+                p.position.x += p.userData.velocity.x * delta;
+                p.position.y += p.userData.velocity.y * delta;
+                p.position.z += p.userData.velocity.z * delta;
+                if (p.position.y < -10) {
+                    scene.remove(p);
+                    particles.splice(i, 1);
+                }
+                p.scale.setScalar(Math.max(0.1, p.userData.life));
+            }
+        }
+
+        // ──────────────────────────────────
+        // HUD И ВЫБОР БЛОКА
+        // ──────────────────────────────────
+        function updateHUD() {
+            hudSlots.forEach(slot => {
+                const blockId = slot.dataset.block;
+                slot.classList.toggle('active', selectedBlock.id === blockId);
+            });
+        }
+
+        hudSlots.forEach(slot => {
+            slot.addEventListener('click', () => {
+                const blockId = slot.dataset.block;
+                const found = Object.values(BLOCK_TYPES).find(b => b.id === blockId);
+                if (found) {
+                    selectedBlock = found;
+                    updateHUD();
+                }
+            });
+            // Для мобильных — предотвращаем конфликт с look
+            slot.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+            });
+        });
+
+        // Клавиши 1-5
+        window.addEventListener('keydown', (e) => {
+            if (!isLocked && !isMobile) return;
+            const keys = ['1','2','3','4','5'];
+            const idx = keys.indexOf(e.key);
+            if (idx >= 0 && hudSlots[idx]) {
+                hudSlots[idx].click();
+            }
+        });
+
+        updateHUD();
+
+        // ──────────────────────────────────
+        // АНИМАЦИЯ
+        // ──────────────────────────────────
+        const clock = new THREE.Clock();
+
+        function animate() {
+            const delta = Math.min(clock.getDelta(), 0.1);
+            
+            updateMovement(delta);
+            updateMining(delta);
+            updateParticles(delta);
+
+            // Подсветка блока
+            const intersect = getTargetBlock();
+            if (intersect && intersect.object !== miningBlock) {
+                highlightCube.position.copy(intersect.object.position);
+                highlightCube.visible = true;
+            } else if (miningBlock) {
+                highlightCube.position.copy(miningBlock.position);
+                highlightCube.visible = true;
+            } else {
+                highlightCube.visible = false;
+            }
+
+            // Обновление позиции прогресс-бара
+            if (miningBlock) {
+                updateProgressPosition();
+            }
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+
+        // ──────────────────────────────────
+        // СТАРТ
+        // ──────────────────────────────────
+        generateWorld();
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        console.log('🪓 3D Minecraft готов!');
+        console.log('   Мобильный: джойстик слева, кнопки справа, свайп для обзора');
+        console.log('   Десктоп: клик для захвата, WASD, мышь, ЛКМ/ПКМ');
+    </script>
+</body>
+</html>

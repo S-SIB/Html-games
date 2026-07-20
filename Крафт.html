@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft Crafting (Shapeless)</title>
+  <style>
+    * { box-sizing: border-box; user-select: none; }
+    body {
+      background: #3b2a1b;
+      font-family: 'Courier New', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    #app {
+      background: #8b6b4d;
+      padding: 30px 40px 40px 40px;
+      border-radius: 20px;
+      border: 6px solid #5a3e2b;
+      box-shadow: inset 0 0 0 4px #6b4f3a, 0 10px 30px rgba(0,0,0,0.7);
+      max-width: 700px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+      color: #f0e0b0;
+      font-size: 32px;
+      margin: 0 0 20px 0;
+      text-shadow: 3px 3px 0 #3d2b1a;
+      letter-spacing: 2px;
+    }
+    #crafting-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 70px);
+      grid-template-rows: repeat(3, 70px);
+      gap: 6px;
+      background: #6b4f3a;
+      padding: 12px;
+      border-radius: 12px;
+      border: 4px solid #4d3422;
+      margin: 0 auto 20px auto;
+      width: fit-content;
+    }
+    .grid-cell {
+      background: #9b7b5a;
+      border-radius: 6px;
+      border: 2px solid #4d3422;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.1s;
+      box-shadow: inset 0 0 0 2px #6b4f3a;
+      position: relative;
+    }
+    .grid-cell:hover { background: #b08b66; }
+    .grid-cell img {
+      width: 48px;
+      height: 48px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .grid-cell .fallback-icon {
+      font-size: 32px;
+      line-height: 1;
+    }
+    #inventory {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      background: #5a3e2b;
+      padding: 12px;
+      border-radius: 12px;
+      border: 4px solid #4d3422;
+      margin-bottom: 20px;
+      min-height: 70px;
+    }
+    .inv-slot {
+      background: #9b7b5a;
+      border-radius: 6px;
+      border: 2px solid #4d3422;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.1s;
+      box-shadow: inset 0 0 0 2px #6b4f3a;
+      font-size: 14px;
+      font-weight: bold;
+      color: #2d1f12;
+      position: relative;
+    }
+    .inv-slot.active { border: 4px solid #ffcc00; box-shadow: 0 0 10px #ffcc00; }
+    .inv-slot img {
+      width: 36px;
+      height: 36px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .inv-slot .fallback-icon {
+      font-size: 28px;
+      line-height: 1;
+    }
+    .inv-slot .item-count {
+      font-size: 16px;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      padding: 0 6px;
+      border-radius: 4px;
+      margin-top: 2px;
+    }
+    .inv-slot.empty { opacity: 0.3; cursor: default; }
+    .inv-slot:hover:not(.empty) { background: #b08b66; }
+    #goal-container {
+      background: #4d3422;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 3px solid #3d2b1a;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    #goal-label {
+      color: #f0e0b0;
+      font-size: 20px;
+      font-weight: bold;
+      text-shadow: 2px 2px 0 #2d1f12;
+    }
+    #goal-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #6b4f3a;
+      padding: 4px 16px 4px 10px;
+      border-radius: 30px;
+      border: 2px solid #f0e0b0;
+    }
+    #goal-item img {
+      width: 40px;
+      height: 40px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    #goal-item .fallback-icon {
+      font-size: 32px;
+    }
+    #goal-item .item-count {
+      font-size: 22px;
+      color: #f0e0b0;
+      font-weight: bold;
+    }
+    .button-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      background: #6b4f3a;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-family: 'Courier New', monospace;
+      font-size: 20px;
+      font-weight: bold;
+      color: #f0e0b0;
+      text-shadow: 2px 2px 0 #3d2b1a;
+      border-bottom: 4px solid #3d2b1a;
+      cursor: pointer;
+      transition: all 0.05s ease;
+      box-shadow: 0 4px 0 #2d1f12;
+    }
+    .btn:active {
+      transform: translateY(4px);
+      border-bottom-width: 0;
+      box-shadow: 0 0 0 #2d1f12;
+    }
+    .btn:hover { background: #7e5d44; }
+    .btn:disabled {
+      opacity: 0.5;
+      transform: none;
+      pointer-events: none;
+    }
+    #recipe-book-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #recipe-book-modal.open { display: flex; }
+    #recipe-book-content {
+      background: #8b6b4d;
+      padding: 30px 40px;
+      border-radius: 20px;
+      border: 6px solid #5a3e2b;
+      box-shadow: inset 0 0 0 4px #6b4f3a;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    #recipe-book-content h2 {
+      color: #f0e0b0;
+      text-align: center;
+      font-size: 28px;
+      margin-top: 0;
+      text-shadow: 3px 3px 0 #3d2b1a;
+    }
+    #recipe-list {
+      list-style: none;
+      padding: 0;
+      margin: 20px 0;
+    }
+    #recipe-list li {
+      background: #6b4f3a;
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      border: 2px solid #4d3422;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .recipe-display {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .recipe-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 32px);
+      grid-template-rows: repeat(3, 32px);
+      gap: 3px;
+      background: #5a3e2b;
+      padding: 4px;
+      border-radius: 4px;
+      border: 2px solid #4d3422;
+      flex-shrink: 0;
+    }
+    .recipe-cell {
+      background: #9b7b5a;
+      border-radius: 2px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      line-height: 1;
+    }
+    .recipe-cell.empty { background: #7a5f44; }
+    .recipe-cell img {
+      width: 24px;
+      height: 24px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .recipe-cell .fallback-icon {
+      font-size: 20px;
+    }
+    .recipe-arrow {
+      font-size: 28px;
+      color: #f0e0b0;
+      font-weight: bold;
+      padding: 0 4px;
+    }
+    .recipe-result {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #9b7b5a;
+      padding: 4px 10px 4px 8px;
+      border-radius: 6px;
+      border: 2px solid #4d3422;
+    }
+    .recipe-result img {
+      width: 36px;
+      height: 36px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .recipe-result .fallback-icon {
+      font-size: 32px;
+    }
+    .recipe-result .item-count {
+      font-size: 16px;
+      font-weight: bold;
+      color: #f0e0b0;
+      background: rgba(0,0,0,0.4);
+      padding: 0 6px;
+      border-radius: 4px;
+    }
+    #close-book-btn {
+      display: block;
+      margin: 10px auto 0;
+      padding: 8px 30px;
+      font-size: 18px;
+    }
+    #victory-message {
+      display: none;
+      text-align: center;
+      background: #f0e0b0;
+      color: #3d2b1a;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 22px;
+      font-weight: bold;
+      border: 3px solid #ffcc00;
+      margin-top: 10px;
+    }
+    #victory-message.show { display: block; }
+    @media (max-width: 600px) {
+      #app { padding: 20px; }
+      #crafting-grid {
+        grid-template-columns: repeat(3, 60px);
+        grid-template-rows: repeat(3, 60px);
+        gap: 4px;
+        padding: 8px;
+      }
+      .grid-cell img { width: 40px; height: 40px; }
+      .inv-slot { width: 50px; height: 50px; }
+      .inv-slot img { width: 30px; height: 30px; }
+      #goal-item img { width: 32px; height: 32px; }
+      .btn { font-size: 16px; padding: 10px 18px; }
+      #recipe-book-content { padding: 20px; }
+      .recipe-grid { grid-template-columns: repeat(3, 28px); grid-template-rows: repeat(3, 28px); }
+      .recipe-cell img { width: 20px; height: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <h1>⛏️ Верстак</h1>
+  <div id="crafting-grid"></div>
+  <div id="inventory"></div>
+  <div id="goal-container">
+    <span id="goal-label">🎯 Цель:</span>
+    <div id="goal-item">
+      <span class="fallback-icon" id="goal-icon" style="display:none;">🌲</span>
+      <img id="goal-img" src="" alt="цель" style="display:none; width:40px; height:40px; image-rendering:pixelated;">
+      <span class="item-count" id="goal-count">0</span>
+    </div>
+  </div>
+  <div class="button-group">
+    <button class="btn" id="craft-btn">🔨 Скрафтить</button>
+    <button class="btn" id="recipe-book-btn">📖 Книга</button>
+    <button class="btn" id="clear-grid-btn">🧹 Очистить</button>
+  </div>
+  <div id="victory-message">🎉 Все цели выполнены! Поздравляем!</div>
+</div>
+
+<div id="recipe-book-modal">
+  <div id="recipe-book-content">
+    <h2>📖 Книга рецептов</h2>
+    <ul id="recipe-list"></ul>
+    <button class="btn" id="close-book-btn">Закрыть</button>
+  </div>
+</div>
+
+<script>
+  // -------------------------------------------------------------
+  // ДАННЫЕ с текстурами из GitHub
+  // Источник рецептов: https://wiki-minecraft.ru/Крафт/Основное
+  // -------------------------------------------------------------
+  const ITEMS = {
+    log:        { id: 'log',        name: 'Бревно',        icon: '🌲', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/block/oak_log.png?raw=true' },
+    plank:      { id: 'plank',      name: 'Доска',         icon: '🪵', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/block/oak_planks.png?raw=true' },
+    stick:      { id: 'stick',      name: 'Палка',         icon: '🥢', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/item/stick.png?raw=true' },
+    cobblestone:{ id: 'cobblestone',name: 'Булыжник',      icon: '🪨', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/block/cobblestone.png?raw=true' },
+    stone_slab: { id: 'stone_slab', name: 'Каменная плита',icon: '🧱', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/block/stone_slab_top.png?raw=true' },
+    coal:       { id: 'coal',       name: 'Уголь',         icon: '⚫', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/item/coal.png?raw=true' },
+    string:     { id: 'string',     name: 'Нить',          icon: '🧵', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/item/string.png?raw=true' },
+    crafting_table: { id: 'crafting_table', name: 'Верстак', icon: '🪵', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/block/crafting_table_front.png?raw=true' },
+    furnace:    { id: 'furnace',    name: 'Печь',          icon: '🔥', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/block/furnace_front.png?raw=true' },
+    chest:      { id: 'chest',      name: 'Сундук',        icon: '📦', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/block/chest_front.png?raw=true' },
+    wooden_pickaxe: { id: 'wooden_pickaxe', name: 'Деревянная кирка', icon: '⛏️', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/item/wooden_pickaxe.png?raw=true' },
+    wooden_axe: { id: 'wooden_axe', name: 'Деревянный топор', icon: '🪓', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/item/wooden_axe.png?raw=true' },
+    wooden_shovel: { id: 'wooden_shovel', name: 'Деревянная лопата', icon: '🔧', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/item/wooden_shovel.png?raw=true' },
+    wooden_hoe: { id: 'wooden_hoe', name: 'Деревянная мотыга', icon: '🌾', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/item/wooden_hoe.png?raw=true' },
+    wooden_sword: { id: 'wooden_sword', name: 'Деревянный меч', icon: '🗡️', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/item/wooden_sword.png?raw=true' },
+    fishing_rod: { id: 'fishing_rod', name: 'Удочка',      icon: '🎣', texture: 'https://github.com/ItsBrian/minecraft-textures/blob/main/item/fishing_rod.png?raw=true' }
+  };
+
+  // Бесформенные рецепты (Shapeless) + матрица для отображения
+  // Источник: https://wiki-minecraft.ru/Крафт/Основное
+  const RECIPES = [
+    // 1. Бревно → 4 доски
+    {
+      id: 'recipe_log_to_planks',
+      name: 'Бревно → 4 доски',
+      ingredients: { log: 1 },
+      result: { id: 'plank', count: 4 },
+      displayGrid: [[null,null,null],[null,'log',null],[null,null,null]]
+    },
+    // 2. 2 доски → 4 палки
+    {
+      id: 'recipe_planks_to_sticks',
+      name: '2 доски → 4 палки',
+      ingredients: { plank: 2 },
+      result: { id: 'stick', count: 4 },
+      displayGrid: [['plank',null,null],['plank',null,null],[null,null,null]]
+    },
+    // 3. 3 булыжника → 6 каменных плит
+    {
+      id: 'recipe_cobblestone_to_slab',
+      name: '3 булыжника → 6 плит',
+      ingredients: { cobblestone: 3 },
+      result: { id: 'stone_slab', count: 6 },
+      displayGrid: [['cobblestone','cobblestone','cobblestone'],[null,null,null],[null,null,null]]
+    },
+    // 4. 4 доски (квадрат 2×2) → Верстак
+    {
+      id: 'recipe_crafting_table',
+      name: '4 доски → Верстак',
+      ingredients: { plank: 4 },
+      result: { id: 'crafting_table', count: 1 },
+      displayGrid: [['plank','plank',null],['plank','plank',null],[null,null,null]]
+    },
+    // 5. Палка + уголь → 4 факела (в игре факел не добавил как предмет, но рецепт оставлю для примера)
+    // Пропускаем факел, т.к. его нет в списке предметов
+    // 6. 8 булыжника (кольцом) → Печь
+    {
+      id: 'recipe_furnace',
+      name: '8 булыжника → Печь',
+      ingredients: { cobblestone: 8 },
+      result: { id: 'furnace', count: 1 },
+      displayGrid: [['cobblestone','cobblestone','cobblestone'],['cobblestone',null,'cobblestone'],['cobblestone','cobblestone','cobblestone']]
+    },
+    // 7. 8 досок (кольцом) → Сундук
+    {
+      id: 'recipe_chest',
+      name: '8 досок → Сундук',
+      ingredients: { plank: 8 },
+      result: { id: 'chest', count: 1 },
+      displayGrid: [['plank','plank','plank'],['plank',null,'plank'],['plank','plank','plank']]
+    },
+    // 8. 3 доски + 2 палки → Деревянная кирка
+    {
+      id: 'recipe_wooden_pickaxe',
+      name: '3 доски + 2 палки → Кирка',
+      ingredients: { plank: 3, stick: 2 },
+      result: { id: 'wooden_pickaxe', count: 1 },
+      displayGrid: [['plank','plank','plank'],[null,'stick',null],[null,'stick',null]]
+    },
+    // 9. 3 доски + 2 палки → Деревянный топор (та же форма, но для разнообразия оставлю)
+    {
+      id: 'recipe_wooden_axe',
+      name: '3 доски + 2 палки → Топор',
+      ingredients: { plank: 3, stick: 2 },
+      result: { id: 'wooden_axe', count: 1 },
+      displayGrid: [['plank','plank','plank'],[null,'stick',null],[null,'stick',null]]
+    },
+    // 10. 2 доски + 1 палка → Деревянная лопата
+    {
+      id: 'recipe_wooden_shovel',
+      name: '2 доски + 1 палка → Лопата',
+      ingredients: { plank: 2, stick: 1 },
+      result: { id: 'wooden_shovel', count: 1 },
+      displayGrid: [['plank',null,null],['plank','stick',null],[null,null,null]]
+    },
+    // 11. 2 доски + 1 палка → Деревянная мотыга
+    {
+      id: 'recipe_wooden_hoe',
+      name: '2 доски + 1 палка → Мотыга',
+      ingredients: { plank: 2, stick: 1 },
+      result: { id: 'wooden_hoe', count: 1 },
+      displayGrid: [['plank',null,null],['plank','stick',null],[null,null,null]]
+    },
+    // 12. 2 доски + 1 палка → Деревянный меч
+    {
+      id: 'recipe_wooden_sword',
+      name: '2 доски + 1 палка → Меч',
+      ingredients: { plank: 2, stick: 1 },
+      result: { id: 'wooden_sword', count: 1 },
+      displayGrid: [['plank',null,null],['plank','stick',null],[null,null,null]]
+    },
+    // 13. 3 палки + 2 нити → Удочка
+    {
+      id: 'recipe_fishing_rod',
+      name: '3 палки + 2 нити → Удочка',
+      ingredients: { stick: 3, string: 2 },
+      result: { id: 'fishing_rod', count: 1 },
+      displayGrid: [[null,null,'string'],[null,'stick','string'],['stick',null,'stick']]
+    }
+  ];
+
+  // Цели (последовательно)
+  const GOALS = [
+    { id: 'plank', count: 4, text: 'Скрафтите 4 доски' },
+    { id: 'stick', count: 4, text: 'Скрафтите 4 палки' },
+    { id: 'stone_slab', count: 6, text: 'Скрафтите 6 плит' },
+    { id: 'crafting_table', count: 1, text: 'Скрафтите верстак' },
+    { id: 'furnace', count: 1, text: 'Скрафтите печь' },
+    { id: 'chest', count: 1, text: 'Скрафтите сундук' }
+  ];
+
+  // Начальный инвентарь (побольше ресурсов для новых рецептов)
+  const INITIAL_INVENTORY = {
+    log: 4,
+    plank: 12,
+    stick: 0,
+    cobblestone: 12,
+    stone_slab: 0,
+    coal: 1,
+    string: 2,
+    crafting_table: 0,
+    furnace: 0,
+    chest: 0,
+    wooden_pickaxe: 0,
+    wooden_axe: 0,
+    wooden_shovel: 0,
+    wooden_hoe: 0,
+    wooden_sword: 0,
+    fishing_rod: 0
+  };
+
+  // -------------------------------------------------------------
+  // СОСТОЯНИЕ
+  // -------------------------------------------------------------
+  let inventory = {};
+  let grid = [];
+  let activeItem = null;
+  let currentGoalIndex = 0;
+  let recipeBook = [];
+  let victory = false;
+
+  // -------------------------------------------------------------
+  // ИНИЦИАЛИЗАЦИЯ
+  // -------------------------------------------------------------
+  function init() {
+    inventory = { ...INITIAL_INVENTORY };
+    grid = Array.from({ length: 3 }, () => Array(3).fill(null));
+    activeItem = null;
+    currentGoalIndex = 0;
+    recipeBook = [];
+    victory = false;
+    renderAll();
+  }
+
+  // -------------------------------------------------------------
+  // ОТРИСОВКА
+  // -------------------------------------------------------------
+  function renderAll() {
+    renderGrid();
+    renderInventory();
+    renderGoal();
+    updateCraftButton();
+    updateVictoryMessage();
+  }
+
+  function createItemElement(item, sizeClass = '') {
+    const wrapper = document.createElement('span');
+    wrapper.style.display = 'inline-flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.justifyContent = 'center';
+    if (item.texture) {
+      const img = document.createElement('img');
+      img.src = item.texture;
+      img.alt = item.name;
+      img.style.width = sizeClass || '32px';
+      img.style.height = sizeClass || '32px';
+      img.style.imageRendering = 'pixelated';
+      img.style.imageRendering = 'crisp-edges';
+      img.onerror = function() {
+        this.style.display = 'none';
+        const fallback = document.createElement('span');
+        fallback.className = 'fallback-icon';
+        fallback.textContent = item.icon;
+        this.parentNode.replaceChild(fallback, this);
+      };
+      wrapper.appendChild(img);
+    } else {
+      const fallback = document.createElement('span');
+      fallback.className = 'fallback-icon';
+      fallback.textContent = item.icon;
+      wrapper.appendChild(fallback);
+    }
+    return wrapper;
+  }
+
+  function renderGrid() {
+    const container = document.getElementById('crafting-grid');
+    container.innerHTML = '';
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'grid-cell';
+        const itemId = grid[r][c];
+        if (itemId) {
+          const item = ITEMS[itemId];
+          const elem = createItemElement(item, '48px');
+          cell.appendChild(elem);
+          cell.style.background = getItemColor(itemId);
+        } else {
+          cell.style.background = '#9b7b5a';
+        }
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+        cell.addEventListener('click', () => onGridCellClick(r, c));
+        container.appendChild(cell);
+      }
+    }
+  }
+
+  function getItemColor(id) {
+    const colors = {
+      log: '#8B5A2B',
+      plank: '#DEB887',
+      stick: '#D2B48C',
+      cobblestone: '#808080',
+      stone_slab: '#A9A9A9',
+      coal: '#1a1a1a',
+      string: '#d4c9a8',
+      crafting_table: '#8B6B4D',
+      furnace: '#6B6B6B',
+      chest: '#8B6B4D',
+      wooden_pickaxe: '#C4A87A',
+      wooden_axe: '#C4A87A',
+      wooden_shovel: '#C4A87A',
+      wooden_hoe: '#C4A87A',
+      wooden_sword: '#C4A87A',
+      fishing_rod: '#C4A87A'
+    };
+    return colors[id] || '#9b7b5a';
+  }
+
+  function renderInventory() {
+    const container = document.getElementById('inventory');
+    container.innerHTML = '';
+    const entries = Object.entries(inventory).filter(([id, count]) => count > 0);
+    if (entries.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'inv-slot empty';
+      empty.textContent = 'Пусто';
+      container.appendChild(empty);
+      return;
+    }
+    for (const [id, count] of entries) {
+      const slot = document.createElement('div');
+      slot.className = 'inv-slot';
+      if (activeItem === id) slot.classList.add('active');
+      const item = ITEMS[id];
+      const elem = createItemElement(item, '36px');
+      slot.appendChild(elem);
+      const countSpan = document.createElement('span');
+      countSpan.className = 'item-count';
+      countSpan.textContent = count;
+      slot.appendChild(countSpan);
+      slot.dataset.id = id;
+      slot.addEventListener('click', () => onInventorySlotClick(id));
+      container.appendChild(slot);
+    }
+  }
+
+  function renderGoal() {
+    const goalIcon = document.getElementById('goal-icon');
+    const goalImg = document.getElementById('goal-img');
+    const goalCount = document.getElementById('goal-count');
+    const goalContainer = document.getElementById('goal-item');
+    if (currentGoalIndex < GOALS.length) {
+      const goal = GOALS[currentGoalIndex];
+      const item = ITEMS[goal.id];
+      goalIcon.style.display = 'none';
+      goalImg.style.display = 'inline';
+      goalImg.src = item.texture;
+      goalImg.alt = item.name;
+      goalImg.onerror = function() {
+        this.style.display = 'none';
+        goalIcon.style.display = 'inline';
+        goalIcon.textContent = item.icon;
+      };
+      goalCount.textContent = `${goal.count}`;
+      goalContainer.style.display = 'flex';
+      document.getElementById('goal-label').textContent = '🎯 Цель:';
+    } else {
+      goalIcon.style.display = 'inline';
+      goalIcon.textContent = '✅';
+      goalImg.style.display = 'none';
+      goalCount.textContent = 'Готово!';
+      goalContainer.style.display = 'flex';
+      document.getElementById('goal-label').textContent = '🎉 Победа!';
+    }
+  }
+
+  function updateCraftButton() {
+    const btn = document.getElementById('craft-btn');
+    btn.disabled = (currentGoalIndex >= GOALS.length);
+  }
+
+  function updateVictoryMessage() {
+    const msg = document.getElementById('victory-message');
+    if (currentGoalIndex >= GOALS.length) {
+      msg.classList.add('show');
+    } else {
+      msg.classList.remove('show');
+    }
+  }
+
+  // -------------------------------------------------------------
+  // ОБРАБОТЧИКИ
+  // -------------------------------------------------------------
+  function onInventorySlotClick(id) {
+    if (victory) return;
+    if (activeItem === id) {
+      activeItem = null;
+    } else {
+      if (inventory[id] > 0) {
+        activeItem = id;
+      } else {
+        activeItem = null;
+      }
+    }
+    renderAll();
+  }
+
+  function onGridCellClick(row, col) {
+    if (victory) return;
+    const current = grid[row][col];
+
+    if (current !== null) {
+      if (activeItem !== null && inventory[activeItem] > 0) {
+        inventory[current] = (inventory[current] || 0) + 1;
+        grid[row][col] = null;
+        grid[row][col] = activeItem;
+        inventory[activeItem] -= 1;
+        if (inventory[activeItem] === 0) {
+          activeItem = null;
+        }
+      } else {
+        inventory[current] = (inventory[current] || 0) + 1;
+        grid[row][col] = null;
+      }
+    } else {
+      if (activeItem !== null && inventory[activeItem] > 0) {
+        grid[row][col] = activeItem;
+        inventory[activeItem] -= 1;
+        if (inventory[activeItem] === 0) {
+          activeItem = null;
+        }
+      }
+    }
+    renderAll();
+  }
+
+  // -------------------------------------------------------------
+  // ЛОГИКА КРАФТА (Shapeless)
+  // -------------------------------------------------------------
+  function performCraft() {
+    const gridBag = {};
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const id = grid[r][c];
+        if (id) {
+          gridBag[id] = (gridBag[id] || 0) + 1;
+        }
+      }
+    }
+
+    for (const recipe of RECIPES) {
+      const required = recipe.ingredients;
+      if (bagsEqual(gridBag, required)) {
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            grid[r][c] = null;
+          }
+        }
+        const result = recipe.result;
+        inventory[result.id] = (inventory[result.id] || 0) + result.count;
+        if (!recipeBook.includes(recipe.id)) {
+          recipeBook.push(recipe.id);
+        }
+        checkGoalCompletion(result.id);
+        renderAll();
+        return;
+      }
+    }
+
+    const btn = document.getElementById('craft-btn');
+    btn.style.backgroundColor = '#a04040';
+    setTimeout(() => { btn.style.backgroundColor = ''; }, 200);
+  }
+
+  function bagsEqual(a, b) {
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    for (const key of keys) {
+      if ((a[key] || 0) !== (b[key] || 0)) return false;
+    }
+    return true;
+  }
+
+  // -------------------------------------------------------------
+  // ПРОВЕРКА ЦЕЛИ
+  // -------------------------------------------------------------
+  function checkGoalCompletion(craftedId) {
+    if (currentGoalIndex >= GOALS.length) return;
+    const goal = GOALS[currentGoalIndex];
+    if (craftedId === goal.id && inventory[goal.id] >= goal.count) {
+      currentGoalIndex++;
+      if (currentGoalIndex >= GOALS.length) {
+        victory = true;
+      }
+    }
+  }
+
+  // -------------------------------------------------------------
+  // КНИГА РЕЦЕПТОВ
+  // -------------------------------------------------------------
+  function openRecipeBook() {
+    document.getElementById('recipe-book-modal').classList.add('open');
+    renderRecipeBook();
+  }
+
+  function closeRecipeBook() {
+    document.getElementById('recipe-book-modal').classList.remove('open');
+  }
+
+  function renderRecipeBook() {
+    const list = document.getElementById('recipe-list');
+    list.innerHTML = '';
+    if (recipeBook.length === 0) {
+      const li = document.createElement('li');
+      li.style.textAlign = 'center';
+      li.style.color = '#b08b66';
+      li.style.fontStyle = 'italic';
+      li.textContent = 'Пока нет рецептов';
+      list.appendChild(li);
+      return;
+    }
+
+    for (const recipeId of recipeBook) {
+      const recipe = RECIPES.find(r => r.id === recipeId);
+      if (!recipe) continue;
+
+      const li = document.createElement('li');
+
+      const display = document.createElement('div');
+      display.className = 'recipe-display';
+
+      // Сетка 3x3
+      const gridDiv = document.createElement('div');
+      gridDiv.className = 'recipe-grid';
+      const displayMatrix = recipe.displayGrid;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'recipe-cell';
+          const id = displayMatrix[r][c];
+          if (id) {
+            const item = ITEMS[id];
+            const elem = createItemElement(item, '24px');
+            cell.appendChild(elem);
+            cell.style.background = getItemColor(id);
+          } else {
+            cell.classList.add('empty');
+            cell.style.background = '#7a5f44';
+          }
+          gridDiv.appendChild(cell);
+        }
+      }
+      display.appendChild(gridDiv);
+
+      // Стрелка
+      const arrow = document.createElement('span');
+      arrow.className = 'recipe-arrow';
+      arrow.textContent = '→';
+      display.appendChild(arrow);
+
+      // Результат
+      const resultDiv = document.createElement('div');
+      resultDiv.className = 'recipe-result';
+      const result = recipe.result;
+      const item = ITEMS[result.id];
+      const elem = createItemElement(item, '36px');
+      resultDiv.appendChild(elem);
+      const countSpan = document.createElement('span');
+      countSpan.className = 'item-count';
+      countSpan.textContent = result.count;
+      resultDiv.appendChild(countSpan);
+      display.appendChild(resultDiv);
+
+      li.appendChild(display);
+      list.appendChild(li);
+    }
+  }
+
+  // -------------------------------------------------------------
+  // КНОПКИ
+  // -------------------------------------------------------------
+  document.getElementById('craft-btn').addEventListener('click', function() {
+    if (victory) return;
+    if (currentGoalIndex >= GOALS.length) return;
+    performCraft();
+  });
+
+  document.getElementById('clear-grid-btn').addEventListener('click', function() {
+    if (victory) return;
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        const id = grid[r][c];
+        if (id) {
+          inventory[id] = (inventory[id] || 0) + 1;
+          grid[r][c] = null;
+        }
+      }
+    }
+    activeItem = null;
+    renderAll();
+  });
+
+  document.getElementById('recipe-book-btn').addEventListener('click', openRecipeBook);
+  document.getElementById('close-book-btn').addEventListener('click', closeRecipeBook);
+  document.getElementById('recipe-book-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeRecipeBook();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeRecipeBook();
+  });
+
+  // -------------------------------------------------------------
+  // ЗАПУСК
+  // -------------------------------------------------------------
+  init();
+</script>
+</body>
+</html>

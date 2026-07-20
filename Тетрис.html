@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, touch-action: manipulation">
+    <title>Тетрис - Мобильная версия</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #0a0a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            padding: 10px;
+        }
+        .game-container {
+            background: #1a1a2e;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 400px;
+        }
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 10px;
+            color: #f0f0f0;
+            font-weight: bold;
+            font-size: 1.1rem;
+            gap: 10px;
+        }
+        .info-box {
+            background: #16162e;
+            border-radius: 12px;
+            padding: 8px 14px;
+            text-align: center;
+            flex: 1;
+            border: 1px solid #3a3a6a;
+        }
+        .info-box .label {
+            font-size: 0.7rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .info-box .value {
+            font-size: 1.5rem;
+            color: #f5c842;
+        }
+        canvas {
+            display: block;
+            border-radius: 12px;
+            box-shadow: 0 0 20px #00000055;
+            touch-action: none;
+            background: #0b0b1a;
+            width: 100%;
+            height: auto;
+            max-height: 65vh;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            background: #2a2a4a;
+            border: 2px solid #5a5aaa;
+            color: #ddd;
+            font-size: 1.4rem;
+            width: 55px;
+            height: 55px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #0d0d2a;
+            transition: 0.05s;
+        }
+        .btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #0d0d2a;
+            background: #3a3a6a;
+        }
+        .btn-large {
+            width: 70px;
+            font-weight: bold;
+        }
+        .btn-rotate {
+            font-size: 1.8rem;
+        }
+        .btn-restart {
+            background: #4a2a2a;
+            border-color: #aa5a5a;
+            color: #ffaaaa;
+            font-size: 1.2rem;
+        }
+        .game-message {
+            margin-top: 8px;
+            color: #f5c842;
+            font-weight: bold;
+            font-size: 1rem;
+            text-align: center;
+        }
+        @media (max-width: 400px) {
+            .btn {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2rem;
+            }
+            .btn-large {
+                width: 55px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="info-panel">
+        <div class="info-box">
+            <div class="label">Счёт</div>
+            <div class="value" id="score">0</div>
+        </div>
+        <div class="info-box">
+            <div class="label">Линии</div>
+            <div class="value" id="lines">0</div>
+        </div>
+        <div class="info-box">
+            <div class="label">Уровень</div>
+            <div class="value" id="level">1</div>
+        </div>
+    </div>
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
+    <div class="controls">
+        <button class="btn" id="btnLeft">◀</button>
+        <button class="btn btn-rotate" id="btnRotate">↻</button>
+        <button class="btn" id="btnDown">▼</button>
+        <button class="btn btn-large" id="btnDrop">⏬</button>
+        <button class="btn" id="btnRight">▶</button>
+        <button class="btn btn-restart" id="btnRestart">⟳</button>
+    </div>
+    <div class="game-message" id="message"></div>
+</div>
+
+<script>
+    (function() {
+        const COLS = 10;
+        const ROWS = 20;
+        const CELL_SIZE = 30;
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let gameInterval = null;
+        let gameOver = false;
+        let paused = false;
+
+        const scoreEl = document.getElementById('score');
+        const linesEl = document.getElementById('lines');
+        const levelEl = document.getElementById('level');
+        const messageEl = document.getElementById('message');
+
+        let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+        let score = 0;
+        let lines = 0;
+        let level = 1;
+        const LINES_PER_LEVEL = 10;
+
+        let currentPiece = null;
+        let nextPiece = null;
+        let pieceRow, pieceCol;
+        let pieceShape;
+
+        const COLORS = [
+            null,
+            '#00f0f0', '#0000f0', '#f0a000', '#f0f000',
+            '#00f000', '#a000f0', '#f00000'
+        ];
+
+        const PIECES = {
+            I: [[1,1,1,1]],
+            J: [[2,0,0],[2,2,2]],
+            L: [[0,0,3],[3,3,3]],
+            O: [[4,4],[4,4]],
+            S: [[0,5,5],[5,5,0]],
+            T: [[0,6,0],[6,6,6]],
+            Z: [[7,7,0],[0,7,7]]
+        };
+        const PIECE_KEYS = ['I','J','L','O','S','T','Z'];
+
+        function getRandomPiece() {
+            return PIECES[PIECE_KEYS[Math.floor(Math.random() * PIECE_KEYS.length)]];
+        }
+
+        function spawnPiece() {
+            currentPiece = nextPiece || getRandomPiece();
+            nextPiece = getRandomPiece();
+            pieceShape = currentPiece;
+            pieceRow = 0;
+            pieceCol = Math.floor((COLS - pieceShape[0].length) / 2);
+            if (!isValidPosition(pieceShape, pieceRow, pieceCol)) {
+                gameOver = true;
+                clearInterval(gameInterval);
+                messageEl.textContent = '💀 КОНЕЦ ИГРЫ';
+            }
+        }
+
+        function isValidPosition(shape, row, col) {
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[0].length; c++) {
+                    if (shape[r][c] !== 0) {
+                        const newR = row + r;
+                        const newC = col + c;
+                        if (newR < 0 || newR >= ROWS || newC < 0 || newC >= COLS) return false;
+                        if (board[newR][newC] !== 0) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function placePiece() {
+            for (let r = 0; r < pieceShape.length; r++) {
+                for (let c = 0; c < pieceShape[0].length; c++) {
+                    if (pieceShape[r][c] !== 0) {
+                        if (pieceRow + r >= 0) {
+                            board[pieceRow + r][pieceCol + c] = pieceShape[r][c];
+                        }
+                    }
+                }
+            }
+            clearLines();
+            spawnPiece();
+        }
+
+        function clearLines() {
+            let cleared = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r].every(cell => cell !== 0)) {
+                    board.splice(r, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    cleared++;
+                    r++;
+                }
+            }
+            if (cleared > 0) {
+                lines += cleared;
+                const oldLevel = level;
+                level = Math.floor(lines / LINES_PER_LEVEL) + 1;
+                if (level > oldLevel) updateSpeed();
+                const basePoints = [0, 100, 300, 500, 800];
+                score += (cleared <= 4 ? basePoints[cleared] : 800) * level;
+                updateUI();
+            }
+        }
+
+        function moveDown() {
+            if (gameOver || paused) return false;
+            if (isValidPosition(pieceShape, pieceRow + 1, pieceCol)) {
+                pieceRow++;
+                return true;
+            } else {
+                placePiece();
+                return false;
+            }
+        }
+
+        function moveLeft() {
+            if (gameOver || paused) return;
+            if (isValidPosition(pieceShape, pieceRow, pieceCol - 1)) pieceCol--;
+        }
+
+        function moveRight() {
+            if (gameOver || paused) return;
+            if (isValidPosition(pieceShape, pieceRow, pieceCol + 1)) pieceCol++;
+        }
+
+        function rotate() {
+            if (gameOver || paused) return;
+            const rotated = pieceShape[0].map((_, idx) => pieceShape.map(row => row[idx]).reverse());
+            if (isValidPosition(rotated, pieceRow, pieceCol)) {
+                pieceShape = rotated;
+            } else {
+                const offsets = [1, -1, 2, -2];
+                for (let offset of offsets) {
+                    if (isValidPosition(rotated, pieceRow, pieceCol + offset)) {
+                        pieceCol += offset;
+                        pieceShape = rotated;
+                        return;
+                    }
+                }
+                if (isValidPosition(rotated, pieceRow - 1, pieceCol)) {
+                    pieceRow -= 1;
+                    pieceShape = rotated;
+                }
+            }
+        }
+
+        function hardDrop() {
+            if (gameOver || paused) return;
+            let dropDistance = 0;
+            while (isValidPosition(pieceShape, pieceRow + 1, pieceCol)) {
+                pieceRow++;
+                dropDistance++;
+            }
+            score += dropDistance * 2;
+            placePiece();
+            updateUI();
+        }
+
+        function softDrop() {
+            if (gameOver || paused) return;
+            if (moveDown()) {
+                score += 1;
+                updateUI();
+            }
+        }
+
+        function updateSpeed() {
+            clearInterval(gameInterval);
+            const baseInterval = Math.max(50, 800 - (level - 1) * 70);
+            gameInterval = setInterval(softDrop, baseInterval);
+        }
+
+        function togglePause() {
+            if (gameOver) return;
+            paused = !paused;
+            messageEl.textContent = paused ? '⏸ ПАУЗА' : '';
+        }
+
+        function resetGame() {
+            clearInterval(gameInterval);
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            score = 0;
+            lines = 0;
+            level = 1;
+            gameOver = false;
+            paused = false;
+            messageEl.textContent = '';
+            nextPiece = getRandomPiece();
+            spawnPiece();
+            updateUI();
+            updateSpeed();
+        }
+
+        function updateUI() {
+            scoreEl.textContent = score;
+            linesEl.textContent = lines;
+            levelEl.textContent = level;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cellW = canvas.width / COLS;
+            const cellH = canvas.height / ROWS;
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const x = c * cellW;
+                    const y = r * cellH;
+                    ctx.fillStyle = board[r][c] ? COLORS[board[r][c]] : '#1a1a3a';
+                    ctx.fillRect(x, y, cellW-1, cellH-1);
+                    if (board[r][c]) {
+                        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                        ctx.fillRect(x, y, cellW-1, 2);
+                        ctx.fillRect(x, y, 2, cellH-1);
+                    }
+                }
+            }
+
+            if (currentPiece && !gameOver) {
+                for (let r = 0; r < pieceShape.length; r++) {
+                    for (let c = 0; c < pieceShape[0].length; c++) {
+                        if (pieceShape[r][c] !== 0) {
+                            const x = (pieceCol + c) * cellW;
+                            const y = (pieceRow + r) * cellH;
+                            ctx.fillStyle = COLORS[pieceShape[r][c]];
+                            ctx.fillRect(x, y, cellW-1, cellH-1);
+                            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                            ctx.fillRect(x, y, cellW-1, 3);
+                            ctx.fillRect(x, y, 3, cellH-1);
+                        }
+                    }
+                }
+            }
+
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.font = 'bold 24px "Segoe UI"';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2);
+            } else if (paused) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.font = 'bold 28px "Segoe UI"';
+                ctx.fillStyle = '#f5c842';
+                ctx.textAlign = 'center';
+                ctx.fillText('ПАУЗА', canvas.width/2, canvas.height/2);
+            }
+        }
+
+        let touchStartX = 0, touchStartY = 0, touchMoved = false;
+        function onTouchStart(e) {
+            e.preventDefault();
+            if (gameOver || paused) return;
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchMoved = false;
+        }
+        function onTouchEnd(e) {
+            e.preventDefault();
+            if (gameOver || paused) return;
+            if (!touchMoved) { rotate(); draw(); return; }
+            const touch = e.changedTouches[0];
+            const dx = touch.clientX - touchStartX;
+            const dy = touch.clientY - touchStartY;
+            const absDx = Math.abs(dx), absDy = Math.abs(dy);
+            if (Math.max(absDx, absDy) < 20) { rotate(); }
+            else if (absDx > absDy) { if (dx > 0) moveRight(); else moveLeft(); }
+            else { if (dy > 0) softDrop(); else hardDrop(); }
+            draw();
+        }
+
+        canvas.addEventListener('touchstart', (e) => { onTouchStart(e); touchMoved = false; });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); touchMoved = true; });
+        canvas.addEventListener('touchend', (e) => { onTouchEnd(e); });
+
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            if (e.key === 'p' || e.key === 'P') { togglePause(); draw(); return; }
+            if (paused) return;
+            switch(e.key) {
+                case 'ArrowLeft': moveLeft(); break;
+                case 'ArrowRight': moveRight(); break;
+                case 'ArrowDown': softDrop(); break;
+                case 'ArrowUp': rotate(); break;
+                case ' ': hardDrop(); break;
+                default: return;
+            }
+            e.preventDefault();
+            draw();
+        });
+
+        document.getElementById('btnLeft').addEventListener('click', () => { moveLeft(); draw(); });
+        document.getElementById('btnRotate').addEventListener('click', () => { rotate(); draw(); });
+        document.getElementById('btnDown').addEventListener('click', () => { softDrop(); draw(); });
+        document.getElementById('btnDrop').addEventListener('click', () => { hardDrop(); draw(); });
+        document.getElementById('btnRight').addEventListener('click', () => { moveRight(); draw(); });
+        document.getElementById('btnRestart').addEventListener('click', () => { resetGame(); draw(); });
+
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            const maxWidth = container.clientWidth - 30;
+            const maxHeight = window.innerHeight * 0.55;
+            const aspect = COLS / ROWS;
+            let width = maxWidth;
+            let height = width / aspect;
+            if (height > maxHeight) {
+                height = maxHeight;
+                width = height * aspect;
+            }
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        resetGame();
+        const drawInterval = setInterval(draw, 30);
+
+        messageEl.addEventListener('click', () => { if (gameOver) resetGame(); });
+    })();
+</script>
+</body>
+</html>

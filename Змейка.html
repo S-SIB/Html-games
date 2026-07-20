@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Змейка — два режима</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-height: 100dvh;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            touch-action: none;
+            overflow: hidden;
+            padding: 8px;
+        }
+
+        .game-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 600px;
+            height: 100vh;
+            height: 100dvh;
+            gap: 6px;
+            padding: 0;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 4px 10px;
+        }
+
+        .title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #7bed9f;
+            font-size: clamp(16px, 4vw, 26px);
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 20px rgba(123, 237, 159, 0.25);
+        }
+
+        .title .icon {
+            font-size: clamp(18px, 4.5vw, 28px);
+        }
+
+        .info-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .mode-badge {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-size: clamp(11px, 2vw, 14px);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            white-space: nowrap;
+        }
+
+        .level-badge {
+            background: rgba(255, 215, 0, 0.15);
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-size: clamp(11px, 2vw, 14px);
+            color: #ffd93d;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            white-space: nowrap;
+        }
+
+        .score-box {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 4px 14px 4px 10px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .score-box .label {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: clamp(11px, 2.5vw, 15px);
+            font-weight: 500;
+        }
+
+        .score-box .value {
+            color: #ffd93d;
+            font-size: clamp(18px, 4vw, 28px);
+            font-weight: 800;
+            min-width: 28px;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(255, 217, 61, 0.3);
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6), inset 0 0 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .canvas-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 16px;
+            touch-action: none;
+            background: #16213e;
+            image-rendering: pixelated;
+        }
+
+        /* ===== OVERLAYS ===== */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            border-radius: 18px;
+            gap: 12px;
+            padding: 20px;
+            z-index: 10;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .overlay.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .overlay .big-icon {
+            font-size: clamp(48px, 12vw, 80px);
+            line-height: 1;
+        }
+
+        .overlay .title-text {
+            color: #fff;
+            font-size: clamp(24px, 6vw, 40px);
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .overlay .sub-text {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: clamp(14px, 3.5vw, 22px);
+            font-weight: 400;
+            text-align: center;
+        }
+
+        .overlay .final-score {
+            color: #ffd93d;
+            font-size: clamp(32px, 8vw, 52px);
+            font-weight: 800;
+            text-shadow: 0 0 30px rgba(255, 217, 61, 0.3);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 50px;
+            font-size: clamp(16px, 4vw, 24px);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            letter-spacing: 0.5px;
+            background: #2ed573;
+            color: #1a1a2e;
+            box-shadow: 0 4px 20px rgba(46, 213, 115, 0.3);
+        }
+
+        .btn:active {
+            transform: scale(0.94);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            box-shadow: none;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-primary {
+            background: #7bed9f;
+            color: #1a1a2e;
+            box-shadow: 0 4px 20px rgba(123, 237, 159, 0.3);
+        }
+
+        .menu-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 80%;
+            max-width: 280px;
+        }
+
+        .menu-options .btn {
+            width: 100%;
+            text-align: center;
+        }
+
+        /* ===== LEVEL-UP OVERLAY ===== */
+        #levelUpOverlay {
+            background: rgba(0, 0, 0, 0.40);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border-radius: 18px;
+            gap: 8px;
+            z-index: 12;
+            animation: fadeIn 0.35s ease;
+            cursor: pointer;
+        }
+
+        #levelUpOverlay .level-number {
+            color: #ffd93d;
+            font-size: clamp(48px, 12vw, 88px);
+            font-weight: 900;
+            letter-spacing: 6px;
+            text-shadow: 0 0 50px rgba(255, 217, 61, 0.35), 0 4px 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        #levelUpOverlay .level-label {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: clamp(18px, 4vw, 34px);
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        #levelUpOverlay .continue-hint {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: clamp(13px, 2.5vw, 22px);
+            font-weight: 400;
+            margin-top: 6px;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            animation: pulseHint 1.8s ease-in-out infinite;
+        }
+
+        @keyframes pulseHint {
+            0%,
+            100% {
+                opacity: 0.5;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.04);
+            }
+        }
+
+        /* ===== CONTROLS ===== */
+        .controls {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            padding: 4px 0 2px 0;
+            touch-action: none;
+        }
+
+        .controls-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            touch-action: none;
+        }
+
+        .ctrl-btn {
+            width: clamp(52px, 13vw, 80px);
+            height: clamp(52px, 13vw, 80px);
+            border-radius: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(4px);
+            color: rgba(255, 255, 255, 0.85);
+            font-size: clamp(22px, 5.5vw, 36px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            touch-action: manipulation;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+            -webkit-touch-callout: none;
+        }
+
+        .ctrl-btn:active {
+            transform: scale(0.88);
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .ctrl-btn.empty {
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .ctrl-btn .arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+
+        @media (max-width: 420px) {
+            .game-wrapper {
+                gap: 4px;
+            }
+            .header {
+                padding: 4px 10px;
+            }
+            .controls-row {
+                gap: 4px;
+            }
+            .ctrl-btn {
+                border-radius: 14px;
+            }
+        }
+
+        @media (min-height: 800px) {
+            .controls {
+                gap: 8px;
+            }
+            .controls-row {
+                gap: 8px;
+            }
+            .ctrl-btn {
+                border-radius: 22px;
+            }
+        }
+
+        @media (orientation: landscape) and (max-height: 500px) {
+            .game-wrapper {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 6px;
+                max-height: 100vh;
+                max-height: 100dvh;
+                padding: 4px;
+            }
+            .header {
+                width: 100%;
+                flex-shrink: 0;
+            }
+            .canvas-container {
+                flex: 1 1 60%;
+                aspect-ratio: 1 / 1;
+                min-width: 200px;
+                height: auto;
+            }
+            .controls {
+                flex: 0 0 auto;
+                width: auto;
+                padding: 0 4px;
+            }
+            .controls-row {
+                gap: 4px;
+            }
+            .ctrl-btn {
+                width: clamp(40px, 9vw, 60px);
+                height: clamp(40px, 9vw, 60px);
+                font-size: clamp(18px, 4vw, 28px);
+                border-radius: 14px;
+            }
+        }
+
+        @media (orientation: landscape) and (max-height: 400px) {
+            .ctrl-btn {
+                width: clamp(32px, 7vw, 48px);
+                height: clamp(32px, 7vw, 48px);
+                font-size: clamp(14px, 3vw, 22px);
+                border-radius: 10px;
+            }
+            .controls-row {
+                gap: 3px;
+            }
+            .header .title {
+                font-size: clamp(12px, 2.5vw, 18px);
+            }
+            .score-box .value {
+                font-size: clamp(14px, 3vw, 20px);
+            }
+            .overlay .title-text {
+                font-size: clamp(16px, 4vw, 28px);
+            }
+            .overlay .final-score {
+                font-size: clamp(24px, 5vw, 36px);
+            }
+            #levelUpOverlay .level-number {
+                font-size: clamp(32px, 8vw, 56px) !important;
+            }
+            #levelUpOverlay .level-label {
+                font-size: clamp(14px, 2.5vw, 22px) !important;
+            }
+            #levelUpOverlay .continue-hint {
+                font-size: clamp(11px, 1.8vw, 16px) !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-wrapper" id="app">
+
+        <!-- HEADER -->
+        <div class="header">
+            <div class="title">
+                <span class="icon">🐍</span>
+                <span>Змейка</span>
+            </div>
+            <div class="info-group">
+                <span class="mode-badge" id="modeBadge">Простой</span>
+                <span class="level-badge" id="levelBadge" style="display:none;">Ур. 1</span>
+                <div class="score-box">
+                    <span class="label">Счёт</span>
+                    <span class="value" id="scoreDisplay">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- CANVAS -->
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- MENU OVERLAY -->
+            <div class="overlay show" id="menuOverlay">
+                <div class="big-icon">🐍</div>
+                <div class="title-text">Выберите режим</div>
+                <div class="sub-text">Простой — проход сквозь стены<br>Сложный — уровни с препятствиями</div>
+                <div class="menu-options">
+                    <button class="btn btn-primary" data-mode="simple">😊 Простой</button>
+                    <button class="btn btn-primary" data-mode="hard">🔥 Сложный</button>
+                </div>
+            </div>
+
+            <!-- GAME OVER OVERLAY -->
+            <div class="overlay" id="gameOverOverlay">
+                <div class="big-icon" id="overlayIcon">💀</div>
+                <div class="title-text" id="overlayTitle">Игра окончена</div>
+                <div class="sub-text" id="overlaySub">Ваш результат</div>
+                <div class="final-score" id="finalScore">0</div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="menuBtn">🏠 В меню</button>
+                    <button class="btn btn-primary" id="restartBtn">↻ Ещё раз</button>
+                </div>
+            </div>
+
+            <!-- LEVEL-UP OVERLAY -->
+            <div class="overlay" id="levelUpOverlay">
+                <div class="level-number" id="levelUpNumber">2</div>
+                <div class="level-label">УРОВЕНЬ</div>
+                <div class="continue-hint">✦ коснитесь для продолжения ✦</div>
+            </div>
+
+        </div>
+
+        <!-- CONTROLS -->
+        <div class="controls" id="controls">
+            <div class="controls-row">
+                <div class="ctrl-btn empty"></div>
+                <div class="ctrl-btn" data-dir="up">
+                    <span class="arrow">▲</span>
+                </div>
+                <div class="ctrl-btn empty"></div>
+            </div>
+            <div class="controls-row">
+                <div class="ctrl-btn" data-dir="left">
+                    <span class="arrow">◀</span>
+                </div>
+                <div class="ctrl-btn" data-dir="down">
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="ctrl-btn" data-dir="right">
+                    <span class="arrow">▶</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================================
+            //  DOM REFS
+            // ============================================================
+            const canvas = document.getElementById('gameCanvas');
+            const container = document.getElementById('canvasContainer');
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            const modeBadge = document.getElementById('modeBadge');
+            const levelBadge = document.getElementById('levelBadge');
+
+            const menuOverlay = document.getElementById('menuOverlay');
+            const gameOverOverlay = document.getElementById('gameOverOverlay');
+            const overlayIcon = document.getElementById('overlayIcon');
+            const overlayTitle = document.getElementById('overlayTitle');
+            const overlaySub = document.getElementById('overlaySub');
+            const finalScore = document.getElementById('finalScore');
+            const restartBtn = document.getElementById('restartBtn');
+            const menuBtn = document.getElementById('menuBtn');
+
+            const levelUpOverlay = document.getElementById('levelUpOverlay');
+            const levelUpNumber = document.getElementById('levelUpNumber');
+
+            // ============================================================
+            //  GAME CONFIG
+            // ============================================================
+            const GRID_SIZE = 20;
+            const INIT_SNAKE = [
+                [10, 10],
+                [9, 10],
+                [8, 10],
+                [7, 10]
+            ];
+            const INIT_DIR = 'right';
+            const TICK_INTERVAL_MS = 150;
+            const SCORE_PER_LEVEL = 5;
+
+            // ============================================================
+            //  STATE
+            // ============================================================
+            let snake = [];
+            let direction = INIT_DIR;
+            let nextDirection = INIT_DIR;
+            let food = [];
+            let score = 0;
+            let gameRunning = false;
+            let gameOverFlag = false;
+            let gameLoopInterval = null;
+            let animationFrame = null;
+
+            let gameMode = 'simple';
+            let level = 1;
+            let walls = [];
+
+            let levelUpPending = false;
+            let pendingNewLevel = 1;
+
+            let cellSize = 0;
+            let canvasSize = 0;
+            let dpr = 1;
+
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let isSwiping = false;
+
+            // ============================================================
+            //  ИНИЦИАЛИЗАЦИЯ / СБРОС
+            // ============================================================
+            function resetGame(mode) {
+                if (mode) gameMode = mode;
+
+                if (gameLoopInterval) {
+                    clearInterval(gameLoopInterval);
+                    gameLoopInterval = null;
+                }
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                    animationFrame = null;
+                }
+
+                hideLevelUp();
+
+                snake = INIT_SNAKE.map(pos => [...pos]);
+                direction = INIT_DIR;
+                nextDirection = INIT_DIR;
+                score = 0;
+                gameOverFlag = false;
+                gameRunning = true;
+                level = 1;
+                walls = [];
+                levelUpPending = false;
+
+                menuOverlay.classList.remove('show');
+                gameOverOverlay.classList.remove('show');
+                hideLevelUp();
+
+                updateScoreAndUI();
+
+                if (gameMode === 'hard') {
+                    generateWallsForLevel(level);
+                    levelBadge.style.display = 'inline-block';
+                    levelBadge.textContent = `Ур. ${level}`;
+                } else {
+                    levelBadge.style.display = 'none';
+                }
+
+                spawnFood();
+                draw();
+                startLoop();
+            }
+
+            function startLoop() {
+                if (gameLoopInterval) clearInterval(gameLoopInterval);
+                gameLoopInterval = setInterval(() => {
+                    if (gameRunning && !gameOverFlag && !levelUpPending) {
+                        gameTick();
+                    }
+                }, TICK_INTERVAL_MS);
+            }
+
+            // ============================================================
+            //  LEVEL-UP OVERLAY
+            // ============================================================
+            function showLevelUp(newLevel) {
+                levelUpNumber.textContent = newLevel;
+                levelUpOverlay.classList.add('show');
+                levelUpPending = true;
+                gameRunning = false;
+                if (gameLoopInterval) {
+                    clearInterval(gameLoopInterval);
+                    gameLoopInterval = null;
+                }
+            }
+
+            function hideLevelUp() {
+                levelUpOverlay.classList.remove('show');
+                levelUpPending = false;
+            }
+
+            function continueAfterLevelUp() {
+                if (!levelUpPending) return;
+                hideLevelUp();
+                level = pendingNewLevel;
+                levelBadge.textContent = `Ур. ${level}`;
+                levelBadge.style.display = 'inline-block';
+                gameRunning = true;
+                updateScoreAndUI();
+                draw();
+                startLoop();
+            }
+
+            levelUpOverlay.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (levelUpPending) {
+                    continueAfterLevelUp();
+                }
+            });
+            levelUpOverlay.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (levelUpPending) {
+                    continueAfterLevelUp();
+                }
+            }, { passive: false });
+
+            // ============================================================
+            //  ГЕНЕРАЦИЯ СТЕН
+            // ============================================================
+            function generateWallsForLevel(lvl) {
+                const wallCount = Math.min(lvl * 2, GRID_SIZE * GRID_SIZE - 10);
+                const newWalls = [];
+                const occupied = new Set();
+
+                snake.forEach(seg => occupied.add(`${seg[0]},${seg[1]}`));
+
+                let attempts = 0;
+                const maxAttempts = 5000;
+                while (newWalls.length < wallCount && attempts < maxAttempts) {
+                    attempts++;
+                    const x = Math.floor(Math.random() * GRID_SIZE);
+                    const y = Math.floor(Math.random() * GRID_SIZE);
+                    const key = `${x},${y}`;
+                    if (!occupied.has(key) && !(x === 10 && y === 10) && !(x === 9 && y === 10) && !(x === 8 && y === 10) && !(
+                            x === 7 && y === 10)) {
+                        occupied.add(key);
+                        newWalls.push([x, y]);
+                    }
+                }
+                walls = newWalls;
+            }
+
+            // ============================================================
+            //  ЕДА
+            // ============================================================
+            function spawnFood() {
+                const occupied = new Set();
+                snake.forEach(seg => occupied.add(`${seg[0]},${seg[1]}`));
+                if (gameMode === 'hard') {
+                    walls.forEach(w => occupied.add(`${w[0]},${w[1]}`));
+                }
+
+                const freeCells = [];
+                for (let y = 0; y < GRID_SIZE; y++) {
+                    for (let x = 0; x < GRID_SIZE; x++) {
+                        if (!occupied.has(`${x},${y}`)) {
+                            freeCells.push([x, y]);
+                        }
+                    }
+                }
+                if (freeCells.length === 0) {
+                    gameOverFlag = true;
+                    gameRunning = false;
+                    if (gameLoopInterval) {
+                        clearInterval(gameLoopInterval);
+                        gameLoopInterval = null;
+                    }
+                    showGameOver('🎉', 'Победа!', 'Вы заполнили всё поле!', score);
+                    return;
+                }
+                const idx = Math.floor(Math.random() * freeCells.length);
+                food = freeCells[idx];
+            }
+
+            // ============================================================
+            //  ИГРОВОЙ ТИК
+            // ============================================================
+            function gameTick() {
+                if (gameOverFlag || !gameRunning || levelUpPending) return;
+
+                const opposite = {
+                    'up': 'down',
+                    'down': 'up',
+                    'left': 'right',
+                    'right': 'left'
+                };
+                if (nextDirection && opposite[nextDirection] !== direction) {
+                    direction = nextDirection;
+                }
+
+                const head = snake[0];
+                let newHead = [...head];
+
+                switch (direction) {
+                    case 'up':
+                        newHead[1]--;
+                        break;
+                    case 'down':
+                        newHead[1]++;
+                        break;
+                    case 'left':
+                        newHead[0]--;
+                        break;
+                    case 'right':
+                        newHead[0]++;
+                        break;
+                    default:
+                        break;
+                }
+
+                let hitWall = false;
+                let outOfBounds = false;
+
+                if (gameMode === 'simple') {
+                    if (newHead[0] < 0) newHead[0] = GRID_SIZE - 1;
+                    if (newHead[0] >= GRID_SIZE) newHead[0] = 0;
+                    if (newHead[1] < 0) newHead[1] = GRID_SIZE - 1;
+                    if (newHead[1] >= GRID_SIZE) newHead[1] = 0;
+                } else {
+                    if (newHead[0] < 0 || newHead[0] >= GRID_SIZE || newHead[1] < 0 || newHead[1] >= GRID_SIZE) {
+                        outOfBounds = true;
+                    }
+                    if (!outOfBounds) {
+                        for (let w of walls) {
+                            if (w[0] === newHead[0] && w[1] === newHead[1]) {
+                                hitWall = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (outOfBounds || hitWall) {
+                        endGame();
+                        return;
+                    }
+                }
+
+                const isEating = (food[0] === newHead[0] && food[1] === newHead[1]);
+
+                let newSnake = [newHead, ...snake];
+                if (!isEating) {
+                    newSnake.pop();
+                }
+
+                const headStr = `${newHead[0]},${newHead[1]}`;
+                const bodyWithoutHead = newSnake.slice(1).map(p => `${p[0]},${p[1]}`);
+                if (bodyWithoutHead.includes(headStr)) {
+                    endGame();
+                    return;
+                }
+
+                snake = newSnake;
+
+                if (isEating) {
+                    score++;
+                    updateScoreAndUI();
+
+                    if (gameMode === 'hard') {
+                        const requiredScore = level * SCORE_PER_LEVEL;
+                        if (score >= requiredScore) {
+                            if (gameLoopInterval) {
+                                clearInterval(gameLoopInterval);
+                                gameLoopInterval = null;
+                            }
+                            pendingNewLevel = level + 1;
+                            snake = INIT_SNAKE.map(pos => [...pos]);
+                            direction = INIT_DIR;
+                            nextDirection = INIT_DIR;
+                            generateWallsForLevel(pendingNewLevel);
+                            spawnFood();
+                            showLevelUp(pendingNewLevel);
+                            draw();
+                            return;
+                        }
+                    }
+
+                    spawnFood();
+                    if (food.length === 0) {
+                        return;
+                    }
+                }
+
+                draw();
+            }
+
+            // ============================================================
+            //  КОНЕЦ ИГРЫ
+            // ============================================================
+            function endGame() {
+                if (gameOverFlag) return;
+                gameOverFlag = true;
+                gameRunning = false;
+                if (gameLoopInterval) {
+                    clearInterval(gameLoopInterval);
+                    gameLoopInterval = null;
+                }
+                hideLevelUp();
+                let icon = '💀',
+                    title = 'Игра окончена',
+                    sub = 'Ваш результат';
+                showGameOver(icon, title, sub, score);
+                draw();
+            }
+
+            function showGameOver(icon, title, sub, finalScoreValue) {
+                overlayIcon.textContent = icon || '💀';
+                overlayTitle.textContent = title || 'Игра окончена';
+                overlaySub.textContent = sub || 'Ваш результат';
+                finalScore.textContent = finalScoreValue !== undefined ? finalScoreValue : score;
+                gameOverOverlay.classList.add('show');
+            }
+
+            // ============================================================
+            //  UI ОБНОВЛЕНИЕ
+            // ============================================================
+            function updateScoreAndUI() {
+                scoreDisplay.textContent = score;
+                if (gameMode === 'simple') {
+                    modeBadge.textContent = 'Простой';
+                    levelBadge.style.display = 'none';
+                } else {
+                    modeBadge.textContent = 'Сложный';
+                    levelBadge.style.display = 'inline-block';
+                    levelBadge.textContent = `Ур. ${level}`;
+                }
+            }
+
+            // ============================================================
+            //  РИСОВАНИЕ
+            // ============================================================
+            function draw() {
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const size = canvasSize;
+                const cs = cellSize;
+
+                ctx.clearRect(0, 0, size, size);
+
+                const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.7);
+                grad.addColorStop(0, '#1e2a4a');
+                grad.addColorStop(1, '#0f1a2e');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, size, size);
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= GRID_SIZE; i++) {
+                    const pos = i * cs;
+                    ctx.beginPath();
+                    ctx.moveTo(pos, 0);
+                    ctx.lineTo(pos, size);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, pos);
+                    ctx.lineTo(size, pos);
+                    ctx.stroke();
+                }
+
+                if (gameMode === 'hard') {
+                    for (let w of walls) {
+                        const x = w[0] * cs;
+                        const y = w[1] * cs;
+                        const pad = cs * 0.08;
+                        const wSize = cs - pad * 2;
+                        const radius = cs * 0.12;
+
+                        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                        ctx.shadowBlur = 8;
+                        ctx.shadowOffsetY = 2;
+
+                        const wallGrad = ctx.createLinearGradient(x, y, x + cs, y + cs);
+                        wallGrad.addColorStop(0, '#4a4a5a');
+                        wallGrad.addColorStop(0.5, '#6a6a7a');
+                        wallGrad.addColorStop(1, '#3a3a4a');
+                        ctx.fillStyle = wallGrad;
+
+                        roundRect(ctx, x + pad, y + pad, wSize, wSize, radius);
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                        ctx.shadowOffsetY = 0;
+
+                        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+                        ctx.lineWidth = 1.5;
+                        roundRect(ctx, x + pad, y + pad, wSize, wSize, radius);
+                        ctx.stroke();
+
+                        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+                        ctx.lineWidth = 1;
+                        const cx = x + cs / 2;
+                        const cy = y + cs / 2;
+                        const len = cs * 0.2;
+                        ctx.beginPath();
+                        ctx.moveTo(cx - len, cy - len);
+                        ctx.lineTo(cx + len, cy + len);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(cx + len, cy - len);
+                        ctx.lineTo(cx - len, cy + len);
+                        ctx.stroke();
+                    }
+                }
+
+                if (food && food[0] >= 0 && food[1] >= 0) {
+                    const fx = food[0] * cs + cs / 2;
+                    const fy = food[1] * cs + cs / 2;
+                    const radius = cs * 0.42;
+
+                    const glow = ctx.createRadialGradient(fx, fy, 0, fx, fy, radius * 2.2);
+                    glow.addColorStop(0, 'rgba(255, 80, 80, 0.5)');
+                    glow.addColorStop(0.5, 'rgba(255, 50, 50, 0.15)');
+                    glow.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                    ctx.fillStyle = glow;
+                    ctx.beginPath();
+                    ctx.arc(fx, fy, radius * 2.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    const foodGrad = ctx.createRadialGradient(fx - radius * 0.25, fy - radius * 0.3, 0, fx, fy, radius);
+                    foodGrad.addColorStop(0, '#ff6b6b');
+                    foodGrad.addColorStop(0.5, '#ee3b3b');
+                    foodGrad.addColorStop(1, '#aa1a1a');
+                    ctx.shadowColor = 'rgba(255, 50, 50, 0.6)';
+                    ctx.shadowBlur = radius * 0.8;
+                    ctx.beginPath();
+                    ctx.arc(fx, fy, radius, 0, Math.PI * 2);
+                    ctx.fillStyle = foodGrad;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    ctx.beginPath();
+                    ctx.arc(fx - radius * 0.2, fy - radius * 0.25, radius * 0.25, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(fx - radius * 0.35, fy - radius * 0.4, radius * 0.08, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                    ctx.fill();
+                }
+
+                if (!snake || snake.length === 0) return;
+                const len = snake.length;
+                for (let i = 0; i < len; i++) {
+                    const [x, y] = snake[i];
+                    const px = x * cs;
+                    const py = y * cs;
+                    const padding = cs * 0.06;
+                    const size_ = cs - padding * 2;
+                    const radius = cs * 0.18;
+
+                    const progress = len > 1 ? i / (len - 1) : 0;
+                    const isHead = (i === 0);
+
+                    let r, g, b;
+                    if (isHead) {
+                        r = 80;
+                        g = 230;
+                        b = 120;
+                    } else {
+                        const t = 1 - progress;
+                        r = Math.floor(40 + 60 * t);
+                        g = Math.floor(180 + 60 * t);
+                        b = Math.floor(70 + 40 * t);
+                    }
+
+                    const cx = px + padding + size_ / 2;
+                    const cy = py + padding + size_ / 2;
+                    const w = size_;
+                    const h = size_;
+
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowOffsetY = 2;
+
+                    const segGrad = ctx.createRadialGradient(
+                        cx - w * 0.2, cy - h * 0.2, 0,
+                        cx, cy, Math.max(w, h) * 0.7
+                    );
+                    const brightFactor = isHead ? 1.2 : 0.9;
+                    segGrad.addColorStop(0,
+                        `rgb(${Math.min(255, r * brightFactor)}, ${Math.min(255, g * brightFactor)}, ${Math.min(255, b * brightFactor)})`
+                        );
+                    segGrad.addColorStop(0.6, `rgb(${r}, ${g}, ${b})`);
+                    segGrad.addColorStop(1,
+                        `rgb(${Math.max(0, r - 40)}, ${Math.max(0, g - 40)}, ${Math.max(0, b - 30)})`);
+
+                    ctx.fillStyle = segGrad;
+                    ctx.shadowBlur = isHead ? 12 : 6;
+                    ctx.shadowColor = isHead ? 'rgba(80, 230, 120, 0.4)' : 'rgba(0,0,0,0.3)';
+
+                    roundRect(ctx, px + padding, py + padding, w, h, radius);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetY = 0;
+
+                    ctx.strokeStyle = isHead ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.06)';
+                    ctx.lineWidth = 1;
+                    roundRect(ctx, px + padding, py + padding, w, h, radius);
+                    ctx.stroke();
+
+                    if (isHead) {
+                        const eyeSize = cs * 0.14;
+                        const pupilSize = eyeSize * 0.6;
+                        let ex1, ey1, ex2, ey2;
+                        const centerX = px + cs / 2;
+                        const centerY = py + cs / 2;
+                        const offset = cs * 0.22;
+
+                        switch (direction) {
+                            case 'up':
+                                ex1 = centerX - offset;
+                                ey1 = centerY - offset * 0.5;
+                                ex2 = centerX + offset;
+                                ey2 = centerY - offset * 0.5;
+                                break;
+                            case 'down':
+                                ex1 = centerX - offset;
+                                ey1 = centerY + offset * 0.5;
+                                ex2 = centerX + offset;
+                                ey2 = centerY + offset * 0.5;
+                                break;
+                            case 'left':
+                                ex1 = centerX - offset * 0.5;
+                                ey1 = centerY - offset;
+                                ex2 = centerX - offset * 0.5;
+                                ey2 = centerY + offset;
+                                break;
+                            case 'right':
+                                ex1 = centerX + offset * 0.5;
+                                ey1 = centerY - offset;
+                                ex2 = centerX + offset * 0.5;
+                                ey2 = centerY + offset;
+                                break;
+                            default:
+                                ex1 = centerX + offset * 0.5;
+                                ey1 = centerY - offset;
+                                ex2 = centerX + offset * 0.5;
+                                ey2 = centerY + offset;
+                        }
+
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                        ctx.beginPath();
+                        ctx.arc(ex1, ey1, eyeSize, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(ex2, ey2, eyeSize, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        let pdx1 = 0,
+                            pdy1 = 0,
+                            pdx2 = 0,
+                            pdy2 = 0;
+                        switch (direction) {
+                            case 'up':
+                                pdy1 = -pupilSize * 0.3;
+                                pdy2 = -pupilSize * 0.3;
+                                break;
+                            case 'down':
+                                pdy1 = pupilSize * 0.3;
+                                pdy2 = pupilSize * 0.3;
+                                break;
+                            case 'left':
+                                pdx1 = -pupilSize * 0.3;
+                                pdx2 = -pupilSize * 0.3;
+                                break;
+                            case 'right':
+                                pdx1 = pupilSize * 0.3;
+                                pdx2 = pupilSize * 0.3;
+                                break;
+                            default:
+                                pdx1 = pupilSize * 0.3;
+                                pdx2 = pupilSize * 0.3;
+                        }
+
+                        ctx.fillStyle = '#1a1a2e';
+                        ctx.beginPath();
+                        ctx.arc(ex1 + pdx1, ey1 + pdy1, pupilSize, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(ex2 + pdx2, ey2 + pdy2, pupilSize, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                        const shine = pupilSize * 0.35;
+                        ctx.beginPath();
+                        ctx.arc(ex1 + pdx1 - shine * 0.5, ey1 + pdy1 - shine * 0.5, shine, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(ex2 + pdx2 - shine * 0.5, ey2 + pdy2 - shine * 0.5, shine, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            function roundRect(ctx, x, y, w, h, r) {
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.lineTo(x + w - r, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                ctx.lineTo(x + w, y + h - r);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                ctx.lineTo(x + r, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                ctx.lineTo(x, y + r);
+                ctx.quadraticCurveTo(x, y, x + r, y);
+                ctx.closePath();
+            }
+
+            // ============================================================
+            //  РАЗМЕР CANVAS
+            // ============================================================
+            function resizeCanvas() {
+                // Контейнер теперь имеет фиксированное соотношение сторон,
+                // поэтому размер canvas равен размеру контейнера.
+                const rect = container.getBoundingClientRect();
+                const size = Math.min(rect.width, rect.height);
+                // Округляем до целого, чтобы избежать артефактов
+                const displaySize = Math.floor(size);
+                canvasSize = displaySize;
+                cellSize = displaySize / GRID_SIZE;
+
+                dpr = Math.min(window.devicePixelRatio || 1, 2);
+                canvas.style.width = displaySize + 'px';
+                canvas.style.height = displaySize + 'px';
+                canvas.width = displaySize * dpr;
+                canvas.height = displaySize * dpr;
+
+                const ctx = canvas.getContext('2d');
+                ctx.scale(dpr, dpr);
+
+                if (gameRunning || gameOverFlag || levelUpPending) {
+                    draw();
+                } else {
+                    draw();
+                }
+            }
+
+            // ============================================================
+            //  УПРАВЛЕНИЕ НАПРАВЛЕНИЕМ
+            // ============================================================
+            function setDirection(newDir) {
+                if (!gameRunning || gameOverFlag || levelUpPending) return;
+                const opposite = {
+                    'up': 'down',
+                    'down': 'up',
+                    'left': 'right',
+                    'right': 'left'
+                };
+                if (newDir !== direction && newDir !== opposite[direction]) {
+                    nextDirection = newDir;
+                }
+            }
+
+            // ============================================================
+            //  ОБРАБОТЧИКИ СОБЫТИЙ
+            // ============================================================
+
+            function handleTouchStart(e) {
+                const touch = e.touches[0];
+                if (!touch) return;
+                const rect = canvas.getBoundingClientRect();
+                touchStartX = touch.clientX - rect.left;
+                touchStartY = touch.clientY - rect.top;
+                isSwiping = true;
+            }
+
+            function handleTouchMove(e) {
+                if (!isSwiping) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                if (!touch) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                const dx = x - touchStartX;
+                const dy = y - touchStartY;
+                const threshold = 20;
+                if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    setDirection(dx > 0 ? 'right' : 'left');
+                } else {
+                    setDirection(dy > 0 ? 'down' : 'up');
+                }
+                isSwiping = false;
+            }
+
+            function handleTouchEnd(e) {
+                isSwiping = false;
+            }
+
+            function handleKeydown(e) {
+                const key = e.key;
+                const map = {
+                    'ArrowUp': 'up',
+                    'ArrowDown': 'down',
+                    'ArrowLeft': 'left',
+                    'ArrowRight': 'right',
+                    'w': 'up',
+                    'W': 'up',
+                    's': 'down',
+                    'S': 'down',
+                    'a': 'left',
+                    'A': 'left',
+                    'd': 'right',
+                    'D': 'right'
+                };
+                if (key in map) {
+                    e.preventDefault();
+                    setDirection(map[key]);
+                }
+                if (key === 'r' || key === 'R') {
+                    if (gameOverFlag) resetGame(gameMode);
+                }
+                if (key === ' ' || key === 'Enter') {
+                    if (gameOverFlag) resetGame(gameMode);
+                    e.preventDefault();
+                }
+            }
+
+            function setupButtons() {
+                document.querySelectorAll('.ctrl-btn[data-dir]').forEach(btn => {
+                    const dir = btn.dataset.dir;
+                    const handler = (e) => {
+                        e.preventDefault();
+                        setDirection(dir);
+                    };
+                    btn.addEventListener('touchstart', handler, { passive: false });
+                    btn.addEventListener('mousedown', handler);
+                    btn.addEventListener('contextmenu', e => e.preventDefault());
+                });
+            }
+
+            // ============================================================
+            //  МЕНЮ / РЕСТАРТ
+            // ============================================================
+
+            document.querySelectorAll('[data-mode]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const mode = e.currentTarget.dataset.mode;
+                    resetGame(mode);
+                });
+                btn.addEventListener('touchstart', (e) => {
+                    const mode = e.currentTarget.dataset.mode;
+                    resetGame(mode);
+                    e.preventDefault();
+                }, { passive: false });
+            });
+
+            restartBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                resetGame(gameMode);
+            });
+            restartBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                resetGame(gameMode);
+            }, { passive: false });
+
+            menuBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                gameOverOverlay.classList.remove('show');
+                hideLevelUp();
+                menuOverlay.classList.add('show');
+                gameRunning = false;
+                if (gameLoopInterval) {
+                    clearInterval(gameLoopInterval);
+                    gameLoopInterval = null;
+                }
+                draw();
+            });
+            menuBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                gameOverOverlay.classList.remove('show');
+                hideLevelUp();
+                menuOverlay.classList.add('show');
+                gameRunning = false;
+                if (gameLoopInterval) {
+                    clearInterval(gameLoopInterval);
+                    gameLoopInterval = null;
+                }
+                draw();
+            }, { passive: false });
+
+            // ============================================================
+            //  RESIZE
+            // ============================================================
+            let resizeTimeout = null;
+
+            function handleResize() {
+                if (resizeTimeout) cancelAnimationFrame(resizeTimeout);
+                resizeTimeout = requestAnimationFrame(() => {
+                    resizeCanvas();
+                });
+            }
+
+            // ============================================================
+            //  ИНИЦИАЛИЗАЦИЯ
+            // ============================================================
+            function init() {
+                canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+                canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+                canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
+                canvas.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+                window.addEventListener('keydown', handleKeydown);
+                window.addEventListener('resize', handleResize);
+                window.addEventListener('orientationchange', () => {
+                    setTimeout(handleResize, 300);
+                });
+
+                setupButtons();
+
+                menuOverlay.classList.add('show');
+                gameOverOverlay.classList.remove('show');
+                hideLevelUp();
+                resizeCanvas();
+                draw();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+        })();
+    </script>
+
+</body>
+</html>

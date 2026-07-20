@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>🧭 GPS Компас</title>
+
+    <!-- Leaflet CSS & JS for map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
+
+    <style>
+        /* ── Reset & Base ── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0b0b1a;
+            color: #eef2ff;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none;
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+        }
+
+        /* ── App Shell ── */
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            max-height: 100dvh;
+            background: radial-gradient(ellipse at 50% 0%, #1a1a3e 0%, #0b0b1a 80%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* subtle animated background glow */
+        #app::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 80%, rgba(255, 60, 60, 0.04) 0%, transparent 60%),
+                radial-gradient(circle at 80% 20%, rgba(60, 60, 255, 0.04) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Header ── */
+        .header {
+            position: relative;
+            z-index: 2;
+            padding: 14px 20px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            background: rgba(11, 11, 26, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-title span {
+            font-size: 20px;
+            -webkit-text-fill-color: initial;
+        }
+        .header-status {
+            font-size: 11px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse-dot 1.8s ease-in-out infinite;
+        }
+        .status-dot.inactive {
+            background: #f87171;
+            animation: none;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.3;
+                transform: scale(0.7);
+            }
+        }
+
+        /* ── Compass Area ── */
+        .compass-area {
+            position: relative;
+            z-index: 2;
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px 2px;
+            min-height: 0;
+        }
+
+        .compass-wrapper {
+            position: relative;
+            width: min(75vw, 75vh, 340px);
+            aspect-ratio: 1/1;
+            touch-action: none;
+        }
+
+        #compassCanvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+            border-radius: 50%;
+            box-shadow:
+                0 8px 40px rgba(0, 0, 0, 0.6),
+                inset 0 0 60px rgba(255, 255, 255, 0.02),
+                0 0 80px rgba(255, 60, 60, 0.04);
+            touch-action: none;
+            background: transparent;
+        }
+
+        /* compass info overlay */
+        .compass-info {
+            position: absolute;
+            bottom: 8%;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 3;
+        }
+        .compass-heading {
+            font-size: clamp(24px, 5vw, 40px);
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #fff;
+            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.8);
+            line-height: 1;
+        }
+        .compass-heading small {
+            font-size: 0.45em;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.5);
+            margin-left: 4px;
+        }
+        .compass-target-label {
+            font-size: clamp(11px, 1.8vw, 15px);
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.6);
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+            margin-top: 2px;
+            min-height: 1.4em;
+        }
+        .compass-target-label strong {
+            color: #ffd93d;
+            font-weight: 600;
+        }
+        .compass-distance {
+            font-size: clamp(12px, 2vw, 16px);
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.45);
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+        }
+
+        /* ── Coordinates bar ── */
+        .coords-bar {
+            position: relative;
+            z-index: 2;
+            flex-shrink: 0;
+            padding: 4px 16px 10px;
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.3);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.3px;
+            flex-wrap: wrap;
+        }
+        .coords-bar span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .coords-bar .icon {
+            opacity: 0.5;
+            font-size: 12px;
+        }
+        .coords-bar .val {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* ── Points List ── */
+        .points-section {
+            position: relative;
+            z-index: 2;
+            flex: 1 1 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 0 14px 8px;
+            overflow: hidden;
+        }
+        .points-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            padding: 6px 4px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .points-header h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .points-header .count {
+            background: rgba(255, 255, 255, 0.06);
+            padding: 0 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.3);
+            line-height: 18px;
+        }
+        .points-list {
+            flex: 1 1 0;
+            overflow-y: auto;
+            padding: 6px 2px 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            scroll-behavior: smooth;
+        }
+        .points-list-empty {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.12);
+            font-size: 13px;
+            font-weight: 400;
+            gap: 4px;
+            text-align: center;
+        }
+        .points-list-empty .big-icon {
+            font-size: 32px;
+            opacity: 0.3;
+            margin-bottom: 6px;
+        }
+
+        /* point item */
+        .point-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            touch-action: manipulation;
+            position: relative;
+            min-height: 48px;
+        }
+        .point-item:active {
+            transform: scale(0.97);
+            background: rgba(255, 255, 255, 0.06);
+        }
+        .point-item.active {
+            background: rgba(255, 215, 0, 0.08);
+            border-color: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.02);
+        }
+        .point-item.active .point-name {
+            color: #ffd93d;
+        }
+        .point-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            width: 32px;
+            text-align: center;
+            opacity: 0.7;
+        }
+        .point-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .point-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #eef2ff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .point-coords {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.25);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.2px;
+        }
+        .point-distance {
+            font-size: 11px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.3);
+            flex-shrink: 0;
+            padding-left: 6px;
+            white-space: nowrap;
+        }
+        .point-delete {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 50%;
+            color: rgba(255, 255, 255, 0.15);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }
+        .point-delete:active {
+            background: rgba(255, 60, 60, 0.15);
+            color: #f87171;
+            transform: scale(0.9);
+        }
+        .point-delete:hover {
+            background: rgba(255, 60, 60, 0.08);
+            color: #f87171;
+        }
+        .point-badge {
+            position: absolute;
+            right: 44px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 8px;
+            background: rgba(255, 215, 0, 0.15);
+            color: #ffd93d;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .point-item.active .point-badge {
+            opacity: 1;
+        }
+
+        /* ── Bottom Buttons ── */
+        .bottom-actions {
+            position: relative;
+            z-index: 2;
+            flex-shrink: 0;
+            padding: 8px 14px 14px;
+            display: flex;
+            gap: 10px;
+            background: rgba(11, 11, 26, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 10px;
+            border: none;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            letter-spacing: 0.3px;
+        }
+        .btn:active {
+            transform: scale(0.95);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 20px rgba(255, 60, 60, 0.2);
+        }
+        .btn-primary:active {
+            box-shadow: 0 2px 10px rgba(255, 60, 60, 0.1);
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.7);
+        }
+        .btn-secondary:active {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .btn-map {
+            background: linear-gradient(135deg, #4facfe, #2d7cf6);
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 20px rgba(47, 128, 237, 0.2);
+        }
+        .btn-map:active {
+            box-shadow: 0 2px 10px rgba(47, 128, 237, 0.1);
+        }
+        .btn .icon {
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 20px;
+            animation: fade-in 0.3s ease;
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes slide-up {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal {
+            background: rgba(20, 20, 45, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            max-width: 480px;
+            width: 100%;
+            max-height: 85dvh;
+            display: flex;
+            flex-direction: column;
+            padding: 24px 22px 18px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 20px 80px rgba(0, 0, 0, 0.6);
+            animation: slide-up 0.35s ease;
+            overflow: hidden;
+        }
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            margin-bottom: 14px;
+        }
+        .modal-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #eef2ff;
+        }
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 50%;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+        .modal-close:active {
+            background: rgba(255, 255, 255, 0.08);
+            transform: scale(0.9);
+        }
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2px 0 6px;
+        }
+        .modal-footer {
+            flex-shrink: 0;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .modal-footer .btn {
+            flex: 1;
+        }
+
+        /* Add point modal */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .input-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+        .input-group input,
+        .input-group textarea {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 15px;
+            font-family: inherit;
+            color: #eef2ff;
+            outline: none;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .input-group input:focus,
+        .input-group textarea:focus {
+            border-color: rgba(255, 215, 0, 0.3);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.02);
+        }
+        .input-group input::placeholder,
+        .input-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.15);
+        }
+        .input-hint {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.2);
+            padding: 0 4px;
+        }
+
+        /* Map modal */
+        #mapContainer {
+            height: 320px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            background: #0b0b1a;
+        }
+        #mapContainer .leaflet-control-attribution {
+            background: rgba(0, 0, 0, 0.6) !important;
+            color: rgba(255, 255, 255, 0.3) !important;
+            font-size: 8px !important;
+        }
+        #mapContainer .leaflet-control-attribution a {
+            color: rgba(255, 255, 255, 0.3) !important;
+        }
+        .map-instruction {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.3);
+            text-align: center;
+            padding: 6px 0 2px;
+        }
+
+        /* ── Toast ── */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 10px 20px;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #eef2ff;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            opacity: 0;
+            transition: all 0.4s ease;
+            pointer-events: none;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ── Responsive tweaks ── */
+        @media (max-width: 420px) {
+            .header {
+                padding: 10px 14px 6px;
+            }
+            .header-title {
+                font-size: 15px;
+            }
+            .header-status {
+                font-size: 10px;
+            }
+            .compass-area {
+                padding: 2px 6px 0;
+            }
+            .compass-wrapper {
+                width: min(68vw, 68vh, 280px);
+            }
+            .bottom-actions {
+                padding: 6px 10px 12px;
+                gap: 8px;
+            }
+            .btn {
+                font-size: 12px;
+                padding: 10px 8px;
+                border-radius: 12px;
+            }
+            .btn .icon {
+                font-size: 15px;
+            }
+            .points-section {
+                padding: 0 10px 4px;
+            }
+            .point-item {
+                padding: 8px 10px;
+                min-height: 40px;
+            }
+            .point-name {
+                font-size: 13px;
+            }
+            .modal {
+                padding: 18px 16px 14px;
+                border-radius: 22px;
+            }
+            #mapContainer {
+                height: 240px;
+            }
+        }
+
+        @media (max-height: 700px) {
+            .compass-wrapper {
+                width: min(55vw, 55vh, 220px);
+            }
+            .compass-heading {
+                font-size: clamp(18px, 4vw, 28px);
+            }
+            .header {
+                padding: 8px 14px 4px;
+            }
+            .coords-bar {
+                padding: 2px 12px 6px;
+                font-size: 10px;
+                gap: 10px;
+            }
+            .points-header {
+                padding: 4px 2px 4px;
+            }
+            .points-header h3 {
+                font-size: 11px;
+            }
+            .point-item {
+                padding: 6px 10px;
+                min-height: 34px;
+                gap: 8px;
+            }
+            .point-name {
+                font-size: 12px;
+            }
+            .point-icon {
+                font-size: 16px;
+                width: 26px;
+            }
+            .bottom-actions {
+                padding: 4px 10px 10px;
+            }
+            .btn {
+                padding: 8px 6px;
+                font-size: 11px;
+                border-radius: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── APP ─── -->
+    <div id="app">
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-title">
+                <span>🧭</span> GPS Компас
+            </div>
+            <div class="header-status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">поиск...</span>
+            </div>
+        </header>
+
+        <!-- Compass -->
+        <div class="compass-area">
+            <div class="compass-wrapper">
+                <canvas id="compassCanvas"></canvas>
+                <div class="compass-info">
+                    <div class="compass-heading" id="headingDisplay">0<small>°</small></div>
+                    <div class="compass-target-label" id="targetLabel">—</div>
+                    <div class="compass-distance" id="distanceDisplay"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coordinates -->
+        <div class="coords-bar">
+            <span>📍 <span class="val" id="latDisplay">—</span></span>
+            <span>📌 <span class="val" id="lngDisplay">—</span></span>
+            <span>🎯 <span class="val" id="accuracyDisplay">—</span></span>
+        </div>
+
+        <!-- Points List -->
+        <section class="points-section">
+            <div class="points-header">
+                <h3>📌 Сохранённые точки</h3>
+                <span class="count" id="pointsCount">0</span>
+            </div>
+            <div class="points-list" id="pointsList">
+                <div class="points-list-empty">
+                    <div class="big-icon">🗺️</div>
+                    <div>Нет сохранённых точек</div>
+                    <div style="font-size:11px;color:rgba(255,255,255,0.06);">Нажмите «+ Добавить» чтобы сохранить текущее место</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Actions -->
+        <div class="bottom-actions">
+            <button class="btn btn-primary" id="btnAddPoint">
+                <span class="icon">＋</span> Добавить
+            </button>
+            <button class="btn btn-map" id="btnMap">
+                <span class="icon">🗺</span> Найти на карте
+            </button>
+            <button class="btn btn-secondary" id="btnClearTarget" style="flex:0.5;min-width:44px;" title="Сбросить цель">
+                <span class="icon">✕</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ─── MODAL: Add Point ─── -->
+    <div class="modal-overlay" id="modalAdd">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>➕ Добавить точку</h2>
+                <button class="modal-close" data-close="modalAdd">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="pointNameInput">Название</label>
+                    <input type="text" id="pointNameInput" placeholder="Например: Дом, Работа, Парк..." maxlength="40" autofocus>
+                    <div class="input-hint">Текущие координаты будут сохранены</div>
+                </div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.15);padding:0 4px;">
+                    📍 <span id="modalCoords">—</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close="modalAdd">Отмена</button>
+                <button class="btn btn-primary" id="modalAddConfirm">💾 Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── MODAL: Map ─── -->
+    <div class="modal-overlay" id="modalMap">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>🗺 Выбрать на карте</h2>
+                <button class="modal-close" data-close="modalMap">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="mapContainer"></div>
+                <div class="map-instruction">👆 Нажмите на карту, чтобы установить цель</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.15);text-align:center;padding-top:6px;">
+                    <span id="mapSelectedCoords">—</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-close="modalMap">Закрыть</button>
+                <button class="btn btn-map" id="modalMapConfirm">🎯 Установить цель</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── TOAST ─── -->
+    <div class="toast" id="toast"></div>
+
+    <!-- ─── SCRIPT ─── -->
+    <script>
+        (function() {
+            'use strict';
+
+            // ─── State ───
+            const state = {
+                heading: 0, // degrees, 0 = north
+                lat: null,
+                lng: null,
+                accuracy: null,
+                target: null, // { lat, lng, name } or null
+                points: [], // [{ id, name, lat, lng, timestamp }]
+                isTracking: false,
+                mapTarget: null, // { lat, lng } from map picker
+            };
+
+            // ─── DOM refs ───
+            const canvas = document.getElementById('compassCanvas');
+            const ctx = canvas.getContext('2d');
+            const headingDisplay = document.getElementById('headingDisplay');
+            const targetLabel = document.getElementById('targetLabel');
+            const distanceDisplay = document.getElementById('distanceDisplay');
+            const latDisplay = document.getElementById('latDisplay');
+            const lngDisplay = document.getElementById('lngDisplay');
+            const accuracyDisplay = document.getElementById('accuracyDisplay');
+            const pointsList = document.getElementById('pointsList');
+            const pointsCount = document.getElementById('pointsCount');
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+
+            const btnAddPoint = document.getElementById('btnAddPoint');
+            const btnMap = document.getElementById('btnMap');
+            const btnClearTarget = document.getElementById('btnClearTarget');
+
+            const modalAdd = document.getElementById('modalAdd');
+            const modalMap = document.getElementById('modalMap');
+            const pointNameInput = document.getElementById('pointNameInput');
+            const modalCoords = document.getElementById('modalCoords');
+            const modalAddConfirm = document.getElementById('modalAddConfirm');
+            const modalMapConfirm = document.getElementById('modalMapConfirm');
+            const mapSelectedCoords = document.getElementById('mapSelectedCoords');
+            const toast = document.getElementById('toast');
+
+            let mapInstance = null;
+            let mapMarker = null;
+            let mapClickHandler = null;
+            let animationFrame = null;
+            let resizeObserver = null;
+
+            // ─── Compass sizing ───
+            function resizeCanvas() {
+                const rect = canvas.parentElement.getBoundingClientRect();
+                const size = Math.floor(rect.width * window.devicePixelRatio);
+                const displaySize = rect.width;
+                canvas.width = size;
+                canvas.height = size;
+                canvas.style.width = displaySize + 'px';
+                canvas.style.height = displaySize + 'px';
+                renderCompass();
+            }
+
+            // ─── Bearing calculation ───
+            function calculateBearing(lat1, lng1, lat2, lng2) {
+                const φ1 = lat1 * Math.PI / 180;
+                const φ2 = lat2 * Math.PI / 180;
+                const Δλ = (lng2 - lng1) * Math.PI / 180;
+                const y = Math.sin(Δλ) * Math.cos(φ2);
+                const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+                let brng = Math.atan2(y, x) * 180 / Math.PI;
+                return (brng + 360) % 360;
+            }
+
+            function haversineDistance(lat1, lng1, lat2, lng2) {
+                const R = 6371000;
+                const φ1 = lat1 * Math.PI / 180;
+                const φ2 = lat2 * Math.PI / 180;
+                const Δφ = (lat2 - lat1) * Math.PI / 180;
+                const Δλ = (lng2 - lng1) * Math.PI / 180;
+                const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                    Math.cos(φ1) * Math.cos(φ2) *
+                    Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            }
+
+            function formatDistance(m) {
+                if (m < 10) return '< 10 м';
+                if (m < 1000) return Math.round(m) + ' м';
+                return (m / 1000).toFixed(1) + ' км';
+            }
+
+            // ─── Compass render ───
+            function renderCompass() {
+                const dpr = window.devicePixelRatio || 1;
+                const w = canvas.width;
+                const h = canvas.height;
+                const size = Math.min(w, h);
+                const cx = w / 2;
+                const cy = h / 2;
+                const radius = size * 0.44;
+
+                ctx.clearRect(0, 0, w, h);
+
+                // ── background ring ──
+                const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.05);
+                grad.addColorStop(0, 'rgba(20,20,50,0.3)');
+                grad.addColorStop(0.7, 'rgba(10,10,25,0.5)');
+                grad.addColorStop(1, 'rgba(0,0,0,0.6)');
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius * 1.05, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // outer ring glow
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius * 1.04, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+                ctx.lineWidth = 1.5 * dpr;
+                ctx.stroke();
+
+                // ── tick marks ──
+                const headingRad = (state.heading || 0) * Math.PI / 180;
+
+                for (let i = 0; i < 72; i++) {
+                    const angle = i * (Math.PI / 36);
+                    const isMajor = i % 3 === 0;
+                    const isCardinal = i % 9 === 0;
+                    const len = isCardinal ? radius * 0.16 : isMajor ? radius * 0.10 : radius * 0.06;
+                    const outer = radius * 0.92;
+                    const inner = outer - len;
+                    const x1 = cx + Math.sin(angle - headingRad) * inner;
+                    const y1 = cy - Math.cos(angle - headingRad) * inner;
+                    const x2 = cx + Math.sin(angle - headingRad) * outer;
+                    const y2 = cy - Math.cos(angle - headingRad) * outer;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.strokeStyle = isCardinal ? 'rgba(255,255,255,0.6)' :
+                        isMajor ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)';
+                    ctx.lineWidth = isCardinal ? 2.5 * dpr : isMajor ? 1.5 * dpr : 1 * dpr;
+                    ctx.stroke();
+                }
+
+                // ── cardinal labels ──
+                const labels = [
+                    { label: 'N', angle: 0 },
+                    { label: 'E', angle: 90 },
+                    { label: 'S', angle: 180 },
+                    { label: 'W', angle: 270 }
+                ];
+                const labelRadius = radius * 0.77;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                for (const { label, angle } of labels) {
+                    const rad = (angle - state.heading) * Math.PI / 180;
+                    const x = cx + Math.sin(rad) * labelRadius;
+                    const y = cy - Math.cos(rad) * labelRadius;
+                    const isNorth = label === 'N';
+                    ctx.font = `${isNorth ? 'bold ' : ''}${Math.round(radius * 0.16)}px 'Segoe UI', system-ui, sans-serif`;
+                    ctx.fillStyle = isNorth ? '#ff6b6b' : 'rgba(255,255,255,0.3)';
+                    ctx.shadowColor = isNorth ? 'rgba(255,60,60,0.3)' : 'transparent';
+                    ctx.shadowBlur = isNorth ? 20 * dpr : 0;
+                    ctx.fillText(label, x, y);
+                    ctx.shadowBlur = 0;
+                }
+
+                // ── inner subtle ring ──
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius * 0.55, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+                ctx.lineWidth = 0.5 * dpr;
+                ctx.stroke();
+
+                // ── target indicator (if target set) ──
+                let targetAngle = 0;
+                let hasTarget = false;
+                if (state.target && state.lat !== null && state.lng !== null) {
+                    const brng = calculateBearing(state.lat, state.lng, state.target.lat, state.target.lng);
+                    targetAngle = (brng - state.heading) * Math.PI / 180;
+                    hasTarget = true;
+
+                    // small target ring
+                    const ringR = radius * 0.40;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255,215,0,0.06)';
+                    ctx.lineWidth = 1.5 * dpr;
+                    ctx.setLineDash([4 * dpr, 8 * dpr]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // ── Minecraft-style Red Arrow ──
+                const arrowLen = radius * 0.62;
+                const arrowWidth = radius * 0.12;
+                const headLen = radius * 0.22;
+                const headWidth = radius * 0.20;
+                const shaftLen = arrowLen - headLen;
+
+                // rotation: if target → point to target, else point north
+                const rot = hasTarget ? targetAngle : 0;
+
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(rot);
+
+                // shaft (white/light)
+                const shaftGrad = ctx.createLinearGradient(0, -shaftLen * 0.5, 0, shaftLen * 0.5);
+                shaftGrad.addColorStop(0, 'rgba(220,220,240,0.9)');
+                shaftGrad.addColorStop(0.5, 'rgba(180,180,210,0.95)');
+                shaftGrad.addColorStop(1, 'rgba(140,140,170,0.9)');
+                ctx.fillStyle = shaftGrad;
+                ctx.shadowColor = 'rgba(0,0,0,0.4)';
+                ctx.shadowBlur = 12 * dpr;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 2 * dpr;
+                ctx.beginPath();
+                const sw = arrowWidth * 0.35;
+                ctx.roundRect(-sw / 2, -shaftLen * 0.9, sw, shaftLen * 0.8, sw / 2);
+                ctx.fill();
+
+                // arrow head (RED - like Minecraft)
+                ctx.shadowColor = 'rgba(255,30,30,0.5)';
+                ctx.shadowBlur = 25 * dpr;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+                ctx.beginPath();
+                const tipX = 0;
+                const tipY = -shaftLen - headLen * 0.1;
+                const baseY = -shaftLen + headLen * 0.1;
+                const hw = headWidth * 0.5;
+                ctx.moveTo(tipX, tipY);
+                ctx.lineTo(-hw, baseY);
+                ctx.lineTo(-hw * 0.4, baseY + headLen * 0.15);
+                ctx.lineTo(0, baseY + headLen * 0.05);
+                ctx.lineTo(hw * 0.4, baseY + headLen * 0.15);
+                ctx.lineTo(hw, baseY);
+                ctx.closePath();
+
+                const headGrad = ctx.createLinearGradient(0, tipY, 0, baseY);
+                headGrad.addColorStop(0, '#ff1744');
+                headGrad.addColorStop(0.4, '#d50000');
+                headGrad.addColorStop(1, '#b71c1c');
+                ctx.fillStyle = headGrad;
+                ctx.fill();
+
+                // head highlight
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                ctx.moveTo(0, tipY * 0.85);
+                ctx.lineTo(-hw * 0.3, baseY * 0.7);
+                ctx.lineTo(0, baseY * 0.6);
+                ctx.lineTo(hw * 0.3, baseY * 0.7);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                ctx.fill();
+
+                // center dot
+                ctx.shadowBlur = 0;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.035, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.08)';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(0, 0, radius * 0.015, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                ctx.fill();
+
+                ctx.restore();
+
+                // ── glow ring (target) ──
+                if (hasTarget) {
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, radius * 0.48, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255,215,0,0.03)';
+                    ctx.lineWidth = 2 * dpr;
+                    ctx.stroke();
+                }
+
+                // ── heading text in center ──
+                // already done via HTML overlay
+            }
+
+            // roundRect polyfill for canvas if needed
+            if (!CanvasRenderingContext2D.prototype.roundRect) {
+                CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                    if (r > w / 2) r = w / 2;
+                    if (r > h / 2) r = h / 2;
+                    this.moveTo(x + r, y);
+                    this.lineTo(x + w - r, y);
+                    this.quadraticCurveTo(x + w, y, x + w, y + r);
+                    this.lineTo(x + w, y + h - r);
+                    this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                    this.lineTo(x + r, y + h);
+                    this.quadraticCurveTo(x, y + h, x, y + h - r);
+                    this.lineTo(x, y + r);
+                    this.quadraticCurveTo(x, y, x + r, y);
+                    this.closePath();
+                    return this;
+                };
+            }
+
+            // ─── Update UI ───
+            function updateUI() {
+                // heading
+                const h = Math.round(state.heading || 0) % 360;
+                headingDisplay.innerHTML = `${h}<small>°</small>`;
+
+                // coords
+                if (state.lat !== null && state.lng !== null) {
+                    latDisplay.textContent = state.lat.toFixed(6);
+                    lngDisplay.textContent = state.lng.toFixed(6);
+                    accuracyDisplay.textContent = state.accuracy ? `±${Math.round(state.accuracy)}м` : '—';
+                } else {
+                    latDisplay.textContent = '—';
+                    lngDisplay.textContent = '—';
+                    accuracyDisplay.textContent = '—';
+                }
+
+                // target label
+                if (state.target) {
+                    const dist = haversineDistance(state.lat, state.lng, state.target.lat, state.target.lng);
+                    targetLabel.innerHTML = `🎯 <strong>${state.target.name || 'Цель'}</strong>`;
+                    distanceDisplay.textContent = formatDistance(dist);
+                } else {
+                    targetLabel.textContent = '—';
+                    distanceDisplay.textContent = '';
+                }
+
+                // status
+                if (state.isTracking && state.lat !== null) {
+                    statusDot.className = 'status-dot';
+                    statusText.textContent = 'активен';
+                } else if (state.isTracking) {
+                    statusDot.className = 'status-dot inactive';
+                    statusText.textContent = 'ожидание GPS...';
+                } else {
+                    statusDot.className = 'status-dot inactive';
+                    statusText.textContent = 'остановлен';
+                }
+
+                // points list
+                renderPoints();
+
+                // canvas
+                renderCompass();
+            }
+
+            // ─── Points ───
+            function loadPoints() {
+                try {
+                    const data = localStorage.getItem('compass_points');
+                    if (data) {
+                        state.points = JSON.parse(data);
+                    }
+                } catch (_) { state.points = []; }
+            }
+
+            function savePoints() {
+                try {
+                    localStorage.setItem('compass_points', JSON.stringify(state.points));
+                } catch (_) {}
+            }
+
+            function renderPoints() {
+                const list = pointsList;
+                const count = state.points.length;
+                pointsCount.textContent = count;
+
+                if (count === 0) {
+                    list.innerHTML = `
+                        <div class="points-list-empty">
+                            <div class="big-icon">🗺️</div>
+                            <div>Нет сохранённых точек</div>
+                            <div style="font-size:11px;color:rgba(255,255,255,0.06);">Нажмите «+ Добавить» чтобы сохранить текущее место</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                for (const p of state.points) {
+                    const isActive = state.target && state.target.id === p.id;
+                    let distText = '';
+                    if (state.lat !== null && state.lng !== null) {
+                        const d = haversineDistance(state.lat, state.lng, p.lat, p.lng);
+                        distText = formatDistance(d);
+                    }
+                    const icon = p.icon || '📍';
+                    html += `
+                        <div class="point-item ${isActive ? 'active' : ''}" data-id="${p.id}">
+                            <div class="point-icon">${icon}</div>
+                            <div class="point-info">
+                                <div class="point-name">${escapeHtml(p.name || 'Без названия')}</div>
+                                <div class="point-coords">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</div>
+                            </div>
+                            ${distText ? `<div class="point-distance">${distText}</div>` : ''}
+                            <div class="point-badge">АКТИВНА</div>
+                            <button class="point-delete" data-id="${p.id}" data-action="delete">✕</button>
+                        </div>
+                    `;
+                }
+                list.innerHTML = html;
+
+                // event listeners
+                list.querySelectorAll('.point-item').forEach(el => {
+                    el.addEventListener('click', (e) => {
+                        if (e.target.closest('.point-delete')) return;
+                        const id = parseInt(el.dataset.id);
+                        const point = state.points.find(p => p.id === id);
+                        if (point) {
+                            setTarget(point);
+                            showToast(`🎯 Цель: ${point.name || 'Точка'}`);
+                        }
+                    });
+                });
+
+                list.querySelectorAll('.point-delete').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const id = parseInt(btn.dataset.id);
+                        deletePoint(id);
+                    });
+                });
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            function addPoint(name) {
+                if (state.lat === null || state.lng === null) {
+                    showToast('⚠️ Нет данных GPS');
+                    return false;
+                }
+                const point = {
+                    id: Date.now(),
+                    name: name.trim() || 'Точка',
+                    lat: state.lat,
+                    lng: state.lng,
+                    timestamp: Date.now(),
+                    icon: '📍',
+                };
+                state.points.push(point);
+                savePoints();
+                renderPoints();
+                return true;
+            }
+
+            function deletePoint(id) {
+                state.points = state.points.filter(p => p.id !== id);
+                if (state.target && state.target.id === id) {
+                    state.target = null;
+                }
+                savePoints();
+                renderPoints();
+                updateUI();
+                showToast('🗑 Точка удалена');
+            }
+
+            function setTarget(point) {
+                state.target = { ...point, id: point.id };
+                updateUI();
+            }
+
+            function clearTarget() {
+                state.target = null;
+                updateUI();
+                showToast('🧭 Цель сброшена');
+            }
+
+            // ─── Geolocation ───
+            let watchId = null;
+
+            function startLocation() {
+                if (!navigator.geolocation) {
+                    showToast('⚠️ GPS недоступен');
+                    return;
+                }
+                state.isTracking = true;
+                watchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        state.lat = pos.coords.latitude;
+                        state.lng = pos.coords.longitude;
+                        state.accuracy = pos.coords.accuracy || null;
+                        state.isTracking = true;
+                        updateUI();
+                        // update modal coords
+                        if (modalCoords) {
+                            modalCoords.textContent = `${state.lat.toFixed(6)}, ${state.lng.toFixed(6)}`;
+                        }
+                    },
+                    (err) => {
+                        console.warn('GPS error:', err.message);
+                        state.isTracking = false;
+                        updateUI();
+                        if (err.code === 1) {
+                            showToast('⚠️ Доступ к геолокации запрещён');
+                        } else {
+                            showToast('⚠️ Ошибка GPS: ' + err.message);
+                        }
+                    }, {
+                        enableHighAccuracy: true,
+                        maximumAge: 3000,
+                        timeout: 15000,
+                    }
+                );
+            }
+
+            function stopLocation() {
+                if (watchId) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                }
+                state.isTracking = false;
+                updateUI();
+            }
+
+            // ─── Orientation ───
+            let orientationPermission = false;
+
+            function startOrientation() {
+                if (window.DeviceOrientationEvent) {
+                    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        // iOS 13+
+                        DeviceOrientationEvent.requestPermission()
+                            .then(state => {
+                                if (state === 'granted') {
+                                    window.addEventListener('deviceorientation', handleOrientation);
+                                    orientationPermission = true;
+                                } else {
+                                    showToast('⚠️ Нет доступа к датчикам движения');
+                                    // fallback: use compass heading from geolocation
+                                    fallbackHeading();
+                                }
+                            })
+                            .catch(() => {
+                                fallbackHeading();
+                            });
+                    } else {
+                        window.addEventListener('deviceorientation', handleOrientation);
+                        orientationPermission = true;
+                    }
+                } else {
+                    fallbackHeading();
+                }
+            }
+
+            function handleOrientation(event) {
+                let alpha = event.alpha || 0; // 0-360, heading
+                if (event.webkitCompassHeading !== undefined && event.webkitCompassHeading !== null) {
+                    // iOS WebKit compass
+                    alpha = event.webkitCompassHeading;
+                } else if (event.absolute !== undefined && event.absolute) {
+                    // Android absolute orientation
+                    alpha = event.alpha || 0;
+                } else {
+                    // non-absolute, need to handle differently
+                    // On some devices alpha is relative to screen orientation
+                    // We'll use what we get and apply a simple filter
+                }
+                // Normalize
+                let heading = (360 - alpha) % 360;
+                if (heading < 0) heading += 360;
+
+                // Simple low-pass filter for smoothness
+                if (state.heading !== null && !isNaN(state.heading)) {
+                    const diff = heading - state.heading;
+                    if (diff > 180) state.heading += 360;
+                    else if (diff < -180) state.heading -= 360;
+                    state.heading = state.heading + (heading - state.heading) * 0.25;
+                } else {
+                    state.heading = heading;
+                }
+                state.heading = ((state.heading % 360) + 360) % 360;
+
+                if (!isNaN(state.heading)) {
+                    updateUI();
+                }
+            }
+
+            let fallbackInterval = null;
+
+            function fallbackHeading() {
+                // Use geolocation heading as fallback (only works when moving)
+                if (navigator.geolocation) {
+                    navigator.geolocation.watchPosition(
+                        (pos) => {
+                            if (pos.coords.heading !== null && !isNaN(pos.coords.heading)) {
+                                state.heading = pos.coords.heading;
+                                updateUI();
+                            }
+                        }, () => {}, { enableHighAccuracy: true }
+                    );
+                }
+                // Also try to use a simple magnetometer fallback with a random drift
+                // Actually, let's not fake it - just show N and let user know
+                showToast('🧭 Датчики ориентации недоступны, используйте GPS направление');
+            }
+
+            // ─── Map ───
+            function initMap() {
+                if (mapInstance) return;
+
+                const container = document.getElementById('mapContainer');
+                if (!container) return;
+
+                const center = [state.lat || 55.7558, state.lng || 37.6173];
+                mapInstance = L.map(container, {
+                    center: center,
+                    zoom: 15,
+                    zoomControl: true,
+                    attributionControl: true,
+                });
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '© OpenStreetMap',
+                }).addTo(mapInstance);
+
+                // current location marker
+                if (state.lat !== null && state.lng !== null) {
+                    L.circle([state.lat, state.lng], {
+                        radius: 20,
+                        color: '#4facfe',
+                        fillColor: '#4facfe',
+                        fillOpacity: 0.3,
+                        weight: 2,
+                    }).addTo(mapInstance);
+                    L.marker([state.lat, state.lng], {
+                        icon: L.divIcon({
+                            className: 'custom-marker',
+                            html: '📍',
+                            iconSize: [24, 24],
+                            iconAnchor: [12, 24],
+                        })
+                    }).addTo(mapInstance);
+                    mapInstance.setView([state.lat, state.lng], 15);
+                }
+
+                // click handler
+                mapClickHandler = (e) => {
+                    const { lat, lng } = e.latlng;
+                    state.mapTarget = { lat, lng };
+
+                    if (mapMarker) {
+                        mapInstance.removeLayer(mapMarker);
+                    }
+                    mapMarker = L.marker([lat, lng], {
+                        icon: L.divIcon({
+                            className: 'target-marker',
+                            html: '🎯',
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                        })
+                    }).addTo(mapInstance);
+
+                    mapSelectedCoords.textContent = `📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                    modalMapConfirm.style.opacity = '1';
+                    modalMapConfirm.style.pointerEvents = 'auto';
+                };
+
+                mapInstance.on('click', mapClickHandler);
+
+                // resize on modal open
+                setTimeout(() => {
+                    if (mapInstance) mapInstance.invalidateSize();
+                }, 300);
+            }
+
+            function openMapModal() {
+                modalMap.classList.add('open');
+                if (state.mapTarget) {
+                    mapSelectedCoords.textContent = `📍 ${state.mapTarget.lat.toFixed(6)}, ${state.mapTarget.lng.toFixed(6)}`;
+                    modalMapConfirm.style.opacity = '1';
+                    modalMapConfirm.style.pointerEvents = 'auto';
+                } else {
+                    mapSelectedCoords.textContent = '👆 Нажмите на карту';
+                    modalMapConfirm.style.opacity = '0.4';
+                    modalMapConfirm.style.pointerEvents = 'none';
+                }
+                setTimeout(() => {
+                    if (!mapInstance) initMap();
+                    else if (mapInstance) mapInstance.invalidateSize();
+                }, 200);
+            }
+
+            function closeMapModal() {
+                modalMap.classList.remove('open');
+                if (mapInstance) {
+                    mapInstance.off('click', mapClickHandler);
+                    mapInstance = null;
+                    mapMarker = null;
+                }
+                state.mapTarget = null;
+                mapSelectedCoords.textContent = '—';
+                modalMapConfirm.style.opacity = '0.4';
+                modalMapConfirm.style.pointerEvents = 'none';
+            }
+
+            function confirmMapTarget() {
+                if (!state.mapTarget) {
+                    showToast('👆 Сначала выберите точку на карте');
+                    return;
+                }
+                const point = {
+                    id: Date.now(),
+                    name: 'Точка на карте',
+                    lat: state.mapTarget.lat,
+                    lng: state.mapTarget.lng,
+                    timestamp: Date.now(),
+                    icon: '🗺',
+                };
+                state.points.push(point);
+                savePoints();
+                setTarget(point);
+                closeMapModal();
+                showToast(`🎯 Цель установлена: ${point.name}`);
+            }
+
+            // ─── Toast ───
+            let toastTimer = null;
+
+            function showToast(msg) {
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2500);
+            }
+
+            // ─── Modals helpers ───
+            function openModal(id) {
+                document.getElementById(id).classList.add('open');
+                if (id === 'modalAdd' && state.lat !== null) {
+                    modalCoords.textContent = `${state.lat.toFixed(6)}, ${state.lng.toFixed(6)}`;
+                    setTimeout(() => pointNameInput.focus(), 300);
+                }
+                if (id === 'modalMap') {
+                    openMapModal();
+                }
+            }
+
+            function closeModal(id) {
+                document.getElementById(id).classList.remove('open');
+                if (id === 'modalMap') {
+                    closeMapModal();
+                }
+            }
+
+            // ─── Event listeners ───
+            // Add point
+            btnAddPoint.addEventListener('click', () => {
+                if (state.lat === null || state.lng === null) {
+                    showToast('⚠️ Нет данных GPS');
+                    return;
+                }
+                pointNameInput.value = '';
+                openModal('modalAdd');
+            });
+
+            modalAddConfirm.addEventListener('click', () => {
+                const name = pointNameInput.value.trim() || 'Точка';
+                if (addPoint(name)) {
+                    closeModal('modalAdd');
+                    showToast(`✅ Точка "${name}" сохранена`);
+                } else {
+                    showToast('⚠️ Не удалось сохранить');
+                }
+            });
+
+            // Map
+            btnMap.addEventListener('click', () => {
+                openModal('modalMap');
+            });
+
+            modalMapConfirm.addEventListener('click', confirmMapTarget);
+
+            // Clear target
+            btnClearTarget.addEventListener('click', clearTarget);
+
+            // Modal close buttons
+            document.querySelectorAll('[data-close]').forEach(el => {
+                el.addEventListener('click', () => {
+                    closeModal(el.dataset.close);
+                });
+            });
+
+            // Close modals on overlay click
+            document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        closeModal(overlay.id);
+                    }
+                });
+            });
+
+            // Enter key in add point input
+            pointNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    modalAddConfirm.click();
+                }
+            });
+
+            // ─── Init ───
+            function init() {
+                loadPoints();
+                startLocation();
+                startOrientation();
+
+                // Canvas resize
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+
+                // render loop
+                function loop() {
+                    // render is called from updateUI, but we need to keep animating
+                    // for smooth compass updates
+                    if (document.visibilityState !== 'hidden') {
+                        // renderCompass is called inside updateUI
+                        // but we need to ensure it runs smoothly
+                        if (!document.hidden) {
+                            // If no update came from sensors, still render
+                            // updateUI handles rendering
+                        }
+                    }
+                    animationFrame = requestAnimationFrame(loop);
+                }
+                loop();
+
+                // Update UI every second for clock/fallback
+                setInterval(() => {
+                    updateUI();
+                }, 1000);
+
+                // Handle visibility change
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        // pause heavy updates
+                    } else {
+                        updateUI();
+                    }
+                });
+
+                showToast('🧭 Компас готов');
+
+                // If target was set from previous session, restore?
+                // We don't persist target, only points.
+            }
+
+            // Override updateUI to always render compass
+            const originalUpdateUI = updateUI;
+            updateUI = function() {
+                originalUpdateUI();
+                renderCompass();
+            };
+
+            // Also handle when the canvas size changes
+            if (window.ResizeObserver) {
+                resizeObserver = new ResizeObserver(() => {
+                    resizeCanvas();
+                });
+                resizeObserver.observe(canvas.parentElement);
+            }
+
+            // Start
+            init();
+
+            // Expose for debugging
+            window.__compass = { state, renderCompass, updateUI, addPoint, setTarget, clearTarget };
+
+        })();
+    </script>
+</body>
+</html>

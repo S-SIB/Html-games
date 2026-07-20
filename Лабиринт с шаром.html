@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Лабиринт с шарами — скорость работает</title>
+  <style>
+    /* ===== СБРОС ===== */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #ede6e3;
+      touch-action: none;
+    }
+
+    /* ===== КОНТЕЙНЕРЫ ===== */
+    #game-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+      padding: 12px;
+      touch-action: none;
+      box-sizing: border-box;
+    }
+    #game-perspective {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    #game {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      transform-origin: center center;
+      touch-action: none;
+      width: fit-content;
+      height: fit-content;
+    }
+
+    /* ===== ЛАБИРИНТ (неподвижен) ===== */
+    #maze {
+      position: relative;
+      width: 350px;
+      height: 315px;
+      flex-shrink: 0;
+      touch-action: none;
+      background: transparent;
+      border-radius: 8px;
+      transform: rotateY(0deg) rotateX(0deg) !important;
+    }
+
+    /* ===== ФИНИШ ===== */
+    #end {
+      position: absolute;
+      width: 65px;
+      height: 65px;
+      border: 5px dashed #7d82b8;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1;
+      transform: translate(-50%, -50%);
+      transition: left 0.4s ease, top 0.4s ease;
+    }
+
+    /* ===== СТЕНЫ ===== */
+    .wall {
+      position: absolute;
+      background-color: #36382e;
+      transform-origin: top center;
+      margin-left: -5px;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .wall::before,
+    .wall::after {
+      display: block;
+      content: "";
+      width: 10px;
+      height: 10px;
+      background-color: inherit;
+      border-radius: 50%;
+      position: absolute;
+    }
+    .wall::before {
+      top: -5px;
+    }
+    .wall::after {
+      bottom: -5px;
+    }
+
+    /* ===== ШАРЫ ===== */
+    .ball {
+      position: absolute;
+      margin-top: -5px;
+      margin-left: -5px;
+      border-radius: 50%;
+      background-color: #f06449;
+      width: 10px;
+      height: 10px;
+      pointer-events: none;
+      will-change: left, top;
+      z-index: 5;
+    }
+
+    /* ===== ПАНЕЛЬ УПРАВЛЕНИЯ ===== */
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      max-width: 350px;
+      flex-shrink: 0;
+    }
+    .ctrl-btn {
+      background-color: #210124;
+      color: #f0eceb;
+      border: none;
+      border-radius: 40px;
+      padding: 10px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform 0.1s, opacity 0.2s, background-color 0.3s;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      flex: 0 1 auto;
+      min-width: 50px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .ctrl-btn:active {
+      transform: scale(0.94);
+      opacity: 0.8;
+    }
+    .ctrl-btn.active {
+      background-color: #f06449;
+      color: #fff;
+      box-shadow: 0 0 0 2px #210124;
+    }
+    .ctrl-btn.restart {
+      background-color: #2a6d2a;
+      flex: 1 1 auto;
+      min-width: 80px;
+    }
+
+    /* ===== ПОЛЗУНОК СКОРОСТИ ===== */
+    #speed-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      justify-content: center;
+      margin: 4px 0;
+      flex-wrap: wrap;
+    }
+    #speed-control label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #210124;
+    }
+    #speed-control input[type="range"] {
+      flex: 1;
+      min-width: 80px;
+      max-width: 180px;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #ccc;
+      border-radius: 4px;
+      outline: none;
+      touch-action: manipulation;
+    }
+    #speed-control input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #210124;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    #speed-control input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #210124;
+      cursor: pointer;
+      border: none;
+    }
+    #speed-value {
+      font-weight: 700;
+      font-size: 1rem;
+      min-width: 2.4em;
+      text-align: center;
+      color: #210124;
+    }
+
+    /* ===== ЗАМЕТКА ===== */
+    #note {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #210124;
+      transition: opacity 0.8s;
+      max-width: 350px;
+      line-height: 1.4;
+      padding: 0 6px;
+      flex-shrink: 0;
+    }
+    #note p {
+      margin: 4px 0 0;
+      font-size: 0.85em;
+    }
+
+    /* ===== ОВЕРЛЕЙ РАЗРЕШЕНИЯ (iOS) ===== */
+    #permission-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      color: #fff;
+      font-size: 1.3rem;
+      text-align: center;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+      flex-direction: column;
+      gap: 30px;
+    }
+    #permission-overlay button {
+      padding: 16px 40px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 60px;
+      background: #f06449;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    #permission-overlay button:active {
+      transform: scale(0.95);
+    }
+
+    /* ===== АДАПТИВ ===== */
+    @media (max-width: 500px) {
+      #game-wrapper {
+        padding: 8px;
+      }
+      #game {
+        gap: 10px;
+      }
+      .ctrl-btn {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        min-width: 40px;
+      }
+      #speed-control label {
+        font-size: 0.8rem;
+      }
+      #speed-control input[type="range"] {
+        min-width: 60px;
+        max-width: 140px;
+      }
+      #note {
+        font-size: 0.8rem;
+      }
+    }
+    @media (max-width: 380px) {
+      .ctrl-btn {
+        padding: 6px 10px;
+        font-size: 0.7rem;
+        min-width: 34px;
+      }
+      #speed-control input[type="range"] {
+        min-width: 50px;
+        max-width: 110px;
+      }
+      #note {
+        font-size: 0.7rem;
+      }
+    }
+    @media (orientation: landscape) and (max-height: 500px) {
+      #game-wrapper {
+        padding: 6px;
+      }
+      #game {
+        gap: 6px;
+      }
+      .ctrl-btn {
+        padding: 5px 10px;
+        font-size: 0.7rem;
+        min-width: 34px;
+      }
+      #speed-control input[type="range"] {
+        min-width: 50px;
+        max-width: 100px;
+      }
+      #note {
+        font-size: 0.65rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Оверлей для iOS -->
+  <div id="permission-overlay">
+    <div>Для управления наклоном телефона необходимо ваше разрешение.</div>
+    <button id="request-permission-btn">Разрешить</button>
+  </div>
+
+  <div id="game-wrapper">
+    <div id="game-perspective">
+      <div id="game">
+        <div id="maze">
+          <div id="end"></div>
+        </div>
+        <div id="controls">
+          <button class="ctrl-btn restart" id="restart-btn">⟳ Рестарт</button>
+          <button class="ctrl-btn active" data-balls="1">1</button>
+          <button class="ctrl-btn" data-balls="2">2</button>
+          <button class="ctrl-btn" data-balls="3">3</button>
+          <button class="ctrl-btn" data-balls="4">4</button>
+        </div>
+        <div id="speed-control">
+          <label for="speed-slider">Скорость</label>
+          <input type="range" id="speed-slider" min="0.5" max="4.0" step="0.1" value="1.0">
+          <span id="speed-value">1.0</span>
+        </div>
+        <div id="note">
+          Наклоняйте телефон, чтобы управлять шарами.<br>
+          <span id="level-info">1 шар</span>
+          <p>Доберитесь до финиша (пунктирный круг).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ================================================================
+    //  ПОЛЕЗНЫЕ ФУНКЦИИ
+    // ================================================================
+    Math.minmax = (value, limit) => Math.max(Math.min(value, limit), -limit);
+
+    const distance2D = (p1, p2) => Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+
+    const getAngle = (p1, p2) => {
+      let a = Math.atan((p2.y - p1.y) / (p2.x - p1.x));
+      if (p2.x - p1.x < 0) a += Math.PI;
+      return a;
+    };
+
+    const closestItCanBe = (cap, ball) => {
+      const angle = getAngle(cap, ball);
+      const dx = Math.cos(angle) * (wallW / 2 + ballSize / 2);
+      const dy = Math.sin(angle) * (wallW / 2 + ballSize / 2);
+      return { x: cap.x + dx, y: cap.y + dy };
+    };
+
+    const rollAroundCap = (cap, ball) => {
+      const impactAngle = getAngle(ball, cap);
+      const heading = getAngle({ x: 0, y: 0 }, { x: ball.velocityX, y: ball.velocityY });
+      const impactHeadingAngle = impactAngle - heading;
+      const velMag = distance2D({ x: 0, y: 0 }, { x: ball.velocityX, y: ball.velocityY });
+      const velDiag = Math.sin(impactHeadingAngle) * velMag;
+      const closestDist = wallW / 2 + ballSize / 2;
+      const rotAngle = Math.atan(velDiag / closestDist);
+      const delta = {
+        x: Math.cos(impactAngle + Math.PI - rotAngle) * closestDist,
+        y: Math.sin(impactAngle + Math.PI - rotAngle) * closestDist,
+      };
+      const vx = ball.x - (cap.x + delta.x);
+      const vy = ball.y - (cap.y + delta.y);
+      return {
+        x: ball.x,
+        y: ball.y,
+        velocityX: vx,
+        velocityY: vy,
+        nextX: ball.x + vx,
+        nextY: ball.y + vy,
+      };
+    };
+
+    const slow = (number, diff) => {
+      if (Math.abs(number) <= diff) return 0;
+      return number > diff ? number - diff : number + diff;
+    };
+
+    // ================================================================
+    //  ПАРАМЕТРЫ
+    // ================================================================
+    const pathW = 25;
+    const wallW = 10;
+    const ballSize = 10;
+    const COLS = 10;
+    const ROWS = 9;
+
+    // ================================================================
+    //  DOM-ЭЛЕМЕНТЫ
+    // ================================================================
+    const mazeElement = document.getElementById("maze");
+    const endElement = document.getElementById("end");
+    const noteElement = document.getElementById("note");
+    const levelInfo = document.getElementById("level-info");
+    const restartBtn = document.getElementById("restart-btn");
+    const ballButtons = document.querySelectorAll("[data-balls]");
+    const speedSlider = document.getElementById("speed-slider");
+    const speedValue = document.getElementById("speed-value");
+    const permissionOverlay = document.getElementById("permission-overlay");
+    const requestPermissionBtn = document.getElementById("request-permission-btn");
+    const gameWrapper = document.getElementById("game-wrapper");
+    const gameElement = document.getElementById("game");
+
+    // ================================================================
+    //  СОСТОЯНИЕ
+    // ================================================================
+    let gameInProgress = false;
+    let previousTimestamp = undefined;
+    let currentGamma = 0;
+    let currentBeta = 0;
+    let orientationReady = false;
+
+    let balls = [];
+    let ballElements = [];
+    let wallElements = [];
+    let generatedWalls = [];
+
+    let finishX = 350 / 2;
+    let finishY = 315 / 2;
+
+    // Количество шаров (1–4)
+    let numBalls = 1;
+    // Множитель скорости (чувствительности)
+    let speedMultiplier = 1.0;
+
+    // ================================================================
+    //  ГЕНЕРАЦИЯ ЛАБИРИНТА (алгоритм рекурсивного бэктрекинга)
+    // ================================================================
+    function generateMaze(cols, rows) {
+      const grid = [];
+      for (let r = 0; r < rows; r++) {
+        grid[r] = [];
+        for (let c = 0; c < cols; c++) {
+          grid[r][c] = { visited: false, right: true, bottom: true };
+        }
+      }
+
+      const stack = [];
+      const startR = Math.floor(Math.random() * rows);
+      const startC = Math.floor(Math.random() * cols);
+      grid[startR][startC].visited = true;
+      stack.push({ r: startR, c: startC });
+
+      const directions = [
+        { dr: -1, dc: 0 },
+        { dr: 1, dc: 0 },
+        { dr: 0, dc: -1 },
+        { dr: 0, dc: 1 }
+      ];
+
+      while (stack.length > 0) {
+        const current = stack[stack.length - 1];
+        const { r, c } = current;
+
+        const neighbors = [];
+        for (const d of directions) {
+          const nr = r + d.dr;
+          const nc = c + d.dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !grid[nr][nc].visited) {
+            neighbors.push({ r: nr, c: nc, dr: d.dr, dc: d.dc });
+          }
+        }
+
+        if (neighbors.length === 0) {
+          stack.pop();
+        } else {
+          const chosen = neighbors[Math.floor(Math.random() * neighbors.length)];
+          if (chosen.dr === -1) {
+            grid[chosen.r][chosen.c].bottom = false;
+          } else if (chosen.dr === 1) {
+            grid[r][c].bottom = false;
+          } else if (chosen.dc === -1) {
+            grid[chosen.r][chosen.c].right = false;
+          } else if (chosen.dc === 1) {
+            grid[r][c].right = false;
+          }
+          grid[chosen.r][chosen.c].visited = true;
+          stack.push({ r: chosen.r, c: chosen.c });
+        }
+      }
+
+      const wallList = [];
+
+      // Границы
+      wallList.push({ x: 0, y: 0, horizontal: true, length: cols });
+      wallList.push({ x: 0, y: rows * (pathW + wallW), horizontal: true, length: cols });
+      wallList.push({ x: 0, y: 0, horizontal: false, length: rows });
+      wallList.push({ x: cols * (pathW + wallW), y: 0, horizontal: false, length: rows });
+
+      // Внутренние стены
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid[r][c].bottom) {
+            if (r < rows - 1) {
+              const x = c * (pathW + wallW);
+              const y = (r + 1) * (pathW + wallW);
+              wallList.push({ x, y, horizontal: true, length: 1 });
+            }
+          }
+          if (grid[r][c].right) {
+            if (c < cols - 1) {
+              const x = (c + 1) * (pathW + wallW);
+              const y = r * (pathW + wallW);
+              wallList.push({ x, y, horizontal: false, length: 1 });
+            }
+          }
+        }
+      }
+
+      return wallList;
+    }
+
+    // ================================================================
+    //  ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С КЛЕТКАМИ
+    // ================================================================
+    function getCellCenter(col, row) {
+      return {
+        x: col * (wallW + pathW) + (wallW / 2 + pathW / 2),
+        y: row * (wallW + pathW) + (wallW / 2 + pathW / 2)
+      };
+    }
+
+    function getAllCells() {
+      const cells = [];
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          cells.push({ r, c });
+        }
+      }
+      return cells;
+    }
+
+    function manhattanDist(r1, c1, r2, c2) {
+      return Math.abs(r1 - r2) + Math.abs(c1 - c2);
+    }
+
+    // Выбор N клеток, максимально удалённых от финиша и друг от друга
+    function selectStartCells(finishCell, count, allCells) {
+      const candidates = allCells.filter(c => !(c.r === finishCell.r && c.c === finishCell.c));
+      if (candidates.length < count) return candidates.slice(0, count);
+
+      const selected = [];
+      const firstIdx = Math.floor(Math.random() * candidates.length);
+      selected.push(candidates[firstIdx]);
+      candidates.splice(firstIdx, 1);
+
+      while (selected.length < count && candidates.length > 0) {
+        let bestScore = -Infinity;
+        let bestIdx = 0;
+        for (let i = 0; i < candidates.length; i++) {
+          const cell = candidates[i];
+          const dFinish = manhattanDist(cell.r, cell.c, finishCell.r, finishCell.c);
+          let minDist = Infinity;
+          for (const s of selected) {
+            const d = manhattanDist(cell.r, cell.c, s.r, s.c);
+            if (d < minDist) minDist = d;
+          }
+          const score = dFinish + minDist * 1.5;
+          if (score > bestScore) {
+            bestScore = score;
+            bestIdx = i;
+          }
+        }
+        selected.push(candidates[bestIdx]);
+        candidates.splice(bestIdx, 1);
+      }
+      return selected;
+    }
+
+    // ================================================================
+    //  ГЕНЕРАЦИЯ УРОВНЯ С ЗАДАННЫМ КОЛИЧЕСТВОМ ШАРОВ
+    // ================================================================
+    function generateLevel(count) {
+      // Очистка старых элементов
+      wallElements.forEach(el => mazeElement.removeChild(el));
+      wallElements = [];
+      ballElements.forEach(el => mazeElement.removeChild(el));
+      ballElements = [];
+
+      previousTimestamp = undefined;
+      gameInProgress = false;
+      currentGamma = 0;
+      currentBeta = 0;
+      mazeElement.style.cssText = "transform: rotateY(0deg) rotateX(0deg) !important";
+
+      // Генерация лабиринта
+      const walls = generateMaze(COLS, ROWS);
+      generatedWalls = walls;
+
+      // --- Выбираем финишную клетку (дальше от центра) ---
+      const allCells = getAllCells();
+      const center = { r: Math.floor(ROWS / 2), c: Math.floor(COLS / 2) };
+      let maxDist = -1;
+      let finishCell = allCells[0];
+      for (const cell of allCells) {
+        const d = manhattanDist(cell.r, cell.c, center.r, center.c);
+        if (d > maxDist) {
+          maxDist = d;
+          finishCell = cell;
+        }
+      }
+      if (Math.random() < 0.3) {
+        const farCells = allCells.filter(c => manhattanDist(c.r, c.c, center.r, center.c) >= 5);
+        if (farCells.length) finishCell = farCells[Math.floor(Math.random() * farCells.length)];
+      }
+
+      const finishPos = getCellCenter(finishCell.c, finishCell.r);
+      finishX = finishPos.x;
+      finishY = finishPos.y;
+      endElement.style.left = finishX + 'px';
+      endElement.style.top = finishY + 'px';
+
+      // --- Выбираем стартовые клетки ---
+      let startCells;
+      if (count === 1) {
+        const candidates = allCells.filter(c => !(c.r === finishCell.r && c.c === finishCell.c));
+        const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+        startCells = [chosen];
+      } else {
+        startCells = selectStartCells(finishCell, count, allCells);
+      }
+
+      // --- Создаём шары ---
+      balls = startCells.map(cell => {
+        const pos = getCellCenter(cell.c, cell.r);
+        return {
+          x: pos.x,
+          y: pos.y,
+          velocityX: 0,
+          velocityY: 0
+        };
+      });
+
+      // --- Отрисовка стен ---
+      generatedWalls.forEach(({ x, y, horizontal, length }) => {
+        const el = document.createElement("div");
+        el.className = "wall";
+        const w = wallW;
+        const h = length * (pathW + wallW);
+        el.style.cssText = `
+          left: ${x}px;
+          top: ${y}px;
+          width: ${w}px;
+          height: ${h}px;
+          transform: rotate(${horizontal ? -90 : 0}deg);
+        `;
+        mazeElement.appendChild(el);
+        wallElements.push(el);
+      });
+
+      // --- Шары в DOM ---
+      balls.forEach(({ x, y }) => {
+        const el = document.createElement("div");
+        el.className = "ball";
+        el.style.cssText = `left: ${x}px; top: ${y}px;`;
+        mazeElement.appendChild(el);
+        ballElements.push(el);
+      });
+
+      // Обновляем информацию
+      const word = count === 1 ? 'шар' : (count >= 2 && count <= 4 ? 'шара' : 'шаров');
+      levelInfo.textContent = `${count} ${word}`;
+      noteElement.innerHTML = `Наклоняйте телефон, чтобы управлять шарами.<p>Доберитесь до финиша (пунктирный круг).</p>`;
+      noteElement.style.opacity = "1";
+
+      // Запускаем, если ориентация готова
+      if (orientationReady && !gameInProgress) {
+        gameInProgress = true;
+        noteElement.style.opacity = "0";
+        window.requestAnimationFrame(main);
+      }
+    }
+
+    // ================================================================
+    //  МАСШТАБИРОВАНИЕ
+    // ================================================================
+    function scaleGame() {
+      const wrapperRect = gameWrapper.getBoundingClientRect();
+      const padding = 16;
+      const availWidth = wrapperRect.width - padding * 2;
+      const availHeight = wrapperRect.height - padding * 2;
+
+      const oldTransform = gameElement.style.transform;
+      gameElement.style.transform = 'none';
+      const rect = gameElement.getBoundingClientRect();
+      const naturalWidth = rect.width;
+      const naturalHeight = rect.height;
+      gameElement.style.transform = oldTransform || '';
+
+      if (naturalWidth === 0 || naturalHeight === 0) return;
+
+      const scaleX = availWidth / naturalWidth;
+      const scaleY = availHeight / naturalHeight;
+      const scale = Math.min(scaleX, scaleY, 1.0);
+
+      gameElement.style.transform = `scale(${scale})`;
+      gameElement.style.transformOrigin = 'center center';
+    }
+
+    window.addEventListener('resize', scaleGame);
+    window.addEventListener('orientationchange', () => setTimeout(scaleGame, 300));
+    setTimeout(scaleGame, 50);
+    window.addEventListener('load', () => setTimeout(scaleGame, 100));
+
+    // ================================================================
+    //  УПРАВЛЕНИЕ НАКЛОНОМ (лабиринт НЕ поворачивается)
+    // ================================================================
+    function handleOrientation(event) {
+      let gamma = event.gamma || 0;
+      let beta = event.beta || 0;
+      const maxAngle = 35;
+      gamma = Math.minmax(gamma, maxAngle);
+      beta = Math.minmax(beta, maxAngle);
+      currentGamma = gamma;
+      currentBeta = beta;
+
+      if (!orientationReady) {
+        orientationReady = true;
+        if (!gameInProgress) {
+          gameInProgress = true;
+          noteElement.style.opacity = "0";
+          window.requestAnimationFrame(main);
+        }
+      }
+    }
+
+    function requestOrientationPermission() {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+        permissionOverlay.style.display = 'flex';
+        requestPermissionBtn.onclick = function() {
+          DeviceOrientationEvent.requestPermission()
+            .then(state => {
+              if (state === 'granted') {
+                window.addEventListener('deviceorientation', handleOrientation);
+                permissionOverlay.style.display = 'none';
+              } else {
+                alert('Разрешение не получено.');
+                permissionOverlay.style.display = 'none';
+              }
+            })
+            .catch(err => {
+              alert('Ошибка: ' + err);
+              permissionOverlay.style.display = 'none';
+            });
+        };
+      } else {
+        window.addEventListener('deviceorientation', handleOrientation);
+        permissionOverlay.style.display = 'none';
+      }
+    }
+    requestOrientationPermission();
+
+    // ================================================================
+    //  УПРАВЛЕНИЕ КНОПКАМИ И ПОЛЗУНКОМ
+    // ================================================================
+    // Переключение количества шаров
+    ballButtons.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const count = parseInt(this.dataset.balls, 10);
+        if (count === numBalls) {
+          generateLevel(count);
+          return;
+        }
+        numBalls = count;
+        ballButtons.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        generateLevel(numBalls);
+      });
+    });
+
+    // Ползунок скорости
+    speedSlider.addEventListener('input', function() {
+      speedMultiplier = parseFloat(this.value);
+      speedValue.textContent = speedMultiplier.toFixed(1);
+    });
+
+    // Рестарт
+    restartBtn.addEventListener('click', function() {
+      generateLevel(numBalls);
+    });
+
+    // ================================================================
+    //  КЛАВИАТУРА (отладка)
+    // ================================================================
+    window.addEventListener("keydown", function(e) {
+      if (e.key === " " || e.key === "Space") {
+        e.preventDefault();
+        generateLevel(numBalls);
+        return;
+      }
+      if (e.key >= "1" && e.key <= "4") {
+        const count = parseInt(e.key, 10);
+        numBalls = count;
+        ballButtons.forEach(b => {
+          b.classList.toggle('active', parseInt(b.dataset.balls, 10) === count);
+        });
+        generateLevel(numBalls);
+      }
+    });
+
+    // ================================================================
+    //  ОСНОВНОЙ ЦИКЛ (с исправленной скоростью)
+    // ================================================================
+    function main(timestamp) {
+      if (!gameInProgress) return;
+
+      if (previousTimestamp === undefined) {
+        previousTimestamp = timestamp;
+        window.requestAnimationFrame(main);
+        return;
+      }
+
+      const timeElapsed = (timestamp - previousTimestamp) / 16;
+      // Максимальная скорость теперь зависит от множителя
+      const maxVelocity = 1.5 * speedMultiplier;
+
+      try {
+        const gravity = 2;
+        const friction = 0.01;
+        const gammaRad = (currentGamma / 180) * Math.PI;
+        const betaRad = (currentBeta / 180) * Math.PI;
+        // Ускорения умножаем на множитель скорости
+        const accelerationX = gravity * Math.sin(gammaRad) * speedMultiplier;
+        const accelerationY = gravity * Math.sin(betaRad) * speedMultiplier;
+        const frictionX = gravity * Math.cos(gammaRad) * friction;
+        const frictionY = gravity * Math.cos(betaRad) * friction;
+
+        const vcX = accelerationX * timeElapsed;
+        const vcY = accelerationY * timeElapsed;
+        const fdX = frictionX * timeElapsed;
+        const fdY = frictionY * timeElapsed;
+
+        balls.forEach(ball => {
+          if (vcX === 0) {
+            ball.velocityX = slow(ball.velocityX, fdX);
+          } else {
+            ball.velocityX += vcX;
+            ball.velocityX = Math.max(Math.min(ball.velocityX, maxVelocity), -maxVelocity);
+            ball.velocityX -= Math.sign(vcX) * fdX;
+            ball.velocityX = Math.minmax(ball.velocityX, maxVelocity);
+          }
+
+          if (vcY === 0) {
+            ball.velocityY = slow(ball.velocityY, fdY);
+          } else {
+            ball.velocityY += vcY;
+            ball.velocityY -= Math.sign(vcY) * fdY;
+            ball.velocityY = Math.minmax(ball.velocityY, maxVelocity);
+          }
+
+          ball.nextX = ball.x + ball.velocityX;
+          ball.nextY = ball.y + ball.velocityY;
+
+          // Столкновения со стенами
+          generatedWalls.forEach((wall) => {
+            const wX = wall.x;
+            const wY = wall.y;
+            const wLen = wall.length * (pathW + wallW);
+            const wHoriz = wall.horizontal;
+
+            if (wHoriz) {
+              if (ball.nextY + ballSize / 2 >= wY - wallW / 2 &&
+                ball.nextY - ballSize / 2 <= wY + wallW / 2) {
+                const ws = { x: wX, y: wY };
+                const we = { x: wX + wLen, y: wY };
+
+                if (ball.nextX + ballSize / 2 >= ws.x - wallW / 2 && ball.nextX < ws.x) {
+                  const dist = distance2D(ws, { x: ball.nextX, y: ball.nextY });
+                  if (dist < ballSize / 2 + wallW / 2) {
+                    const closest = closestItCanBe(ws, { x: ball.nextX, y: ball.nextY });
+                    const rolled = rollAroundCap(ws, {
+                      x: closest.x,
+                      y: closest.y,
+                      velocityX: ball.velocityX,
+                      velocityY: ball.velocityY,
+                    });
+                    Object.assign(ball, rolled);
+                  }
+                }
+                if (ball.nextX - ballSize / 2 <= we.x + wallW / 2 && ball.nextX > we.x) {
+                  const dist = distance2D(we, { x: ball.nextX, y: ball.nextY });
+                  if (dist < ballSize / 2 + wallW / 2) {
+                    const closest = closestItCanBe(we, { x: ball.nextX, y: ball.nextY });
+                    const rolled = rollAroundCap(we, {
+                      x: closest.x,
+                      y: closest.y,
+                      velocityX: ball.velocityX,
+                      velocityY: ball.velocityY,
+                    });
+                    Object.assign(ball, rolled);
+                  }
+                }
+                if (ball.nextX >= ws.x && ball.nextX <= we.x) {
+                  if (ball.nextY < wY) {
+                    ball.nextY = wY - wallW / 2 - ballSize / 2;
+                  } else {
+                    ball.nextY = wY + wallW / 2 + ballSize / 2;
+                  }
+                  ball.y = ball.nextY;
+                  ball.velocityY = -ball.velocityY / 3;
+                }
+              }
+            } else {
+              if (ball.nextX + ballSize / 2 >= wX - wallW / 2 &&
+                ball.nextX - ballSize / 2 <= wX + wallW / 2) {
+                const ws = { x: wX, y: wY };
+                const we = { x: wX, y: wY + wLen };
+
+                if (ball.nextY + ballSize / 2 >= ws.y - wallW / 2 && ball.nextY < ws.y) {
+                  const dist = distance2D(ws, { x: ball.nextX, y: ball.nextY });
+                  if (dist < ballSize / 2 + wallW / 2) {
+                    const closest = closestItCanBe(ws, { x: ball.nextX, y: ball.nextY });
+                    const rolled = rollAroundCap(ws, {
+                      x: closest.x,
+                      y: closest.y,
+                      velocityX: ball.velocityX,
+                      velocityY: ball.velocityY,
+                    });
+                    Object.assign(ball, rolled);
+                  }
+                }
+                if (ball.nextY - ballSize / 2 <= we.y + wallW / 2 && ball.nextY > we.y) {
+                  const dist = distance2D(we, { x: ball.nextX, y: ball.nextY });
+                  if (dist < ballSize / 2 + wallW / 2) {
+                    const closest = closestItCanBe(we, { x: ball.nextX, y: ball.nextY });
+                    const rolled = rollAroundCap(we, {
+                      x: closest.x,
+                      y: closest.y,
+                      velocityX: ball.velocityX,
+                      velocityY: ball.velocityY,
+                    });
+                    Object.assign(ball, rolled);
+                  }
+                }
+                if (ball.nextY >= ws.y && ball.nextY <= we.y) {
+                  if (ball.nextX < wX) {
+                    ball.nextX = wX - wallW / 2 - ballSize / 2;
+                  } else {
+                    ball.nextX = wX + wallW / 2 + ballSize / 2;
+                  }
+                  ball.x = ball.nextX;
+                  ball.velocityX = -ball.velocityX / 3;
+                }
+              }
+            }
+          });
+
+          ball.x += ball.velocityX;
+          ball.y += ball.velocityY;
+        });
+
+        // Обновляем позиции шаров
+        balls.forEach(({ x, y }, i) => {
+          if (ballElements[i]) {
+            ballElements[i].style.cssText = `left: ${x}px; top: ${y}px;`;
+          }
+        });
+
+        // Проверка победы
+        const finishPos = { x: finishX, y: finishY };
+        const allInFinish = balls.every(b => distance2D(b, finishPos) < 65 / 2);
+
+        if (allInFinish) {
+          noteElement.innerHTML = `🏆 Победа! 🎉`;
+          noteElement.style.opacity = "1";
+          gameInProgress = false;
+
+          setTimeout(() => {
+            generateLevel(numBalls);
+          }, 2000);
+        } else {
+          previousTimestamp = timestamp;
+          window.requestAnimationFrame(main);
+        }
+      } catch (err) {
+        console.error(err);
+        gameInProgress = false;
+      }
+    }
+
+    // ================================================================
+    //  ЗАПУСК
+    // ================================================================
+    document.querySelector('[data-balls="1"]').classList.add('active');
+    numBalls = 1;
+    generateLevel(1);
+
+    setTimeout(() => {
+      if (orientationReady && !gameInProgress) {
+        gameInProgress = true;
+        noteElement.style.opacity = "0";
+        window.requestAnimationFrame(main);
+      }
+    }, 500);
+  </script>
+</body>
+</html>

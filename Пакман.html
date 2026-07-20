@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, touch-action: manipulation">
+    <title>Пакман – Классический</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; min-height: 100vh; background: #0d0d0d; display: flex; justify-content: center; align-items: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 10px; }
+        .game-wrapper { background: #1a1a2e; padding: 15px 15px 20px 15px; border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.8); text-align: center; width: 100%; max-width: 500px; }
+        h1 { color: #f5c842; font-size: clamp(1.3rem, 7vw, 2.2rem); margin: 0 0 8px 0; letter-spacing: 4px; text-shadow: 0 0 10px #f5c84288; }
+        canvas { display: block; margin: 0 auto; width: 100%; height: auto; max-height: 55vh; border-radius: 16px; box-shadow: 0 0 30px #00000099; background: #0b0b1a; image-rendering: pixelated; touch-action: none; }
+        .info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; color: #ddd; font-size: 1rem; font-weight: bold; padding: 0 5px; flex-wrap: wrap; gap: 6px; }
+        .score, .message { flex: 1; min-width: 90px; }
+        .score { background: #16162e; padding: 6px 12px; border-radius: 40px; border: 2px solid #f5c842; color: #f5c842; box-shadow: 0 0 15px #f5c84233; text-align: center; }
+        .message { background: #16162e; padding: 6px 12px; border-radius: 40px; border: 2px solid #ff6b6b; color: #ff6b6b; text-align: center; transition: border-color 0.3s, color 0.3s; }
+        .btn-reset { background: #f5c842; border: none; color: #1a1a2e; font-weight: bold; font-size: 0.95rem; padding: 8px 14px; border-radius: 30px; cursor: pointer; transition: 0.2s; white-space: nowrap; touch-action: manipulation; }
+        .btn-reset:hover { background: #ffd966; transform: scale(1.02); }
+        .controls-info { margin-top: 8px; color: #888; font-size: 0.8rem; display: flex; justify-content: center; gap: 6px; }
+        .controls-info span { background: #222; padding: 3px 10px; border-radius: 12px; border: 1px solid #444; }
+        .touch-controls { display: flex; flex-direction: row; justify-content: center; gap: 10px; margin-top: 10px; }
+        .touch-btn { width: 50px; height: 50px; border-radius: 18px; background: #2a2a4a; border: 2px solid #f5c842; color: #f5c842; font-size: 1.8rem; display: flex; align-items: center; justify-content: center; cursor: pointer; user-select: none; touch-action: manipulation; box-shadow: 0 5px 0 #0d0d2a; transition: 0.05s linear; line-height: 1; }
+        .touch-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #0d0d2a; background: #3a3a6a; }
+        .lives { display: flex; gap: 5px; margin-left: 5px; font-size: 1.3rem; }
+        .life-icon { color: #f5c842; text-shadow: 0 0 6px #f5c842aa; }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <h1>🟡 ПАКМАН</h1>
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
+    <div class="info">
+        <div class="score">🍒 <span id="scoreDisplay">0</span></div>
+        <div class="message" id="messageDisplay">▶ Игра</div>
+        <button class="btn-reset" id="resetBtn">⟳ Новая</button>
+    </div>
+    <div style="display: flex; justify-content: center; align-items: center; margin-top: 5px; color:#f5c842;">
+        <span style="margin-right:5px;">❤️</span>
+        <span class="lives" id="livesDisplay"></span>
+    </div>
+    <div class="controls-info">
+        <span>↑</span> <span>↓</span> <span>←</span> <span>→</span> или кнопки
+    </div>
+    <div class="touch-controls">
+        <div class="touch-btn" id="btnLeft">◀</div>
+        <div class="touch-btn" id="btnUp">▲</div>
+        <div class="touch-btn" id="btnDown">▼</div>
+        <div class="touch-btn" id="btnRight">▶</div>
+    </div>
+</div>
+<script>
+    (function() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreSpan = document.getElementById('scoreDisplay');
+        const messageDiv = document.getElementById('messageDisplay');
+        const livesDisplay = document.getElementById('livesDisplay');
+
+        const COLS = 30;
+        const ROWS = 30;
+        const CELL_SIZE = 20;
+        const TUNNEL_ROWS = [13, 14, 15, 16];
+
+        // ---------- Карта (ИСПРАВЛЕНО) ----------
+        function createMap() {
+            const map = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            // Границы
+            for (let c = 0; c < COLS; c++) {
+                map[0][c] = 1;
+                map[ROWS-1][c] = 1;
+            }
+            for (let r = 0; r < ROWS; r++) {
+                if (!TUNNEL_ROWS.includes(r)) {
+                    map[r][0] = 1;
+                    map[r][COLS-1] = 1;
+                }
+            }
+            // Внутренние стены
+            for (let c = 3; c < 27; c += 4) {
+                map[6][c] = 1;
+                map[12][c] = 1;
+                map[18][c] = 1;
+                map[24][c] = 1;
+            }
+            for (let r = 3; r < 27; r += 4) {
+                map[r][6] = 1;
+                map[r][12] = 1;
+                map[r][18] = 1;
+                map[r][24] = 1;
+            }
+            for (let c = 10; c < 20; c++) {
+                map[9][c] = 1;
+                map[21][c] = 1;
+            }
+            for (let r = 10; r < 20; r++) {
+                map[r][9] = 1;
+                map[r][21] = 1;
+            }
+            const removeWalls = [
+                [6,7], [6,11], [6,15], [6,19], [6,23],
+                [12,7], [12,11], [12,15], [12,19], [12,23],
+                [18,7], [18,11], [18,15], [18,19], [18,23],
+                [24,7], [24,11], [24,15], [24,19], [24,23],
+                [7,6], [11,6], [15,6], [19,6], [23,6],
+                [7,12], [11,12], [15,12], [19,12], [23,12],
+                [7,18], [11,18], [15,18], [19,18], [23,18],
+                [7,24], [11,24], [15,24], [19,24], [23,24]
+            ];
+            removeWalls.forEach(([r,c]) => {
+                if (r>0 && r<ROWS-1 && c>0 && c<COLS-1) map[r][c] = 0;
+            });
+            // Стартовая зона Пакмана
+            map[1][1] = 0; map[1][2] = 0; map[2][1] = 0;
+            // Энерджайзеры
+            map[3][3] = 3; map[3][26] = 3; map[26][3] = 3; map[26][26] = 3;
+            // Туннели
+            TUNNEL_ROWS.forEach(r => { map[r][0] = 0; map[r][COLS-1] = 0; });
+            // Очищаем центральную область (13-17, 13-17)
+            for (let r=13; r<=17; r++) {
+                for (let c=13; c<=17; c++) {
+                    if (map[r][c] === 1) map[r][c] = 0;
+                }
+            }
+            // Стены домика (с проёмом на (13,15))
+            map[13][13] = 1; map[13][14] = 1; map[13][15] = 0; map[13][16] = 1; map[13][17] = 1;
+            map[14][13] = 1; map[14][17] = 1;
+            map[15][13] = 1; map[15][17] = 1;
+            map[16][13] = 1; map[16][17] = 1;
+            map[17][13] = 1; map[17][14] = 1; map[17][15] = 1; map[17][16] = 1; map[17][17] = 1;
+            // Дверь (дополнительная гарантия, что (12,15) свободна)
+            map[12][15] = 0;
+            return map;
+        }
+
+        let map = createMap();
+        let pacman = { r: 1, c: 1 };
+        let direction = { dr: 0, dc: 0 };
+        let nextDirection = { dr: 0, dc: 0 };
+        let score = 0;
+        let totalDots = 0;
+        let lives = 3;
+        let level = 1;
+        let gameOver = false;
+        let win = false;
+        let gamePaused = false;
+
+        let pacInterval = null;
+        let ghostInterval = null;
+        let frightenedTimer = null;
+        const BASE_PAC_INTERVAL = 150;
+        const BASE_GHOST_INTERVAL = 180;
+        let pacMoveInterval = BASE_PAC_INTERVAL;
+        let ghostMoveInterval = BASE_GHOST_INTERVAL;
+
+        let frightenedMode = false;
+        let frightenedEndTime = 0;
+        let frightenedDuration = 8000;
+        let ghostEatCombo = 0;
+
+        const GHOST_TYPES = [
+            { name: 'Blinky', color: '#ff4444' },
+            { name: 'Pinky', color: '#ffb8ff' },
+            { name: 'Inky', color: '#00ffff' },
+            { name: 'Clyde', color: '#ffb852' }
+        ];
+        const HOME_POSITIONS = [
+            { r: 15, c: 14 },
+            { r: 15, c: 15 },
+            { r: 15, c: 16 },
+            { r: 14, c: 14 }
+        ];
+        const DOOR = { r: 12, c: 15 };
+
+        let ghosts = [];
+
+        function createGhosts() {
+            return GHOST_TYPES.map((t, i) => ({
+                ...t,
+                r: HOME_POSITIONS[i].r,
+                c: HOME_POSITIONS[i].c,
+                dr: 0,
+                dc: -1,
+                mode: 'home',
+                exitTimer: i * 500,
+                eaten: false
+            }));
+        }
+
+        function countDots() {
+            let count = 0;
+            for (let r=0; r<ROWS; r++) for (let c=0; c<COLS; c++) if (map[r][c] === 0 || map[r][c] === 3) count++;
+            return count;
+        }
+
+        function updateLivesDisplay() {
+            let html = '';
+            for (let i=0; i<lives; i++) html += '<span class="life-icon">❤️</span>';
+            livesDisplay.innerHTML = html;
+        }
+
+        function loseLife() {
+            if (gameOver || gamePaused) return;
+            lives--;
+            updateLivesDisplay();
+            stopAllTimers();
+            gamePaused = true;
+            if (lives <= 0) {
+                gameOver = true;
+                win = false;
+                messageDiv.textContent = '💀 ИГРА ОКОНЧЕНА';
+                messageDiv.style.borderColor = '#ff6b6b';
+                messageDiv.style.color = '#ff6b6b';
+                draw();
+                return;
+            }
+            messageDiv.textContent = '😵 Потеря жизни!';
+            messageDiv.style.borderColor = '#ff6b6b';
+            messageDiv.style.color = '#ff6b6b';
+            pacman = { r: 1, c: 1 };
+            direction = { dr: 0, dc: 0 };
+            nextDirection = { dr: 0, dc: 0 };
+            ghosts = createGhosts();
+            frightenedMode = false;
+            ghostEatCombo = 0;
+            clearFrightenedTimer();
+            setTimeout(() => {
+                if (!gameOver) {
+                    gamePaused = false;
+                    startTimers();
+                    messageDiv.textContent = '▶ Игра';
+                    messageDiv.style.borderColor = '#ff6b6b';
+                    messageDiv.style.color = '#ff6b6b';
+                    draw();
+                }
+            }, 1500);
+            draw();
+        }
+
+        function nextLevel() {
+            stopAllTimers();
+            gamePaused = true;
+            level++;
+            pacMoveInterval = Math.max(80, BASE_PAC_INTERVAL - (level-1)*10);
+            ghostMoveInterval = Math.max(100, BASE_GHOST_INTERVAL - (level-1)*10);
+            frightenedDuration = Math.max(2000, 8000 - (level-1)*500);
+            map = createMap();
+            totalDots = countDots();
+            pacman = { r: 1, c: 1 };
+            direction = { dr: 0, dc: 0 };
+            nextDirection = { dr: 0, dc: 0 };
+            ghosts = createGhosts();
+            frightenedMode = false;
+            ghostEatCombo = 0;
+            win = false;
+            messageDiv.textContent = `🎯 Уровень ${level}`;
+            messageDiv.style.borderColor = '#4caf50';
+            messageDiv.style.color = '#4caf50';
+            updateLivesDisplay();
+            setTimeout(() => {
+                gamePaused = false;
+                startTimers();
+                messageDiv.textContent = '▶ Игра';
+                messageDiv.style.borderColor = '#ff6b6b';
+                messageDiv.style.color = '#ff6b6b';
+                draw();
+            }, 2000);
+            draw();
+        }
+
+        function stopAllTimers() {
+            if (pacInterval) clearInterval(pacInterval);
+            if (ghostInterval) clearInterval(ghostInterval);
+            clearFrightenedTimer();
+            pacInterval = null;
+            ghostInterval = null;
+        }
+        function clearFrightenedTimer() {
+            if (frightenedTimer) clearTimeout(frightenedTimer);
+            frightenedTimer = null;
+        }
+        function startTimers() {
+            if (pacInterval) clearInterval(pacInterval);
+            if (ghostInterval) clearInterval(ghostInterval);
+            pacInterval = setInterval(movePacman, pacMoveInterval);
+            ghostInterval = setInterval(moveGhosts, ghostMoveInterval);
+        }
+
+        function movePacman() {
+            if (gameOver || gamePaused) return;
+            let nr = pacman.r + nextDirection.dr;
+            let nc = pacman.c + nextDirection.dc;
+            if (nc < 0) nc = COLS-1;
+            if (nc >= COLS) nc = 0;
+            if (nr >=0 && nr < ROWS && map[nr][nc] !== 1) {
+                direction = { dr: nextDirection.dr, dc: nextDirection.dc };
+            }
+            let tr = pacman.r + direction.dr;
+            let tc = pacman.c + direction.dc;
+            if (tc < 0) tc = COLS-1;
+            if (tc >= COLS) tc = 0;
+            if (tr < 0 || tr >= ROWS || map[tr][tc] === 1) { draw(); return; }
+            pacman.r = tr;
+            pacman.c = tc;
+            const cell = map[pacman.r][pacman.c];
+            if (cell === 0) { score += 10; map[pacman.r][pacman.c] = 2; totalDots--; }
+            else if (cell === 3) { score += 50; map[pacman.r][pacman.c] = 2; totalDots--; activateFrightened(); }
+            updateScore();
+            if (totalDots === 0) {
+                win = true;
+                stopAllTimers();
+                messageDiv.textContent = '🏆 Уровень пройден!';
+                messageDiv.style.borderColor = '#4caf50';
+                messageDiv.style.color = '#4caf50';
+                gamePaused = true;
+                setTimeout(nextLevel, 2000);
+            }
+            checkGhostCollision();
+            draw();
+        }
+
+        function getGhostTarget(ghost) {
+            if (ghost.mode === 'frightened') return null;
+            if (ghost.mode === 'home') return DOOR;
+            const p = pacman;
+            switch(ghost.name) {
+                case 'Blinky': return { r: p.r, c: p.c };
+                case 'Pinky':
+                    let pr = p.r + direction.dr * 4;
+                    let pc = p.c + direction.dc * 4;
+                    if (pc < 0) pc = COLS-1; if (pc >= COLS) pc = 0;
+                    return { r: Math.min(ROWS-1, Math.max(0, pr)), c: pc };
+                case 'Inky':
+                    let aheadR = p.r + direction.dr * 2;
+                    let aheadC = p.c + direction.dc * 2;
+                    if (aheadC < 0) aheadC = COLS-1; if (aheadC >= COLS) aheadC = 0;
+                    const blinky = ghosts.find(g => g.name === 'Blinky');
+                    if (blinky) return { r: aheadR + (aheadR - blinky.r), c: aheadC + (aheadC - blinky.c) };
+                    return { r: p.r, c: p.c };
+                case 'Clyde':
+                    const dist = Math.abs(ghost.r - p.r) + Math.abs(ghost.c - p.c);
+                    if (dist > 8) return { r: p.r, c: p.c };
+                    else return { r: ROWS-1, c: 0 };
+                default: return { r: p.r, c: p.c };
+            }
+        }
+
+        function moveGhosts() {
+            if (gameOver || gamePaused) return;
+            const now = Date.now();
+            if (frightenedMode && now >= frightenedEndTime) endFrightened();
+
+            ghosts.forEach(ghost => {
+                if (ghost.mode === 'home') {
+                    ghost.exitTimer -= ghostMoveInterval;
+                }
+                // Обработка возврата съеденного призрака в домик
+                if (ghost.eaten && ghost.r === DOOR.r && ghost.c === DOOR.c) {
+                    const pos = HOME_POSITIONS.find(p => !ghosts.some(g => g !== ghost && g.r === p.r && g.c === p.c)) || HOME_POSITIONS[0];
+                    ghost.r = pos.r;
+                    ghost.c = pos.c;
+                    ghost.eaten = false;
+                    ghost.mode = 'chase';
+                    ghost.exitTimer = 0;
+                }
+
+                const dirs = [
+                    { dr: -1, dc: 0 },
+                    { dr: 1, dc: 0 },
+                    { dr: 0, dc: -1 },
+                    { dr: 0, dc: 1 }
+                ];
+                const opposite = { dr: -ghost.dr, dc: -ghost.dc };
+                let valid = dirs.filter(d => {
+                    let nr = ghost.r + d.dr;
+                    let nc = ghost.c + d.dc;
+                    if (nc < 0) nc = COLS-1;
+                    if (nc >= COLS) nc = 0;
+                    if (nr < 0 || nr >= ROWS || map[nr][nc] === 1) return false;
+                    // Блокируем вход в дверь, если призрак не выходит из дома и не возвращается съеденным
+                    if (nr === DOOR.r && nc === DOOR.c) {
+                        if (ghost.mode !== 'home' && !ghost.eaten) return false;
+                    }
+                    if (d.dr === opposite.dr && d.dc === opposite.dc) {
+                        if (ghost.mode !== 'home' && ghost.mode !== 'frightened') return false;
+                    }
+                    return true;
+                });
+                if (valid.length === 0) {
+                    valid = dirs.filter(d => {
+                        let nr = ghost.r + d.dr;
+                        let nc = ghost.c + d.dc;
+                        if (nc < 0) nc = COLS-1;
+                        if (nc >= COLS) nc = 0;
+                        return nr >=0 && nr < ROWS && map[nr][nc] !== 1;
+                    });
+                }
+                if (valid.length === 0) return;
+                let chosen;
+                if (ghost.mode === 'frightened') {
+                    chosen = valid[Math.floor(Math.random() * valid.length)];
+                } else {
+                    const target = getGhostTarget(ghost);
+                    chosen = valid.reduce((best, d) => {
+                        let nr = ghost.r + d.dr;
+                        let nc = ghost.c + d.dc;
+                        if (nc < 0) nc = COLS-1;
+                        if (nc >= COLS) nc = 0;
+                        const dist = Math.abs(nr - target.r) + Math.abs(nc - target.c);
+                        if (!best || dist < best.dist) return { dir: d, dist };
+                        return best;
+                    }, null).dir;
+                }
+                ghost.dr = chosen.dr;
+                ghost.dc = chosen.dc;
+                ghost.r += ghost.dr;
+                ghost.c += ghost.dc;
+                if (ghost.c < 0) ghost.c = COLS-1;
+                if (ghost.c >= COLS) ghost.c = 0;
+
+                // Выпуск из дома
+                if (ghost.mode === 'home' && ghost.r === DOOR.r && ghost.c === DOOR.c) {
+                    ghost.mode = 'chase';
+                    ghost.r += ghost.dr;
+                    ghost.c += ghost.dc;
+                    if (ghost.c < 0) ghost.c = COLS-1;
+                    if (ghost.c >= COLS) ghost.c = 0;
+                }
+            });
+            checkGhostCollision();
+            draw();
+        }
+
+        function checkGhostCollision() {
+            if (gameOver || gamePaused) return;
+            ghosts.forEach(ghost => {
+                if (ghost.r === pacman.r && ghost.c === pacman.c) {
+                    if (ghost.mode === 'frightened' && !ghost.eaten) {
+                        ghostEatCombo++;
+                        const points = 200 * Math.pow(2, ghostEatCombo-1);
+                        score += points;
+                        updateScore();
+                        ghost.eaten = true;
+                        ghost.mode = 'home';
+                    } else if (ghost.mode !== 'home' && !ghost.eaten) {
+                        loseLife();
+                    }
+                }
+            });
+        }
+
+        function activateFrightened() {
+            frightenedMode = true;
+            ghostEatCombo = 0;
+            frightenedEndTime = Date.now() + frightenedDuration;
+            ghosts.forEach(g => {
+                if (g.mode !== 'home' && !g.eaten) {
+                    g.mode = 'frightened';
+                    g.dr = -g.dr;
+                    g.dc = -g.dc;
+                }
+            });
+            clearFrightenedTimer();
+            frightenedTimer = setTimeout(endFrightened, frightenedDuration);
+        }
+
+        function endFrightened() {
+            frightenedMode = false;
+            ghostEatCombo = 0;
+            ghosts.forEach(g => {
+                if (g.mode === 'frightened' && !g.eaten) g.mode = 'chase';
+            });
+            clearFrightenedTimer();
+        }
+
+        function resetGame() {
+            stopAllTimers();
+            map = createMap();
+            pacman = { r: 1, c: 1 };
+            direction = { dr: 0, dc: 0 };
+            nextDirection = { dr: 0, dc: 0 };
+            score = 0;
+            lives = 3;
+            level = 1;
+            pacMoveInterval = BASE_PAC_INTERVAL;
+            ghostMoveInterval = BASE_GHOST_INTERVAL;
+            frightenedDuration = 8000;
+            totalDots = countDots();
+            ghosts = createGhosts();
+            gameOver = false;
+            win = false;
+            gamePaused = false;
+            frightenedMode = false;
+            ghostEatCombo = 0;
+            updateScore();
+            updateLivesDisplay();
+            messageDiv.textContent = '▶ Игра';
+            messageDiv.style.borderColor = '#ff6b6b';
+            messageDiv.style.color = '#ff6b6b';
+            clearFrightenedTimer();
+            startTimers();
+            draw();
+        }
+
+        function updateScore() { scoreSpan.textContent = score; }
+
+        // ---------- Отрисовка ----------
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const x = c * CELL_SIZE, y = r * CELL_SIZE;
+                    const val = map[r][c];
+                    if (val === 1) {
+                        ctx.fillStyle = '#2a2a5a';
+                        ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                        ctx.strokeStyle = '#3a3a7a';
+                        ctx.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
+                    } else if (val === 0) {
+                        ctx.beginPath();
+                        ctx.arc(x+CELL_SIZE/2, y+CELL_SIZE/2, 3, 0, Math.PI*2);
+                        ctx.fillStyle = '#ffb07c';
+                        ctx.fill();
+                    } else if (val === 3) {
+                        ctx.beginPath();
+                        ctx.arc(x+CELL_SIZE/2, y+CELL_SIZE/2, 7, 0, Math.PI*2);
+                        ctx.fillStyle = '#ffb07c';
+                        ctx.shadowColor = '#ffb07c';
+                        ctx.shadowBlur = 12;
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+            ghosts.forEach(g => {
+                const gx = g.c * CELL_SIZE + CELL_SIZE/2;
+                const gy = g.r * CELL_SIZE + CELL_SIZE/2;
+                ctx.save();
+                ctx.translate(gx, gy);
+                ctx.beginPath();
+                ctx.arc(0, 0, 9, 0, Math.PI, true);
+                ctx.lineTo(-9, 4); ctx.lineTo(-5, 0); ctx.lineTo(-1, 4); ctx.lineTo(3, 0);
+                ctx.lineTo(7, 4); ctx.lineTo(9, 0);
+                ctx.closePath();
+                if (g.mode === 'frightened') {
+                    const blink = Date.now() % 400 < 200;
+                    ctx.fillStyle = (frightenedMode && frightenedEndTime - Date.now() < 2000 && blink) ? '#ffffff' : '#2121de';
+                } else {
+                    ctx.fillStyle = g.color;
+                }
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(-3, -3, 2.2, 0, Math.PI*2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(3, -3, 2.2, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(-3 + g.dc*0.8, -3 + g.dr*0.8, 1, 0, Math.PI*2);
+                ctx.fillStyle = '#111';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(3 + g.dc*0.8, -3 + g.dr*0.8, 1, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            });
+            const px = pacman.c * CELL_SIZE + CELL_SIZE/2;
+            const py = pacman.r * CELL_SIZE + CELL_SIZE/2;
+            let angle = 0;
+            if (direction.dr === -1) angle = -Math.PI/2;
+            else if (direction.dr === 1) angle = Math.PI/2;
+            else if (direction.dc === -1) angle = Math.PI;
+            const mouth = Math.sin(Date.now()/200)*0.2+0.3;
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0,0);
+            ctx.arc(0,0,9, mouth, -mouth+2*Math.PI);
+            ctx.closePath();
+            ctx.fillStyle = '#f5c842';
+            ctx.shadowColor = '#f5c84288';
+            ctx.shadowBlur = 15;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(4,-4,2.5,0,Math.PI*2);
+            ctx.fillStyle = '#0d0d0d';
+            ctx.fill();
+            ctx.restore();
+            if (gameOver || gamePaused) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.font = 'bold 32px "Segoe UI"';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    gameOver ? (win ? '🎉 ПОБЕДА!' : '💀 КОНЕЦ') : (messageDiv.textContent),
+                    canvas.width/2, canvas.height/2-10
+                );
+            }
+        }
+
+        function setDirection(dr, dc) {
+            if (gameOver || gamePaused) return;
+            nextDirection = { dr, dc };
+        }
+        function handleKey(e) {
+            e.preventDefault();
+            if (gameOver || gamePaused) return;
+            switch(e.key) {
+                case 'ArrowUp': setDirection(-1,0); break;
+                case 'ArrowDown': setDirection(1,0); break;
+                case 'ArrowLeft': setDirection(0,-1); break;
+                case 'ArrowRight': setDirection(0,1); break;
+            }
+        }
+        function bindButton(id, dr, dc) {
+            const btn = document.getElementById(id);
+            btn.addEventListener('click', e => { e.preventDefault(); setDirection(dr, dc); });
+            btn.addEventListener('touchstart', e => { e.preventDefault(); setDirection(dr, dc); });
+        }
+
+        function init() {
+            totalDots = countDots();
+            ghosts = createGhosts();
+            updateScore();
+            updateLivesDisplay();
+            startTimers();
+            draw();
+            window.addEventListener('keydown', handleKey);
+            window.addEventListener('keyup', e => { if (e.key.startsWith('Arrow')) e.preventDefault(); });
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+            bindButton('btnUp', -1, 0);
+            bindButton('btnDown', 1, 0);
+            bindButton('btnLeft', 0, -1);
+            bindButton('btnRight', 0, 1);
+            canvas.addEventListener('touchstart', e => e.preventDefault());
+        }
+        init();
+    })();
+</script>
+</body>
+</html>

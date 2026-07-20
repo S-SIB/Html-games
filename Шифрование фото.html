@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Стеганография — шифрование текста в изображении</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0b0e17;
+            color: #e0e6f0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #app {
+            max-width: 1100px;
+            width: 100%;
+            background: #141b2b;
+            border-radius: 30px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+            border: 1px solid #2a3a55;
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 300;
+            letter-spacing: 4px;
+            margin-bottom: 30px;
+            color: #8ab4f8;
+            text-shadow: 0 0 10px rgba(138, 180, 248, 0.3);
+            font-size: 2.2rem;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+
+        .section {
+            flex: 1 1 45%;
+            background: #1c2538;
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid #2f405e;
+            transition: all 0.3s;
+            min-width: 280px;
+        }
+
+        .section:hover {
+            border-color: #4a6a9a;
+            box-shadow: 0 0 20px rgba(74, 106, 154, 0.2);
+        }
+
+        .section h2 {
+            font-weight: 300;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #2f405e;
+            padding-bottom: 10px;
+            color: #c0d0e8;
+            letter-spacing: 2px;
+        }
+
+        .section label {
+            display: block;
+            background: #0f1625;
+            padding: 12px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 1px dashed #3a507a;
+            text-align: center;
+            transition: 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .section label:hover {
+            background: #1a2440;
+            border-color: #6a8ec0;
+        }
+
+        .section input[type="file"] {
+            display: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            background: #0a0f1a;
+            border-radius: 12px;
+            border: 1px solid #2f405e;
+            margin: 10px 0;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+            background: #0b101d;
+            border: 1px solid #2f405e;
+            border-radius: 12px;
+            color: #e0e6f0;
+            padding: 12px;
+            font-size: 1rem;
+            resize: vertical;
+            font-family: inherit;
+            transition: 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #6a8ec0;
+            box-shadow: 0 0 10px rgba(106, 142, 192, 0.3);
+        }
+
+        .btn {
+            background: #2a405e;
+            border: none;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 15px;
+            width: 100%;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            background: #3a5a7a;
+            box-shadow: 0 0 20px rgba(58, 90, 122, 0.5);
+            transform: scale(1.02);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        #decodedText {
+            margin-top: 15px;
+            background: #0b101d;
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid #2f405e;
+            min-height: 60px;
+            word-break: break-all;
+            white-space: pre-wrap;
+            font-family: monospace;
+            color: #b0d0f0;
+        }
+
+        .info {
+            font-size: 0.9rem;
+            color: #7a8aa0;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        @media (max-width: 750px) {
+            .section {
+                flex: 1 1 100%;
+            }
+            #app {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <h1>🛡️ СТЕГАНОГРАФИЯ</h1>
+    <div class="row">
+        <!-- Секция кодирования -->
+        <div class="section">
+            <h2>🔒 Зашифровать</h2>
+            <label for="uploadEncode">📂 Загрузить изображение</label>
+            <input type="file" id="uploadEncode" accept="image/*">
+            <canvas id="canvasEncode"></canvas>
+            <textarea id="textInput" placeholder="Введите текст для встраивания..."></textarea>
+            <button class="btn" id="encodeBtn">✨ Зашифровать и скачать</button>
+            <div class="info" id="encodeStatus">Ожидание загрузки...</div>
+        </div>
+
+        <!-- Секция декодирования -->
+        <div class="section">
+            <h2>🔓 Расшифровать</h2>
+            <label for="uploadDecode">📂 Загрузить изображение с текстом</label>
+            <input type="file" id="uploadDecode" accept="image/*">
+            <canvas id="canvasDecode"></canvas>
+            <button class="btn" id="decodeBtn">🔎 Расшифровать текст</button>
+            <div id="decodedText">Здесь появится расшифрованный текст</div>
+            <div class="info" id="decodeStatus">Ожидание загрузки...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // -------------------- Вспомогательные функции --------------------
+        function getImageDataFromCanvas(canvas) {
+            const ctx = canvas.getContext('2d');
+            return ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        function putImageDataToCanvas(canvas, imageData) {
+            const ctx = canvas.getContext('2d');
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function loadImageToCanvas(file, canvas) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        resolve(canvas);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Исправленная функция скачивания — надёжно сохраняет в папку загрузок
+        function downloadCanvas(canvas, filename = 'encoded_image.png') {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);  // добавляем в DOM
+            link.click();
+            document.body.removeChild(link); // удаляем после клика
+        }
+
+        // -------------------- Кодирование (встраивание текста) --------------------
+        function encodeText(canvas, text) {
+            const imageData = getImageDataFromCanvas(canvas);
+            const data = imageData.data;
+
+            const encoder = new TextEncoder();
+            const textBytes = encoder.encode(text);
+
+            const totalBytes = 4 + textBytes.length;
+            const buffer = new ArrayBuffer(totalBytes);
+            const view = new DataView(buffer);
+            view.setUint32(0, textBytes.length, false);
+            for (let i = 0; i < textBytes.length; i++) {
+                view.setUint8(4 + i, textBytes[i]);
+            }
+
+            const pixelCount = canvas.width * canvas.height;
+            const maxBits = pixelCount * 3;
+            const neededBits = totalBytes * 8;
+            if (neededBits > maxBits) {
+                throw new Error(`Недостаточно места в изображении. Нужно ${neededBits} бит, доступно ${maxBits}.`);
+            }
+
+            let bitIndex = 0;
+            const totalBits = neededBits;
+
+            for (let i = 0; i < data.length && bitIndex < totalBits; i += 4) {
+                for (let channel = 0; channel < 3; channel++) {
+                    if (bitIndex >= totalBits) break;
+                    const byteIndex = i + channel;
+                    const byteOffset = Math.floor(bitIndex / 8);
+                    const bitOffset = 7 - (bitIndex % 8);
+                    const bit = (view.getUint8(byteOffset) >> bitOffset) & 1;
+                    data[byteIndex] = (data[byteIndex] & 0xFE) | bit;
+                    bitIndex++;
+                }
+            }
+
+            putImageDataToCanvas(canvas, imageData);
+            return true;
+        }
+
+        // -------------------- Декодирование (извлечение текста) --------------------
+        function decodeText(canvas) {
+            const imageData = getImageDataFromCanvas(canvas);
+            const data = imageData.data;
+
+            const pixelCount = canvas.width * canvas.height;
+            const maxBits = pixelCount * 3;
+
+            let bitIndex = 0;
+            let lengthBytes = new Uint8Array(4);
+            for (let i = 0; i < 4; i++) {
+                let byte = 0;
+                for (let bit = 0; bit < 8; bit++) {
+                    const pixelIndex = Math.floor(bitIndex / 3);
+                    const channelIndex = bitIndex % 3;
+                    const dataIndex = pixelIndex * 4 + channelIndex;
+                    if (dataIndex >= data.length) {
+                        throw new Error('Недостаточно данных для чтения длины');
+                    }
+                    const lsb = data[dataIndex] & 1;
+                    byte = (byte << 1) | lsb;
+                    bitIndex++;
+                }
+                lengthBytes[i] = byte;
+            }
+            const lengthView = new DataView(lengthBytes.buffer);
+            const textLength = lengthView.getUint32(0, false);
+            if (textLength > 1000000) {
+                throw new Error('Некорректная длина текста: ' + textLength);
+            }
+
+            const textBytes = new Uint8Array(textLength);
+            for (let i = 0; i < textLength; i++) {
+                let byte = 0;
+                for (let bit = 0; bit < 8; bit++) {
+                    const pixelIndex = Math.floor(bitIndex / 3);
+                    const channelIndex = bitIndex % 3;
+                    const dataIndex = pixelIndex * 4 + channelIndex;
+                    if (dataIndex >= data.length) {
+                        throw new Error('Недостаточно данных для чтения текста');
+                    }
+                    const lsb = data[dataIndex] & 1;
+                    byte = (byte << 1) | lsb;
+                    bitIndex++;
+                }
+                textBytes[i] = byte;
+            }
+
+            const decoder = new TextDecoder();
+            return decoder.decode(textBytes);
+        }
+
+        // -------------------- DOM элементы --------------------
+        const uploadEncode = document.getElementById('uploadEncode');
+        const canvasEncode = document.getElementById('canvasEncode');
+        const textInput = document.getElementById('textInput');
+        const encodeBtn = document.getElementById('encodeBtn');
+        const encodeStatus = document.getElementById('encodeStatus');
+
+        const uploadDecode = document.getElementById('uploadDecode');
+        const canvasDecode = document.getElementById('canvasDecode');
+        const decodeBtn = document.getElementById('decodeBtn');
+        const decodedText = document.getElementById('decodedText');
+        const decodeStatus = document.getElementById('decodeStatus');
+
+        let encodeImageLoaded = false;
+        let decodeImageLoaded = false;
+
+        // -------------------- События для кодирования --------------------
+        uploadEncode.addEventListener('change', function(e) {
+            const file = this.files[0];
+            if (!file) return;
+            loadImageToCanvas(file, canvasEncode)
+                .then(() => {
+                    encodeImageLoaded = true;
+                    encodeStatus.textContent = `✅ Изображение загружено (${canvasEncode.width}×${canvasEncode.height})`;
+                    encodeBtn.disabled = false;
+                })
+                .catch(err => {
+                    encodeStatus.textContent = '❌ Ошибка загрузки: ' + err.message;
+                    encodeImageLoaded = false;
+                    encodeBtn.disabled = true;
+                });
+        });
+
+        encodeBtn.addEventListener('click', function() {
+            if (!encodeImageLoaded) {
+                encodeStatus.textContent = '⚠️ Сначала загрузите изображение.';
+                return;
+            }
+            const text = textInput.value;
+            if (!text) {
+                encodeStatus.textContent = '⚠️ Введите текст для встраивания.';
+                return;
+            }
+            try {
+                encodeText(canvasEncode, text);
+                encodeStatus.textContent = '✅ Текст успешно встроен! Скачивание...';
+                // Скачиваем результат (исправленная функция)
+                downloadCanvas(canvasEncode, 'encoded_image.png');
+                encodeStatus.textContent = '✅ Готово! Файл сохранён в папке "Загрузки" как encoded_image.png';
+            } catch (err) {
+                encodeStatus.textContent = '❌ Ошибка: ' + err.message;
+            }
+        });
+
+        // -------------------- События для декодирования --------------------
+        uploadDecode.addEventListener('change', function(e) {
+            const file = this.files[0];
+            if (!file) return;
+            loadImageToCanvas(file, canvasDecode)
+                .then(() => {
+                    decodeImageLoaded = true;
+                    decodeStatus.textContent = `✅ Изображение загружено (${canvasDecode.width}×${canvasDecode.height})`;
+                    decodeBtn.disabled = false;
+                    decodedText.textContent = 'Нажмите "Расшифровать"';
+                })
+                .catch(err => {
+                    decodeStatus.textContent = '❌ Ошибка загрузки: ' + err.message;
+                    decodeImageLoaded = false;
+                    decodeBtn.disabled = true;
+                });
+        });
+
+        decodeBtn.addEventListener('click', function() {
+            if (!decodeImageLoaded) {
+                decodeStatus.textContent = '⚠️ Сначала загрузите изображение.';
+                return;
+            }
+            try {
+                const text = decodeText(canvasDecode);
+                decodedText.textContent = text || '(пустой текст)';
+                decodeStatus.textContent = '✅ Расшифровка успешна!';
+            } catch (err) {
+                decodeStatus.textContent = '❌ Ошибка: ' + err.message;
+                decodedText.textContent = 'Ошибка при расшифровке';
+            }
+        });
+
+        encodeBtn.disabled = true;
+        decodeBtn.disabled = true;
+        encodeStatus.textContent = 'Загрузите изображение для кодирования';
+        decodeStatus.textContent = 'Загрузите изображение для декодирования';
+    })();
+</script>
+</body>
+</html>

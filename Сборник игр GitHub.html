@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 HTML Game Launcher</title>
+    <style>
+        /* ---------- Общие стили ---------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        /* ---------- Шапка ---------- */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            gap: 15px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #58a6ff, #f0883e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header-controls input {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            background: #161b22;
+            color: #e6edf3;
+            font-size: 14px;
+            width: 220px;
+            transition: border-color 0.2s;
+        }
+
+        .header-controls input:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+
+        .header-controls input::placeholder {
+            color: #8b949e;
+        }
+
+        .btn-refresh {
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            background: #238636;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 14px;
+        }
+
+        .btn-refresh:hover {
+            background: #2ea043;
+        }
+
+        .btn-refresh:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            color: #8b949e;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .stats strong {
+            color: #e6edf3;
+        }
+
+        /* ---------- Сетка игр ---------- */
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 18px;
+        }
+
+        .game-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 18px 20px 16px;
+            cursor: pointer;
+            transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .game-card:hover {
+            transform: translateY(-4px);
+            border-color: #58a6ff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .game-card .number {
+            font-size: 12px;
+            color: #8b949e;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .game-card .name {
+            font-size: 17px;
+            font-weight: 600;
+            color: #58a6ff;
+            margin-bottom: 6px;
+        }
+
+        .game-card .description {
+            font-size: 13px;
+            color: #8b949e;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .game-card .badge {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #8b949e;
+            background: #21262d;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            align-self: flex-start;
+        }
+
+        /* ---------- Состояния ---------- */
+        .loading,
+        .error {
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 16px;
+            color: #8b949e;
+        }
+
+        .error {
+            color: #f85149;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ---------- Модальное окно ---------- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.88);
+            z-index: 1000;
+            padding: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: #161b22;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 1100px;
+            height: 92vh;
+            max-height: 850px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #30363d;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: #0d1117;
+            border-bottom: 1px solid #30363d;
+            flex-shrink: 0;
+        }
+
+        .modal-header h2 {
+            font-size: 16px;
+            color: #e6edf3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .modal-header .close-btn {
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 28px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 6px;
+            transition: color 0.2s;
+        }
+
+        .modal-header .close-btn:hover {
+            color: #f85149;
+        }
+
+        .modal-body {
+            flex: 1;
+            background: #fff;
+            position: relative;
+        }
+
+        .modal-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .modal-body .frame-error {
+            display: none;
+            padding: 30px;
+            text-align: center;
+            color: #f85149;
+            font-size: 15px;
+            background: #161b22;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .modal-body .frame-error.show {
+            display: flex;
+        }
+
+        .modal-body iframe.hide {
+            display: none;
+        }
+
+        /* ---------- Адаптив ---------- */
+        @media (max-width: 600px) {
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .header-controls input {
+                width: 100%;
+            }
+
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-box {
+                max-height: 95vh;
+                height: 95vh;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Шапка -->
+        <div class="header">
+            <h1>🎮 HTML Game Launcher</h1>
+            <div class="header-controls">
+                <input type="text" id="searchInput" placeholder="🔍 Фильтр по названию...">
+                <button class="btn-refresh" id="refreshBtn">⟳ Обновить</button>
+            </div>
+        </div>
+
+        <div class="stats" id="stats">⏳ Загрузка списка игр...</div>
+
+        <!-- Сетка -->
+        <div class="games-grid" id="gamesGrid"></div>
+
+        <!-- Состояния -->
+        <div class="loading hidden" id="loading">⏳ Загрузка...</div>
+        <div class="error hidden" id="error">❌ Не удалось загрузить список игр. Проверьте подключение к интернету.</div>
+    </div>
+
+    <!-- Модальное окно -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 id="modalTitle">Игра</h2>
+                <button class="close-btn" id="modalCloseBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <iframe id="gameFrame" src="about:blank"></iframe>
+                <div class="frame-error" id="frameError">
+                    ⚠️ Не удалось загрузить игру.<br>
+                    <span style="font-size:13px;color:#8b949e;">Возможно, демо-версия недоступна или ссылка изменилась.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ----- Список игр (вручную из README репозитория) -----
+        const GAMES = [
+            { id: '01', name: 'Candy Crush Game', desc: 'Классическая match-three головоломка с конфетами.' },
+            { id: '02', name: 'Pac-Man Game', desc: 'Аркада: собирайте точки и убегайте от призраков.' },
+            { id: '03', name: 'Chess Game', desc: 'Классические шахматы на доске 8×8.' },
+            { id: '04', name: 'Doodle Jump Game', desc: 'Прыгайте по платформам вверх как можно выше.' },
+            { id: '05', name: 'Solitaire Game', desc: 'Классический пасьянс "Косынка".' },
+            { id: '06', name: 'Sudoku Game', desc: 'Логическая головоломка с числами.' },
+            { id: '07', name: 'Crossy Road Game', desc: 'Помогите курочке перейти дорогу.' },
+            { id: '08', name: 'Rock Paper Scissors', desc: 'Игра "Камень, ножницы, бумага" против компьютера.' },
+            { id: '09', name: 'Flappy Bird Game', desc: 'Управляйте птичкой, пролетая между трубами.' },
+            { id: '10', name: '2048 Game', desc: 'Собирайте плитки, чтобы получить 2048.' },
+            { id: '11', name: 'Wordle Game', desc: 'Угадайте слово из 5 букв за 6 попыток.' },
+            { id: '12', name: 'Hangman Game', desc: 'Классическая "Виселица": угадайте слово по буквам.' },
+            { id: '13', name: 'Tower Blocks', desc: 'Стройте башню, укладывая блоки с точностью.' },
+            { id: '14', name: 'Archery Game', desc: 'Стрельба из лука: точность и тайминг.' },
+            { id: '15', name: 'Tic Tac Toe', desc: 'Крестики-нолики против ИИ.' },
+            { id: '16', name: 'Minesweeper Game', desc: 'Сапёр: открывайте клетки, не попадая на мины.' },
+            { id: '17', name: 'Speed Typing Game', desc: 'Печатайте текст на скорость.' },
+            { id: '18', name: 'Breakout Game', desc: 'Разбивайте кирпичи мячом на платформе.' },
+            { id: '19', name: 'Ping Pong Game', desc: 'Классический настольный теннис.' },
+            { id: '20', name: 'Tetris Game', desc: 'Вращайте и укладывайте падающие фигуры.' },
+            { id: '21', name: 'Tilting Maze Game', desc: 'Проведите шарик через лабиринт, наклоняя поле.' },
+            { id: '22', name: 'Memory Card Game', desc: 'Найдите все пары одинаковых карточек.' },
+            { id: '23', name: 'Type Number Guessing Game', desc: 'Угадайте число, вводя догадки.' },
+            { id: '24', name: 'Snake Game', desc: 'Классическая Змейка: ешьте еду и не врезайтесь в стены.' },
+            { id: '25', name: 'Connect Four Game', desc: 'Соберите 4 фишки в ряд.' },
+            { id: '26', name: 'Insect Catch Game', desc: 'Ловите насекомых, кликая по ним.' },
+            { id: '27', name: 'Typing Game', desc: 'Печатайте падающие слова, пока они не достигли низа.' },
+            { id: '28', name: 'Dice Roll Simulator', desc: 'Симулятор броска игральных костей.' },
+            { id: '29', name: 'Shape Clicker Game', desc: 'Кликайте по появляющимся фигурам.' },
+            { id: '30', name: 'Typing Game', desc: 'Ещё одна игра на скорость печати.' },
+            { id: '31', name: 'Speak Number Guessing Game', desc: 'Угадайте число с помощью голосового ввода.' },
+            { id: '32', name: 'Fruit Slicer Game', desc: 'Разрезайте летящие фрукты, как в Fruit Ninja.' },
+            { id: '33', name: 'Quiz Game', desc: 'Викторина с вопросами на разные темы.' },
+            { id: '34', name: 'Emoji Catcher Game', desc: 'Ловите падающие эмодзи.' },
+            { id: '35', name: 'Whack A Mole Game', desc: 'Бейте по появляющимся кротам.' },
+            { id: '36', name: 'Simon Says Game', desc: 'Запоминайте и повторяйте последовательность цветов.' },
+            { id: '37', name: 'Sliding Puzzle Game', desc: 'Соберите картинку, передвигая плитки.' }
+        ];
+
+        // Базовый URL для демо-версий
+        const BASE_URL = 'https://he-is-talha.github.io/html-css-javascript-games';
+
+        // ----- DOM-элементы -----
+        const grid = document.getElementById('gamesGrid');
+        const stats = document.getElementById('stats');
+        const searchInput = document.getElementById('searchInput');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const loadingEl = document.getElementById('loading');
+        const errorEl = document.getElementById('error');
+
+        const modalOverlay = document.getElementById('modalOverlay');
+        const modalTitle = document.getElementById('modalTitle');
+        const gameFrame = document.getElementById('gameFrame');
+        const frameError = document.getElementById('frameError');
+        const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+        let filteredGames = [...GAMES];
+
+        // ----- Рендер сетки -----
+        function renderGames(games) {
+            if (!games || games.length === 0) {
+                grid.innerHTML = `<div class="loading" style="display:block;">😕 Ничего не найдено</div>`;
+                return;
+            }
+
+            grid.innerHTML = games.map(game => `
+                <div class="game-card" data-id="${game.id}">
+                    <div class="number">#${game.id}</div>
+                    <div class="name">${game.name}</div>
+                    <div class="description">${game.desc}</div>
+                    <span class="badge">▶ Нажмите, чтобы играть</span>
+                </div>
+            `).join('');
+
+            // Обработчики клика
+            document.querySelectorAll('.game-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const id = card.dataset.id;
+                    const game = GAMES.find(g => g.id === id);
+                    if (game) launchGame(game);
+                });
+            });
+        }
+
+        // ----- Запуск игры -----
+        function launchGame(game) {
+            const gameUrl = `${BASE_URL}/${game.id}-${game.name.replace(/ /g, '-')}/`;
+
+            modalTitle.textContent = `${game.id}. ${game.name}`;
+            frameError.classList.remove('show');
+            gameFrame.classList.remove('hide');
+            gameFrame.src = gameUrl;
+
+            // Таймаут на случай, если iframe не загружается
+            let loadTimeout = setTimeout(() => {
+                // Если через 10 секунд ничего не произошло — показываем ошибку
+                if (!gameFrame.src.includes('about:blank')) {
+                    showFrameError();
+                }
+            }, 10000);
+
+            gameFrame.onload = () => {
+                clearTimeout(loadTimeout);
+                frameError.classList.remove('show');
+                gameFrame.classList.remove('hide');
+            };
+
+            gameFrame.onerror = () => {
+                clearTimeout(loadTimeout);
+                showFrameError();
+            };
+
+            modalOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function showFrameError() {
+            gameFrame.classList.add('hide');
+            frameError.classList.add('show');
+        }
+
+        // ----- Закрытие модалки -----
+        function closeModal() {
+            modalOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+            gameFrame.src = 'about:blank';
+            frameError.classList.remove('show');
+            gameFrame.classList.remove('hide');
+        }
+
+        modalCloseBtn.addEventListener('click', closeModal);
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // ----- Фильтрация -----
+        function filterGames(query) {
+            const q = query.toLowerCase().trim();
+            if (!q) {
+                filteredGames = [...GAMES];
+            } else {
+                filteredGames = GAMES.filter(g =>
+                    g.name.toLowerCase().includes(q) ||
+                    g.desc.toLowerCase().includes(q)
+                );
+            }
+            renderGames(filteredGames);
+            updateStats(filteredGames.length);
+        }
+
+        function updateStats(count) {
+            stats.innerHTML = `Всего игр: <strong>${count}</strong> из ${GAMES.length}`;
+        }
+
+        // ----- Сброс/обновление -----
+        function resetAndRender() {
+            searchInput.value = '';
+            filteredGames = [...GAMES];
+            renderGames(filteredGames);
+            updateStats(filteredGames.length);
+            errorEl.classList.add('hidden');
+        }
+
+        // ----- Обработчики -----
+        searchInput.addEventListener('input', (e) => filterGames(e.target.value));
+        refreshBtn.addEventListener('click', resetAndRender);
+
+        // ----- Старт -----
+        resetAndRender();
+    </script>
+</body>
+</html>

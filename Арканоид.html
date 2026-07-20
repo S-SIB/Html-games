@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, touch-action=manipulation">
+    <title>Арканоид – Расширенные бонусы</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; min-height: 100vh; background: #0a0a1a; display: flex; justify-content: center; align-items: center; font-family: 'Segoe UI', system-ui, sans-serif; padding: 10px; }
+        .game-container { background: #1a1a2e; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.7); padding: 15px; display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 400px; }
+        .info-panel { display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px; color: #f0f0f0; font-weight: bold; font-size: 1.1rem; gap: 10px; }
+        .info-box { background: #16162e; border-radius: 12px; padding: 8px 14px; text-align: center; flex: 1; border: 1px solid #3a3a6a; }
+        .info-box .label { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .info-box .value { font-size: 1.5rem; color: #f5c842; }
+        canvas { display: block; border-radius: 12px; box-shadow: 0 0 20px #00000055; touch-action: none; background: #0b0b1a; width: 100%; height: auto; max-height: 65vh; }
+        .controls { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+        .btn { background: #2a2a4a; border: 2px solid #5a5aaa; color: #ddd; font-size: 1.4rem; width: 55px; height: 55px; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 0 #0d0d2a; transition: 0.05s; }
+        .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #0d0d2a; background: #3a3a6a; }
+        .btn-restart { background: #4a2a2a; border-color: #aa5a5a; color: #ffaaaa; }
+        .game-message { margin-top: 8px; color: #f5c842; font-weight: bold; font-size: 1rem; text-align: center; }
+        .bonus-indicator { margin-top: 4px; font-size: 0.85rem; color: #aaa; }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <div class="info-panel">
+        <div class="info-box"><div class="label">Счёт</div><div class="value" id="score">0</div></div>
+        <div class="info-box"><div class="label">Жизни</div><div class="value" id="lives">3</div></div>
+        <div class="info-box"><div class="label">Уровень</div><div class="value" id="level">1</div></div>
+    </div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div class="controls">
+        <button class="btn btn-restart" id="btnRestart">⟳</button>
+    </div>
+    <div class="game-message" id="message">Тапните экран для запуска мяча</div>
+    <div class="bonus-indicator" id="bonusIndicator"></div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+        const levelEl = document.getElementById('level');
+        const messageEl = document.getElementById('message');
+        const bonusIndicator = document.getElementById('bonusIndicator');
+
+        const W = 400, H = 600;
+        let paddle = { x: W/2 - 40, y: H - 40, w: 80, h: 14 };
+        let balls = [];
+        let bricks = [];
+        let bonuses = [];
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let gameOver = false;
+        let gameWin = false;
+        let fireActive = false;
+        let magnetActive = false;
+        let fireTimer = null;
+        let magnetTimer = null;
+
+        const BRICK_ROWS = 6;
+        const BRICK_COLS = 10;
+        const BRICK_W = (W - 20) / BRICK_COLS;
+        const BRICK_H = 20;
+        const BRICK_TOP = 60;
+        const BRICK_LEFT = 10;
+        const BRICK_GAP = 2;
+
+        const BRICK_COLORS = {
+            1: ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'],
+            2: '#ff6b6b',
+            3: '#7f8c8d'
+        };
+
+        const BONUS_TYPES = [
+            { code: 'S', name: 'Slow', color: '#3498db', action: () => { 
+                    balls.forEach(b => { b.speed = Math.max(2, b.speed - 1); }); 
+                } },
+            { code: 'E', name: 'Expand', color: '#2ecc71', action: () => { paddle.w = Math.min(140, paddle.w + 25); } },
+            { code: 'L', name: 'Life', color: '#e74c3c', action: () => { if (lives < 5) lives++; updateLives(); } },
+            { code: 'P', name: 'Points', color: '#f1c40f', action: () => { score += 100; updateScore(); } },
+            { code: 'M', name: 'Multiball', color: '#ff5733', action: () => { activateMultiball(); } },
+            { code: 'F', name: 'Fireball', color: '#ff4500', action: () => { activateFireball(); } },
+            { code: 'G', name: 'Magnet', color: '#8e44ad', action: () => { activateMagnet(); } },
+            { code: 'X', name: 'Shrink', color: '#e67e22', action: () => { paddle.w = Math.max(40, paddle.w - 20); } }
+        ];
+
+        function createBall(x, y, dx, dy, speed, attached = false) {
+            return { x, y, r: 6, dx, dy, speed, attached, fire: false };
+        }
+
+        function getAttachedBallCount() {
+            return balls.filter(b => b.attached).length;
+        }
+
+        function isBallLaunched() {
+            return balls.some(b => !b.attached);
+        }
+
+        function activateMultiball() {
+            if (balls.length === 0) return;
+            const base = balls[0];
+            for (let i = 0; i < 2; i++) {
+                let angle = Math.PI/4 + Math.random() * Math.PI/2;
+                let dx = base.speed * Math.cos(angle);
+                let dy = -base.speed * Math.sin(angle);
+                balls.push(createBall(base.x, base.y, dx, dy, base.speed, false));
+            }
+        }
+
+        function activateFireball() {
+            fireActive = true;
+            if (fireTimer) clearTimeout(fireTimer);
+            balls.forEach(b => b.fire = true);
+            fireTimer = setTimeout(() => {
+                fireActive = false;
+                balls.forEach(b => b.fire = false);
+                fireTimer = null;
+                updateBonusIndicator();
+            }, 8000);
+            updateBonusIndicator();
+        }
+
+        function activateMagnet() {
+            if (magnetTimer) clearTimeout(magnetTimer);
+            magnetActive = true;
+            magnetTimer = setTimeout(() => {
+                magnetActive = false;
+                magnetTimer = null;
+                // Автоматически запускаем все прилипшие мячи
+                launchBall();
+                updateBonusIndicator();
+            }, 5000);
+            updateBonusIndicator();
+        }
+
+        function updateBonusIndicator() {
+            let parts = [];
+            if (fireActive) parts.push('🔥 Огонь');
+            if (magnetActive) parts.push('🧲 Магнит');
+            bonusIndicator.textContent = parts.join(' | ');
+        }
+
+        function buildLevel(lv) {
+            bricks = [];
+            let rows = BRICK_ROWS + Math.min(3, lv);
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < BRICK_COLS; c++) {
+                    let type = 1;
+                    if (r % 3 === 0 && c % 4 === 0) type = 3;
+                    else if (r > 3 && Math.random() < 0.2 + lv * 0.05) type = 2;
+                    let colorIdx = r % BRICK_COLORS[1].length;
+                    bricks.push({
+                        x: BRICK_LEFT + c * (BRICK_W + BRICK_GAP),
+                        y: BRICK_TOP + r * (BRICK_H + BRICK_GAP),
+                        w: BRICK_W, h: BRICK_H, type, color: BRICK_COLORS[1][colorIdx],
+                        hits: type === 2 ? 2 : 1
+                    });
+                }
+            }
+        }
+
+        function resetBallState() {
+            balls = [createBall(paddle.x + paddle.w/2, paddle.y - 10, 0, 0, 4, true)];
+            messageEl.textContent = 'Тапните экран для запуска мяча';
+        }
+
+        function loseLife() {
+            lives--;
+            updateLives();
+            if (lives <= 0) {
+                gameOver = true;
+                messageEl.textContent = '💀 ИГРА ОКОНЧЕНА';
+                return;
+            }
+            paddle.x = W/2 - paddle.w/2;
+            paddle.w = 80;
+            fireActive = false;
+            magnetActive = false;
+            if (fireTimer) { clearTimeout(fireTimer); fireTimer = null; }
+            if (magnetTimer) { clearTimeout(magnetTimer); magnetTimer = null; }
+            balls.forEach(b => b.fire = false);
+            resetBallState();
+            updateBonusIndicator();
+        }
+
+        function nextLevel() {
+            level++;
+            gameWin = false;   // <-- КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: сброс флага победы
+            buildLevel(level);
+            paddle.x = W/2 - paddle.w/2;
+            paddle.w = 80;
+            fireActive = false;
+            magnetActive = false;
+            if (fireTimer) { clearTimeout(fireTimer); fireTimer = null; }
+            if (magnetTimer) { clearTimeout(magnetTimer); magnetTimer = null; }
+            balls.forEach(b => b.fire = false);
+            resetBallState();
+            updateLevel();
+            updateBonusIndicator();
+            messageEl.textContent = 'Уровень ' + level + '! Тап для старта';
+        }
+
+        function launchBall() {
+            if (gameOver || gameWin) return;
+            let anyLaunched = false;
+            balls.forEach(b => {
+                if (b.attached) {
+                    b.attached = false;
+                    let angle = Math.PI/4 + Math.random() * Math.PI/2;
+                    b.dx = b.speed * Math.cos(angle);
+                    b.dy = -b.speed * Math.abs(Math.sin(angle));
+                    anyLaunched = true;
+                }
+            });
+            if (anyLaunched) {
+                messageEl.textContent = '';
+            }
+        }
+
+        function updateScore() { scoreEl.textContent = score; }
+        function updateLives() { livesEl.textContent = lives; }
+        function updateLevel() { levelEl.textContent = level; }
+
+        function handleBrickCollision(ball) {
+            for (let i = bricks.length - 1; i >= 0; i--) {
+                let b = bricks[i];
+                if (b.type === 0) continue;
+                if (ball.x + ball.r > b.x && ball.x - ball.r < b.x + b.w &&
+                    ball.y + ball.r > b.y && ball.y - ball.r < b.y + b.h) {
+                    
+                    if (ball.fire && b.type !== 3) {
+                        destroyBrick(i);
+                        return;
+                    }
+                    
+                    let overlapLeft = (ball.x + ball.r) - b.x;
+                    let overlapRight = (b.x + b.w) - (ball.x - ball.r);
+                    let overlapTop = (ball.y + ball.r) - b.y;
+                    let overlapBottom = (b.y + b.h) - (ball.y - ball.r);
+                    let minOverlapX = Math.min(overlapLeft, overlapRight);
+                    let minOverlapY = Math.min(overlapTop, overlapBottom);
+                    
+                    if (minOverlapX < minOverlapY) {
+                        ball.dx = -ball.dx;
+                    } else {
+                        ball.dy = -ball.dy;
+                    }
+                    
+                    if (b.type === 3) continue;
+                    
+                    b.hits--;
+                    if (b.hits <= 0) {
+                        destroyBrick(i);
+                    } else {
+                        b.color = '#ff9999';
+                    }
+                    break;
+                }
+            }
+        }
+
+        function destroyBrick(index) {
+            const b = bricks[index];
+            score += (b.type === 1 ? 50 : 100);
+            updateScore();
+            if (Math.random() < 0.3) {
+                let bonus = BONUS_TYPES[Math.floor(Math.random() * BONUS_TYPES.length)];
+                bonuses.push({
+                    x: b.x + b.w/2 - 10,
+                    y: b.y + b.h,
+                    w: 20, h: 10,
+                    type: bonus,
+                    dy: 2
+                });
+            }
+            bricks.splice(index, 1);
+            if (bricks.every(b => b.type === 3)) {
+                gameWin = true;
+                messageEl.textContent = '🏆 УРОВЕНЬ ПРОЙДЕН!';
+                setTimeout(nextLevel, 2000);
+            }
+        }
+
+        function handleBonuses() {
+            for (let i = bonuses.length - 1; i >= 0; i--) {
+                let b = bonuses[i];
+                b.y += b.dy;
+                if (b.y > H) { bonuses.splice(i, 1); continue; }
+                if (b.y + b.h > paddle.y && b.y < paddle.y + paddle.h &&
+                    b.x + b.w > paddle.x && b.x < paddle.x + paddle.w) {
+                    b.type.action();
+                    bonuses.splice(i, 1);
+                }
+            }
+        }
+
+        function update() {
+            if (gameOver || gameWin) return;
+
+            for (let i = balls.length - 1; i >= 0; i--) {
+                let ball = balls[i];
+                if (ball.attached) {
+                    ball.x = paddle.x + paddle.w/2;
+                    ball.y = paddle.y - ball.r - 2;
+                    continue;
+                }
+                ball.x += ball.dx;
+                ball.y += ball.dy;
+                if (ball.x - ball.r < 0) { ball.x = ball.r; ball.dx = Math.abs(ball.dx); }
+                if (ball.x + ball.r > W) { ball.x = W - ball.r; ball.dx = -Math.abs(ball.dx); }
+                if (ball.y - ball.r < 0) { ball.y = ball.r; ball.dy = Math.abs(ball.dy); }
+                if (ball.y + ball.r > H) {
+                    balls.splice(i, 1);
+                    continue;
+                }
+                if (ball.y + ball.r > paddle.y && ball.y - ball.r < paddle.y + paddle.h &&
+                    ball.x + ball.r > paddle.x && ball.x - ball.r < paddle.x + paddle.w) {
+                    if (magnetActive) {
+                        ball.attached = true;
+                        ball.dx = 0;
+                        ball.dy = 0;
+                        continue;
+                    }
+                    let hitPos = (ball.x - paddle.x) / paddle.w;
+                    let angle = (hitPos - 0.5) * (Math.PI / 3);
+                    let speed = Math.sqrt(ball.dx ** 2 + ball.dy ** 2);
+                    ball.dx = speed * Math.sin(angle);
+                    ball.dy = -speed * Math.cos(angle);
+                    ball.y = paddle.y - ball.r;
+                }
+                handleBrickCollision(ball);
+            }
+
+            if (balls.length === 0) {
+                loseLife();
+                if (!gameOver) resetBallState();
+            }
+
+            handleBonuses();
+            if (paddle.x < 0) paddle.x = 0;
+            if (paddle.x + paddle.w > W) paddle.x = W - paddle.w;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            bricks.forEach(b => {
+                ctx.fillStyle = b.color;
+                if (b.type === 2 && b.hits === 1) ctx.fillStyle = '#ff9999';
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+                ctx.strokeStyle = '#000';
+                ctx.strokeRect(b.x, b.y, b.w, b.h);
+            });
+            ctx.fillStyle = '#f5c842';
+            ctx.shadowColor = '#f5c84288';
+            ctx.shadowBlur = 10;
+            ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+            ctx.shadowBlur = 0;
+            balls.forEach(ball => {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+                ctx.fillStyle = ball.fire ? '#ff6600' : '#f5c842';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.stroke();
+            });
+            bonuses.forEach(b => {
+                ctx.fillStyle = b.type.color;
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(b.type.code, b.x + b.w/2, b.y + b.h/2 + 3);
+            });
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.font = 'bold 28px "Segoe UI"';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', W/2, H/2);
+            } else if (gameWin) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0, 0, W, H);
+                ctx.font = 'bold 28px "Segoe UI"';
+                ctx.fillStyle = '#f5c842';
+                ctx.textAlign = 'center';
+                ctx.fillText('УРОВЕНЬ ПРОЙДЕН!', W/2, H/2);
+            } else if (getAttachedBallCount() > 0 && balls.length === getAttachedBallCount()) {
+                ctx.font = '16px "Segoe UI"';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.fillText('← тап для запуска →', W/2, H/2);
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function getCanvasX(touch) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = W / rect.width;
+            return (touch.clientX - rect.left) * scaleX;
+        }
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (gameOver || gameWin) return;
+            const touch = e.touches[0];
+            paddle.x = getCanvasX(touch) - paddle.w / 2;
+            if (!isBallLaunched()) launchBall();
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (gameOver || gameWin) return;
+            const touch = e.touches[0];
+            paddle.x = getCanvasX(touch) - paddle.w / 2;
+        });
+        canvas.addEventListener('touchend', (e) => e.preventDefault());
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (gameOver || gameWin) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = W / rect.width;
+            paddle.x = (e.clientX - rect.left) * scaleX - paddle.w/2;
+        });
+        canvas.addEventListener('click', () => {
+            if (!isBallLaunched() && !gameOver && !gameWin) launchBall();
+        });
+
+        document.getElementById('btnRestart').addEventListener('click', restartGame);
+
+        function restartGame() {
+            score = 0; lives = 3; level = 1; gameOver = false; gameWin = false;
+            bonuses = []; fireActive = false; magnetActive = false;
+            if (fireTimer) { clearTimeout(fireTimer); fireTimer = null; }
+            if (magnetTimer) { clearTimeout(magnetTimer); magnetTimer = null; }
+            paddle.w = 80;
+            buildLevel(1);
+            resetBallState();
+            paddle.x = W/2 - paddle.w/2;
+            updateScore(); updateLives(); updateLevel();
+            updateBonusIndicator();
+            messageEl.textContent = 'Тапните экран для запуска мяча';
+        }
+
+        function resizeCanvas() {
+            const container = document.querySelector('.game-container');
+            const maxWidth = container.clientWidth - 30;
+            const maxHeight = window.innerHeight * 0.6;
+            let width = maxWidth;
+            let height = (H / W) * width;
+            if (height > maxHeight) { height = maxHeight; width = (W / H) * height; }
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') paddle.x -= 6;
+            if (e.key === 'ArrowRight') paddle.x += 6;
+            if (e.key === ' ' && !isBallLaunched()) launchBall();
+            e.preventDefault();
+        });
+
+        buildLevel(1);
+        resetBallState();
+        updateLives(); updateLevel(); updateScore();
+        updateBonusIndicator();
+        gameLoop();
+    })();
+</script>
+</body>
+</html>

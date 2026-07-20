@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Сапёр</title>
+    <style>
+        /* === Сброс и базовые стили === */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100dvh;
+            min-height: 100vh;
+            touch-action: pan-x pan-y;
+            overflow: hidden;
+            padding: 8px;
+        }
+
+        .game-container {
+            background: #16213e;
+            border-radius: 28px;
+            padding: 16px 14px 18px;
+            max-width: 520px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            position: relative;
+            touch-action: pan-x pan-y;
+        }
+
+        /* === Верхняя панель: счётчики + смайлик === */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2px 10px 2px;
+            gap: 8px;
+        }
+
+        .counter {
+            background: #0f0f23;
+            border-radius: 10px;
+            padding: 6px 14px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: #ff4757;
+            text-shadow: 0 0 12px rgba(255, 71, 87, 0.3);
+            letter-spacing: 2px;
+            min-width: 64px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .counter-icon {
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .counter-value {
+            font-size: 1.4rem;
+            line-height: 1;
+            min-width: 32px;
+        }
+
+        .smiley-btn {
+            background: #0f0f23;
+            border: none;
+            border-radius: 50%;
+            width: 52px;
+            height: 52px;
+            font-size: 2.2rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            touch-action: manipulation;
+        }
+
+        .smiley-btn:active {
+            transform: scale(0.88);
+            background: #1a1a3e;
+        }
+
+        /* === Панель управления === */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .flag-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #0f0f23;
+            border-radius: 14px;
+            padding: 6px 14px 6px 10px;
+            border: 2px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.2s;
+            touch-action: manipulation;
+            cursor: pointer;
+            flex: 1;
+            min-width: 100px;
+            max-width: 180px;
+        }
+
+        .flag-toggle.active {
+            border-color: #ff6b81;
+            background: #1a0f1a;
+            box-shadow: 0 0 24px rgba(255, 107, 129, 0.15);
+        }
+
+        .flag-toggle .toggle-icon {
+            font-size: 1.6rem;
+            line-height: 1;
+            transition: transform 0.2s;
+        }
+
+        .flag-toggle.active .toggle-icon {
+            transform: scale(1.1);
+        }
+
+        .flag-toggle .toggle-label {
+            color: #aab;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        .flag-toggle.active .toggle-label {
+            color: #ff6b81;
+        }
+
+        .flag-toggle .toggle-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2a2a4a;
+            transition: all 0.25s;
+            flex-shrink: 0;
+            border: 2px solid #3a3a5a;
+        }
+
+        .flag-toggle.active .toggle-indicator {
+            background: #ff6b81;
+            border-color: #ff6b81;
+            box-shadow: 0 0 16px rgba(255, 107, 129, 0.4);
+        }
+
+        .difficulty-group {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .diff-btn {
+            background: #0f0f23;
+            border: 2px solid rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            padding: 6px 12px;
+            color: #8899bb;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            touch-action: manipulation;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .diff-btn:active {
+            transform: scale(0.92);
+        }
+
+        .diff-btn.active {
+            border-color: #4a8eff;
+            color: #4a8eff;
+            background: #0a1a3a;
+            box-shadow: 0 0 20px rgba(74, 142, 255, 0.15);
+        }
+
+        /* === Сетка === */
+        .board-wrapper {
+            position: relative;
+            margin: 0 auto;
+            touch-action: none;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #0f0f23;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
+            padding: 4px;
+        }
+
+        .board {
+            display: grid;
+            gap: 2px;
+            touch-action: none;
+            margin: 0 auto;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background: #2a2a4e;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.12s, transform 0.08s;
+            touch-action: none;
+            color: #fff;
+            text-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+            position: relative;
+            will-change: transform;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .cell:active {
+            transform: scale(0.92);
+        }
+
+        .cell.revealed {
+            background: #1a1a36;
+            border-color: rgba(255, 255, 255, 0.02);
+            cursor: default;
+        }
+
+        .cell.revealed:active {
+            transform: scale(1);
+        }
+
+        /* Цвета чисел */
+        .cell.n1 {
+            color: #4a8eff;
+        }
+        .cell.n2 {
+            color: #4caf50;
+        }
+        .cell.n3 {
+            color: #ff6b81;
+        }
+        .cell.n4 {
+            color: #7c5cbf;
+        }
+        .cell.n5 {
+            color: #ff8a5c;
+        }
+        .cell.n6 {
+            color: #4dd0e1;
+        }
+        .cell.n7 {
+            color: #1a1a2e;
+        }
+        .cell.n8 {
+            color: #8888aa;
+        }
+
+        .cell .emoji {
+            font-size: 1.2em;
+            line-height: 1;
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+        }
+
+        .cell .mine-emoji {
+            font-size: 1.3em;
+            animation: minePop 0.25s ease-out;
+        }
+
+        .cell.exploded {
+            background: #ff1744 !important;
+            animation: explode 0.3s ease-out;
+        }
+
+        @keyframes explode {
+            0% {
+                transform: scale(1.4);
+            }
+            50% {
+                transform: scale(0.85);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes minePop {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            60% {
+                transform: scale(1.4);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .cell .flag-emoji {
+            font-size: 1.2em;
+            animation: flagPop 0.2s ease-out;
+        }
+
+        @keyframes flagPop {
+            0% {
+                transform: scale(0) rotate(-30deg);
+            }
+            60% {
+                transform: scale(1.3) rotate(5deg);
+            }
+            100% {
+                transform: scale(1) rotate(0);
+            }
+        }
+
+        /* Подсветка при наведении */
+        .cell:not(.revealed):not(.flagged):hover {
+            background: #3a3a6a;
+        }
+
+        /* === Сообщение о победе / поражении === */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            border-radius: 16px;
+            z-index: 10;
+            animation: fadeIn 0.3s ease-out;
+            padding: 20px;
+        }
+
+        .overlay.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .overlay-emoji {
+            font-size: 4rem;
+            margin-bottom: 6px;
+            animation: bounceIn 0.5s ease-out;
+        }
+
+        @keyframes bounceIn {
+            0% {
+                transform: scale(0);
+            }
+            60% {
+                transform: scale(1.3);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .overlay-title {
+            color: #fff;
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .overlay-sub {
+            color: #8899bb;
+            font-size: 1rem;
+            margin-top: 2px;
+        }
+
+        .overlay-btn {
+            margin-top: 16px;
+            background: #4a8eff;
+            border: none;
+            border-radius: 16px;
+            padding: 12px 36px;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            touch-action: manipulation;
+            box-shadow: 0 8px 30px rgba(74, 142, 255, 0.3);
+        }
+
+        .overlay-btn:active {
+            transform: scale(0.92);
+            background: #3a7aee;
+        }
+
+        /* === Адаптив === */
+        @media (max-width: 420px) {
+            .game-container {
+                padding: 10px 8px 12px;
+                border-radius: 20px;
+            }
+
+            .top-bar {
+                padding-bottom: 6px;
+                gap: 4px;
+            }
+
+            .counter {
+                font-size: 1.1rem;
+                padding: 4px 10px;
+                min-width: 48px;
+                border-radius: 8px;
+            }
+
+            .counter-value {
+                font-size: 1.1rem;
+                min-width: 24px;
+            }
+
+            .smiley-btn {
+                width: 42px;
+                height: 42px;
+                font-size: 1.7rem;
+            }
+
+            .controls {
+                padding-bottom: 6px;
+                gap: 4px;
+            }
+
+            .flag-toggle {
+                padding: 4px 10px 4px 8px;
+                border-radius: 10px;
+                min-width: 70px;
+            }
+
+            .flag-toggle .toggle-icon {
+                font-size: 1.2rem;
+            }
+
+            .flag-toggle .toggle-label {
+                font-size: 0.7rem;
+            }
+
+            .flag-toggle .toggle-indicator {
+                width: 14px;
+                height: 14px;
+            }
+
+            .diff-btn {
+                font-size: 0.6rem;
+                padding: 4px 8px;
+                border-radius: 8px;
+            }
+
+            .board-wrapper {
+                padding: 3px;
+                border-radius: 12px;
+            }
+
+            .board {
+                gap: 1.5px;
+            }
+
+            .cell {
+                border-radius: 3px;
+                font-size: 1rem;
+            }
+
+            .cell .emoji {
+                font-size: 1em;
+            }
+            .cell .mine-emoji {
+                font-size: 1.1em;
+            }
+            .cell .flag-emoji {
+                font-size: 1em;
+            }
+
+            .overlay-emoji {
+                font-size: 3rem;
+            }
+            .overlay-title {
+                font-size: 1.4rem;
+            }
+            .overlay-sub {
+                font-size: 0.85rem;
+            }
+            .overlay-btn {
+                padding: 10px 28px;
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .game-container {
+                padding: 6px 4px 8px;
+                border-radius: 16px;
+            }
+
+            .counter {
+                font-size: 0.9rem;
+                padding: 3px 6px;
+                min-width: 38px;
+            }
+            .counter-value {
+                font-size: 0.9rem;
+                min-width: 18px;
+            }
+            .smiley-btn {
+                width: 34px;
+                height: 34px;
+                font-size: 1.3rem;
+            }
+            .flag-toggle .toggle-label {
+                font-size: 0.6rem;
+            }
+            .diff-btn {
+                font-size: 0.5rem;
+                padding: 3px 6px;
+            }
+            .cell {
+                font-size: 0.8rem;
+                border-radius: 2px;
+            }
+            .cell .emoji {
+                font-size: 0.8em;
+            }
+            .cell .mine-emoji {
+                font-size: 0.9em;
+            }
+            .cell .flag-emoji {
+                font-size: 0.85em;
+            }
+            .board-wrapper {
+                padding: 2px;
+                border-radius: 8px;
+            }
+            .board {
+                gap: 1px;
+            }
+        }
+
+        @media (min-height: 800px) and (min-width: 500px) {
+            .game-container {
+                padding: 24px 24px 28px;
+                border-radius: 36px;
+            }
+            .cell {
+                font-size: 1.8rem;
+                border-radius: 6px;
+            }
+            .counter {
+                font-size: 1.8rem;
+                padding: 8px 20px;
+                min-width: 80px;
+            }
+            .smiley-btn {
+                width: 64px;
+                height: 64px;
+                font-size: 2.8rem;
+            }
+        }
+
+        /* Защита от скролла */
+        .no-scroll {
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        /* Подсказка для режима флагов */
+        .flag-hint {
+            color: #556;
+            font-size: 0.65rem;
+            text-align: center;
+            padding-top: 6px;
+            letter-spacing: 0.3px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .flag-hint.hidden {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container" id="app">
+        <!-- Верхняя панель -->
+        <div class="top-bar">
+            <div class="counter" id="mineCounter">
+                <span class="counter-icon">💣</span>
+                <span class="counter-value" id="mineCountDisplay">10</span>
+            </div>
+            <button class="smiley-btn" id="restartBtn" aria-label="Новая игра">😊</button>
+            <div class="counter" id="timerCounter">
+                <span class="counter-icon">⏱</span>
+                <span class="counter-value" id="timerDisplay">0</span>
+            </div>
+        </div>
+
+        <!-- Управление -->
+        <div class="controls">
+            <div class="flag-toggle" id="flagToggle" role="button" tabindex="0" aria-label="Режим флагов">
+                <span class="toggle-icon">🚩</span>
+                <span class="toggle-label">Флаги</span>
+                <span class="toggle-indicator"></span>
+            </div>
+            <div class="difficulty-group">
+                <button class="diff-btn active" data-diff="easy">Лёгк</button>
+                <button class="diff-btn" data-diff="medium">Сред</button>
+                <button class="diff-btn" data-diff="hard">Слож</button>
+            </div>
+        </div>
+
+        <!-- Игровое поле -->
+        <div class="board-wrapper">
+            <div class="board" id="board"></div>
+            <!-- Оверлей -->
+            <div class="overlay" id="overlay">
+                <div class="overlay-emoji" id="overlayEmoji">🎉</div>
+                <div class="overlay-title" id="overlayTitle">Победа!</div>
+                <div class="overlay-sub" id="overlaySub">Вы открыли все ячейки</div>
+                <button class="overlay-btn" id="overlayBtn">🔄 Ещё раз</button>
+            </div>
+        </div>
+
+        <div class="flag-hint" id="flagHint">🖐 Тап — открыть, удерживать — флаг</div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  КОД ИГРЫ
+        // ============================================================
+
+        (function() {
+            'use strict';
+
+            // ----- Конфигурация сложности -----
+            const DIFFICULTIES = {
+                easy: { rows: 9, cols: 9, mines: 10, label: 'Лёгкая' },
+                medium: { rows: 12, cols: 12, mines: 30, label: 'Средняя' },
+                hard: { rows: 14, cols: 14, mines: 50, label: 'Сложная' },
+            };
+
+            // ----- Состояние игры -----
+            let state = {
+                rows: 9,
+                cols: 9,
+                totalMines: 10,
+                board: [], // 2D: board[row][col] = { mine, revealed, flagged, adjacentMines }
+                gameOver: false,
+                firstClick: true,
+                flagsPlaced: 0,
+                revealedCount: 0,
+                timer: 0,
+                timerInterval: null,
+                flagMode: false,
+                difficulty: 'easy',
+                isRunning: false,
+                win: false,
+            };
+
+            // ----- DOM ссылки -----
+            const boardEl = document.getElementById('board');
+            const mineCountDisplay = document.getElementById('mineCountDisplay');
+            const timerDisplay = document.getElementById('timerDisplay');
+            const restartBtn = document.getElementById('restartBtn');
+            const flagToggle = document.getElementById('flagToggle');
+            const overlay = document.getElementById('overlay');
+            const overlayEmoji = document.getElementById('overlayEmoji');
+            const overlayTitle = document.getElementById('overlayTitle');
+            const overlaySub = document.getElementById('overlaySub');
+            const overlayBtn = document.getElementById('overlayBtn');
+            const flagHint = document.getElementById('flagHint');
+            const diffBtns = document.querySelectorAll('.diff-btn');
+
+            // ----- Вспомогательные функции -----
+            function getDifficultyConfig(diff) {
+                return DIFFICULTIES[diff] || DIFFICULTIES.easy;
+            }
+
+            // ----- Инициализация доски -----
+            function initBoard(rows, cols, mines) {
+                const board = [];
+                for (let r = 0; r < rows; r++) {
+                    board[r] = [];
+                    for (let c = 0; c < cols; c++) {
+                        board[r][c] = {
+                            mine: false,
+                            revealed: false,
+                            flagged: false,
+                            adjacentMines: 0,
+                        };
+                    }
+                }
+                return board;
+            }
+
+            // ----- Размещение мин (первый клик безопасен) -----
+            function placeMines(board, rows, cols, totalMines, safeRow, safeCol) {
+                let placed = 0;
+                // Создаём список безопасных ячеек (включая соседей safe)
+                const safeSet = new Set();
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        const nr = safeRow + dr;
+                        const nc = safeCol + dc;
+                        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                            safeSet.add(nr * cols + nc);
+                        }
+                    }
+                }
+
+                const totalCells = rows * cols;
+                const available = totalCells - safeSet.size;
+                if (totalMines > available) {
+                    // Если мин больше, чем доступных ячеек — уменьшаем
+                    totalMines = available;
+                }
+
+                while (placed < totalMines) {
+                    const idx = Math.floor(Math.random() * totalCells);
+                    const r = Math.floor(idx / cols);
+                    const c = idx % cols;
+                    if (!safeSet.has(idx) && !board[r][c].mine) {
+                        board[r][c].mine = true;
+                        placed++;
+                    }
+                }
+                return totalMines; // возвращаем реальное количество мин
+            }
+
+            // ----- Вычисление соседних мин -----
+            function calculateAdjacent(board, rows, cols) {
+                const dirs = [
+                    [-1, -1],
+                    [-1, 0],
+                    [-1, 1],
+                    [0, -1],
+                    [0, 1],
+                    [1, -1],
+                    [1, 0],
+                    [1, 1]
+                ];
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (board[r][c].mine) continue;
+                        let count = 0;
+                        for (const [dr, dc] of dirs) {
+                            const nr = r + dr,
+                                nc = c + dc;
+                            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].mine) {
+                                count++;
+                            }
+                        }
+                        board[r][c].adjacentMines = count;
+                    }
+                }
+            }
+
+            // ----- Отрисовка доски -----
+            function render() {
+                const { rows, cols, board, gameOver, flagMode } = state;
+
+                // Размер ячейки
+                const wrapper = boardEl.parentElement;
+                const wrapperWidth = wrapper.clientWidth - 8;
+                const wrapperHeight = Math.min(window.innerHeight - 240, 600);
+                const maxWidth = Math.min(wrapperWidth, window.innerWidth - 28);
+                const maxHeight = Math.min(wrapperHeight, window.innerHeight - 220);
+
+                let cellSize = Math.min(
+                    (maxWidth - (cols - 1) * 2) / cols,
+                    (maxHeight - (rows - 1) * 2) / rows
+                );
+                cellSize = Math.max(cellSize, 22);
+                cellSize = Math.min(cellSize, 80);
+
+                const boardWidth = cellSize * cols + (cols - 1) * 2;
+                const boardHeight = cellSize * rows + (rows - 1) * 2;
+
+                boardEl.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
+                boardEl.style.gridTemplateRows = `repeat(${rows}, ${cellSize}px)`;
+                boardEl.style.width = boardWidth + 'px';
+                boardEl.style.height = boardHeight + 'px';
+
+                // Очистка
+                boardEl.innerHTML = '';
+
+                // Создание ячеек
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const cell = board[r][c];
+                        const div = document.createElement('div');
+                        div.className = 'cell';
+                        div.dataset.row = r;
+                        div.dataset.col = c;
+                        div.style.width = cellSize + 'px';
+                        div.style.height = cellSize + 'px';
+                        div.style.fontSize = Math.max(cellSize * 0.65, 14) + 'px';
+
+                        // Содержимое
+                        if (cell.revealed) {
+                            div.classList.add('revealed');
+                            if (cell.mine) {
+                                div.innerHTML = '<span class="mine-emoji">💣</span>';
+                                if (gameOver && cell.mine && !state.win) {
+                                    div.classList.add('exploded');
+                                }
+                            } else if (cell.adjacentMines > 0) {
+                                div.textContent = cell.adjacentMines;
+                                div.classList.add('n' + cell.adjacentMines);
+                            }
+                        } else if (cell.flagged) {
+                            div.innerHTML = '<span class="flag-emoji">🚩</span>';
+                            div.classList.add('flagged');
+                        }
+
+                        // Если игра окончена и ячейка не открыта — показываем мины (кроме флагов)
+                        if (gameOver && !cell.revealed) {
+                            if (cell.mine && !cell.flagged) {
+                                div.innerHTML = '<span class="mine-emoji">💣</span>';
+                                div.classList.add('revealed');
+                            }
+                            if (cell.flagged && !cell.mine) {
+                                // Неправильный флаг — показываем крестик
+                                div.innerHTML = '✖';
+                                div.style.color = '#ff1744';
+                                div.classList.add('revealed');
+                            }
+                        }
+
+                        // Атрибуты для доступности
+                        div.setAttribute('role', 'gridcell');
+                        div.setAttribute('aria-label', `Ячейка ${r+1} ${c+1}`);
+
+                        // Обработчики событий
+                        setupCellEvents(div, r, c);
+
+                        boardEl.appendChild(div);
+                    }
+                }
+
+                // Обновляем счётчики
+                updateCounters();
+            }
+
+            // ----- Обработчики событий для ячейки -----
+            function setupCellEvents(element, row, col) {
+                let pressTimer = null;
+                let isLongPress = false;
+                let touchStartX = 0,
+                    touchStartY = 0;
+
+                // Очистка таймера
+                function clearPressTimer() {
+                    if (pressTimer) {
+                        clearTimeout(pressTimer);
+                        pressTimer = null;
+                    }
+                    isLongPress = false;
+                }
+
+                // Touch
+                element.addEventListener('touchstart', function(e) {
+                    if (state.gameOver) return;
+                    const touch = e.touches[0];
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+
+                    clearPressTimer();
+                    isLongPress = false;
+
+                    pressTimer = setTimeout(() => {
+                        if (!state.gameOver && !state.board[row][col].revealed) {
+                            isLongPress = true;
+                            // Вибрация
+                            if (navigator.vibrate) navigator.vibrate(30);
+                            handleFlag(row, col);
+                            // Обновляем отображение
+                            render();
+                        }
+                        pressTimer = null;
+                    }, 450);
+                }, { passive: true });
+
+                element.addEventListener('touchmove', function(e) {
+                    if (state.gameOver) return;
+                    const touch = e.touches[0];
+                    const dx = touch.clientX - touchStartX;
+                    const dy = touch.clientY - touchStartY;
+                    if (Math.sqrt(dx * dx + dy * dy) > 12) {
+                        clearPressTimer();
+                    }
+                }, { passive: true });
+
+                element.addEventListener('touchend', function(e) {
+                    if (state.gameOver) {
+                        clearPressTimer();
+                        return;
+                    }
+                    clearPressTimer();
+                    if (!isLongPress) {
+                        // Это был тап
+                        handleTap(row, col);
+                        render();
+                    }
+                    isLongPress = false;
+                }, { passive: true });
+
+                element.addEventListener('touchcancel', function(e) {
+                    clearPressTimer();
+                    isLongPress = false;
+                }, { passive: true });
+
+                // Mouse (для десктопа)
+                element.addEventListener('mousedown', function(e) {
+                    if (state.gameOver) return;
+                    if (e.button === 0) {
+                        // Левая кнопка
+                        clearPressTimer();
+                        isLongPress = false;
+                        // Не используем таймер для мыши, только клик
+                    } else if (e.button === 2) {
+                        e.preventDefault();
+                        if (!state.gameOver && !state.board[row][col].revealed) {
+                            handleFlag(row, col);
+                            render();
+                        }
+                    }
+                });
+
+                element.addEventListener('click', function(e) {
+                    if (state.gameOver) return;
+                    if (e.button === 0) {
+                        // Для мыши левый клик — открываем
+                        handleTap(row, col);
+                        render();
+                    }
+                });
+
+                // Контекстное меню для десктопа (правый клик)
+                element.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                });
+            }
+
+            // ----- Логика тапа (открытие) -----
+            function handleTap(row, col) {
+                if (state.gameOver) return;
+                const cell = state.board[row][col];
+
+                if (cell.flagged) return;
+                if (cell.revealed) {
+                    // Хорд: если открыта цифра, и вокруг неё флагов = числу — открываем соседей
+                    if (cell.adjacentMines > 0) {
+                        chordReveal(row, col);
+                    }
+                    return;
+                }
+
+                // Первый клик — размещаем мины
+                if (state.firstClick) {
+                    state.firstClick = false;
+                    const actualMines = placeMines(state.board, state.rows, state.cols, state.totalMines, row, col);
+                    state.totalMines = actualMines;
+                    calculateAdjacent(state.board, state.rows, state.cols);
+                    startTimer();
+                }
+
+                // Открываем
+                revealCell(row, col);
+                checkWinCondition();
+                render();
+            }
+
+            // ----- Открытие ячейки (рекурсивное) -----
+            function revealCell(row, col) {
+                const { board, rows, cols } = state;
+                if (row < 0 || row >= rows || col < 0 || col >= cols) return;
+                const cell = board[row][col];
+                if (cell.revealed || cell.flagged) return;
+
+                cell.revealed = true;
+                state.revealedCount++;
+
+                if (cell.mine) {
+                    // Взрыв
+                    state.gameOver = true;
+                    state.win = false;
+                    stopTimer();
+                    showOverlay('💥', 'Взрыв!', 'Вы наступили на мину', false);
+                    return;
+                }
+
+                if (cell.adjacentMines === 0) {
+                    // Открываем соседей
+                    const dirs = [
+                        [-1, -1],
+                        [-1, 0],
+                        [-1, 1],
+                        [0, -1],
+                        [0, 1],
+                        [1, -1],
+                        [1, 0],
+                        [1, 1]
+                    ];
+                    for (const [dr, dc] of dirs) {
+                        revealCell(row + dr, col + dc);
+                    }
+                }
+            }
+
+            // ----- Хорд (открытие соседей) -----
+            function chordReveal(row, col) {
+                const { board, rows, cols } = state;
+                const cell = board[row][col];
+                if (!cell.revealed || cell.adjacentMines === 0) return;
+
+                // Считаем флаги вокруг
+                let flags = 0;
+                const dirs = [
+                    [-1, -1],
+                    [-1, 0],
+                    [-1, 1],
+                    [0, -1],
+                    [0, 1],
+                    [1, -1],
+                    [1, 0],
+                    [1, 1]
+                ];
+                const neighbors = [];
+                for (const [dr, dc] of dirs) {
+                    const nr = row + dr,
+                        nc = col + dc;
+                    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                        neighbors.push([nr, nc]);
+                        if (board[nr][nc].flagged) flags++;
+                    }
+                }
+
+                if (flags === cell.adjacentMines) {
+                    let exploded = false;
+                    for (const [nr, nc] of neighbors) {
+                        const n = board[nr][nc];
+                        if (!n.revealed && !n.flagged) {
+                            if (n.mine) {
+                                // Взрыв!
+                                n.revealed = true;
+                                state.gameOver = true;
+                                state.win = false;
+                                stopTimer();
+                                showOverlay('💥', 'Взрыв!', 'Вы наступили на мину', false);
+                                exploded = true;
+                                break;
+                            } else {
+                                revealCell(nr, nc);
+                            }
+                        }
+                    }
+                    if (!exploded) {
+                        checkWinCondition();
+                        render();
+                    } else {
+                        render();
+                    }
+                }
+            }
+
+            // ----- Установка/снятие флага -----
+            function handleFlag(row, col) {
+                if (state.gameOver) return;
+                const cell = state.board[row][col];
+                if (cell.revealed) return;
+
+                // В первом клике не ставим флаги (но можно разрешить)
+                // Разрешаем флаги даже в первом клике
+
+                if (cell.flagged) {
+                    cell.flagged = false;
+                    state.flagsPlaced--;
+                } else {
+                    cell.flagged = true;
+                    state.flagsPlaced++;
+                }
+                updateCounters();
+                checkWinCondition();
+                render();
+            }
+
+            // ----- Проверка победы -----
+            function checkWinCondition() {
+                const { board, rows, cols, totalMines, gameOver } = state;
+                if (gameOver) return;
+
+                const totalSafe = rows * cols - totalMines;
+                if (state.revealedCount === totalSafe) {
+                    // Победа!
+                    state.gameOver = true;
+                    state.win = true;
+                    stopTimer();
+                    // Отмечаем все мины флагами
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            if (board[r][c].mine && !board[r][c].flagged) {
+                                board[r][c].flagged = true;
+                                state.flagsPlaced++;
+                            }
+                        }
+                    }
+                    updateCounters();
+                    showOverlay('🎉', 'Победа!', `Вы открыли все ячейки за ${state.timer} сек`, true);
+                    render();
+                    return true;
+                }
+                return false;
+            }
+
+            // ----- Таймер -----
+            function startTimer() {
+                if (state.isRunning) return;
+                state.isRunning = true;
+                state.timer = 0;
+                state.timerInterval = setInterval(() => {
+                    state.timer++;
+                    timerDisplay.textContent = state.timer;
+                }, 1000);
+            }
+
+            function stopTimer() {
+                state.isRunning = false;
+                if (state.timerInterval) {
+                    clearInterval(state.timerInterval);
+                    state.timerInterval = null;
+                }
+            }
+
+            // ----- Обновление счётчиков -----
+            function updateCounters() {
+                const remaining = state.totalMines - state.flagsPlaced;
+                mineCountDisplay.textContent = remaining >= 0 ? remaining : 0;
+                timerDisplay.textContent = state.timer;
+            }
+
+            // ----- Показать оверлей -----
+            function showOverlay(emoji, title, sub, win) {
+                overlayEmoji.textContent = emoji;
+                overlayTitle.textContent = title;
+                overlaySub.textContent = sub;
+                overlay.className = 'overlay show';
+                // Смайлик
+                restartBtn.textContent = win ? '😎' : '😵';
+            }
+
+            function hideOverlay() {
+                overlay.className = 'overlay';
+                restartBtn.textContent = '😊';
+            }
+
+            // ----- Сброс игры -----
+            function resetGame() {
+                stopTimer();
+                state.gameOver = false;
+                state.firstClick = true;
+                state.flagsPlaced = 0;
+                state.revealedCount = 0;
+                state.timer = 0;
+                state.isRunning = false;
+                state.win = false;
+                hideOverlay();
+                timerDisplay.textContent = '0';
+                restartBtn.textContent = '😊';
+
+                const config = getDifficultyConfig(state.difficulty);
+                state.rows = config.rows;
+                state.cols = config.cols;
+                state.totalMines = config.mines;
+
+                state.board = initBoard(state.rows, state.cols, state.totalMines);
+                // Мины будут размещены при первом клике
+                calculateAdjacent(state.board, state.rows, state.cols);
+                updateCounters();
+                render();
+            }
+
+            // ----- Новая игра с параметрами -----
+            function newGame(difficulty) {
+                state.difficulty = difficulty || state.difficulty;
+                resetGame();
+                // Обновляем активную кнопку
+                diffBtns.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.diff === state.difficulty);
+                });
+            }
+
+            // ----- Переключение режима флагов -----
+            function toggleFlagMode() {
+                state.flagMode = !state.flagMode;
+                flagToggle.classList.toggle('active', state.flagMode);
+                flagHint.textContent = state.flagMode ?
+                    '🚩 Режим флагов: тап — поставить флаг' :
+                    '🖐 Тап — открыть, удерживать — флаг';
+                flagHint.classList.toggle('hidden', false);
+                // Скрываем подсказку через 3 секунды
+                clearTimeout(window.hintTimeout);
+                window.hintTimeout = setTimeout(() => {
+                    flagHint.classList.add('hidden');
+                }, 4000);
+            }
+
+            // ----- Адаптация размера -----
+            function handleResize() {
+                if (!state.gameOver) {
+                    render();
+                } else {
+                    // Перерисовываем даже если игра окончена
+                    render();
+                }
+            }
+
+            // ----- Инициализация -----
+            function init() {
+                // Начальные настройки
+                state.difficulty = 'easy';
+                const config = getDifficultyConfig('easy');
+                state.rows = config.rows;
+                state.cols = config.cols;
+                state.totalMines = config.mines;
+                state.board = initBoard(state.rows, state.cols, state.totalMines);
+                calculateAdjacent(state.board, state.rows, state.cols);
+                state.firstClick = true;
+                state.gameOver = false;
+                state.flagsPlaced = 0;
+                state.revealedCount = 0;
+                state.timer = 0;
+                state.isRunning = false;
+                state.flagMode = false;
+
+                // Сброс UI
+                hideOverlay();
+                flagToggle.classList.remove('active');
+                updateCounters();
+                timerDisplay.textContent = '0';
+                restartBtn.textContent = '😊';
+
+                // Кнопки сложности
+                diffBtns.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.diff === 'easy');
+                    btn.addEventListener('click', function(e) {
+                        const diff = this.dataset.diff;
+                        if (diff !== state.difficulty) {
+                            newGame(diff);
+                        }
+                    });
+                });
+
+                // Переключатель флагов
+                flagToggle.addEventListener('click', toggleFlagMode);
+
+                // Кнопка рестарта
+                restartBtn.addEventListener('click', function() {
+                    resetGame();
+                });
+
+                // Кнопка оверлея
+                overlayBtn.addEventListener('click', function() {
+                    resetGame();
+                });
+
+                // Ресайз
+                let resizeTimeout;
+                window.addEventListener('resize', function() {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(handleResize, 100);
+                });
+
+                // Ориентация
+                window.addEventListener('orientationchange', function() {
+                    setTimeout(handleResize, 300);
+                });
+
+                // Первый рендер
+                render();
+
+                // Показываем подсказку
+                flagHint.classList.remove('hidden');
+                clearTimeout(window.hintTimeout);
+                window.hintTimeout = setTimeout(() => {
+                    flagHint.classList.add('hidden');
+                }, 5000);
+
+                // Защита от скролла на доске
+                boardEl.addEventListener('touchstart', function(e) {
+                    if (e.target.closest('.cell')) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+
+                console.log('🕹 Сапёр загружен!');
+            }
+
+            // Запуск
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+        })();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Крестики-Нолики — 3 режима + бот</title>
+    <style>
+        /* ─── Reset & base ─── */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(145deg, #0b0e1a 0%, #1a1e2f 100%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            color: #e8edf5;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .app {
+            max-width: 480px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 40px;
+            padding: 24px 20px 28px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: all 0.2s;
+        }
+
+        /* ─── Header ─── */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #a7c0ff, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: inline-block;
+        }
+        .header .sub {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.35);
+            margin-top: 2px;
+            letter-spacing: 0.3px;
+        }
+
+        /* ─── Mode tabs ─── */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .tabs button {
+            flex: 1;
+            min-width: 72px;
+            padding: 10px 6px;
+            border: none;
+            border-radius: 60px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.2px;
+            touch-action: manipulation;
+            border: 1px solid transparent;
+        }
+        .tabs button.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 16px rgba(100, 130, 255, 0.15);
+        }
+        .tabs button:active {
+            transform: scale(0.95);
+        }
+        .tabs button .icon {
+            display: block;
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+
+        /* ─── Opponent toggle ─── */
+        .opponent-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            justify-content: center;
+        }
+        .opponent-toggle button {
+            flex: 1;
+            max-width: 140px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 60px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.5);
+            border: 1px solid transparent;
+            touch-action: manipulation;
+        }
+        .opponent-toggle button.active {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 16px rgba(100, 130, 255, 0.1);
+        }
+        .opponent-toggle button:active {
+            transform: scale(0.95);
+        }
+        .opponent-toggle.hidden {
+            display: none;
+        }
+
+        /* ─── Status bar ─── */
+        .status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 60px;
+            padding: 8px 18px 8px 22px;
+            margin-bottom: 18px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            min-height: 50px;
+        }
+        .status .msg {
+            font-size: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status .msg .turn-indicator {
+            display: inline-flex;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.08);
+            transition: 0.2s;
+        }
+        .status .msg .turn-indicator.x {
+            color: #60a5fa;
+            background: rgba(96, 165, 250, 0.2);
+        }
+        .status .msg .turn-indicator.o {
+            color: #f472b6;
+            background: rgba(244, 114, 182, 0.2);
+        }
+        .status .score {
+            display: flex;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .status .score span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .status .score .x-score {
+            color: #60a5fa;
+        }
+        .status .score .o-score {
+            color: #f472b6;
+        }
+        .status .score .draw-score {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* ─── Board ─── */
+        .board-wrapper {
+            position: relative;
+            padding: 4px;
+            margin-bottom: 16px;
+            touch-action: none;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            aspect-ratio: 1 / 1;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 24px;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .cell {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            aspect-ratio: 1 / 1;
+            position: relative;
+            touch-action: manipulation;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .cell:active {
+            transform: scale(0.94);
+        }
+        .cell .mark {
+            position: relative;
+            z-index: 2;
+            transition: all 0.2s ease;
+            line-height: 1;
+            pointer-events: none;
+        }
+        .cell .mark.x {
+            color: #60a5fa;
+            text-shadow: 0 0 20px rgba(96, 165, 250, 0.3);
+        }
+        .cell .mark.o {
+            color: #f472b6;
+            text-shadow: 0 0 20px rgba(244, 114, 182, 0.3);
+        }
+
+        /* old-mark — самый старый символ среди 3‑х */
+        .cell .mark.old-mark {
+            opacity: 0.3;
+            filter: blur(1px);
+            transition: opacity 0.4s ease, filter 0.4s ease;
+        }
+        .cell .mark.removing {
+            animation: removeFade 0.4s ease forwards;
+        }
+        @keyframes removeFade {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.7);
+            }
+        }
+
+        .cell.win {
+            background: rgba(255, 215, 0, 0.15) !important;
+            border-color: rgba(255, 215, 0, 0.3) !important;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.08);
+        }
+        .cell.win .mark {
+            text-shadow: 0 0 40px rgba(255, 215, 0, 0.4) !important;
+        }
+
+        /* memory highlights */
+        .cell.mem-highlight {
+            background: rgba(96, 165, 250, 0.25) !important;
+            border-color: rgba(96, 165, 250, 0.3) !important;
+            box-shadow: 0 0 30px rgba(96, 165, 250, 0.15);
+            transform: scale(1.02);
+            transition: all 0.2s ease;
+        }
+        .cell.mem-highlight.green {
+            background: rgba(52, 211, 153, 0.25) !important;
+            border-color: rgba(52, 211, 153, 0.3) !important;
+            box-shadow: 0 0 30px rgba(52, 211, 153, 0.15);
+        }
+        .cell.mem-highlight.red {
+            background: rgba(251, 113, 133, 0.25) !important;
+            border-color: rgba(251, 113, 133, 0.3) !important;
+            box-shadow: 0 0 30px rgba(251, 113, 133, 0.15);
+        }
+        .cell.mem-correct {
+            background: rgba(52, 211, 153, 0.15) !important;
+            border-color: rgba(52, 211, 153, 0.2) !important;
+        }
+        .cell.mem-wrong {
+            background: rgba(251, 113, 133, 0.15) !important;
+            border-color: rgba(251, 113, 133, 0.2) !important;
+        }
+        .cell .seq-num {
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.15);
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        /* ─── Controls ─── */
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .controls button {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 60px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            background: rgba(255, 255, 255, 0.07);
+            color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            min-width: 100px;
+            flex: 1;
+            max-width: 160px;
+        }
+        .controls button:active {
+            transform: scale(0.95);
+        }
+        .controls button.primary {
+            background: linear-gradient(135deg, #4f7aff, #7c5cfc);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 20px rgba(79, 122, 255, 0.25);
+        }
+        .controls button.primary:active {
+            box-shadow: 0 2px 10px rgba(79, 122, 255, 0.15);
+        }
+        .controls button.secondary {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* ─── Memory level ─── */
+        .mem-level {
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.35);
+            margin-top: 10px;
+            letter-spacing: 0.5px;
+        }
+        .mem-level strong {
+            color: #a7c0ff;
+            font-weight: 600;
+        }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 420px) {
+            .app {
+                padding: 16px 12px 20px;
+                border-radius: 28px;
+            }
+            .header h1 {
+                font-size: 22px;
+            }
+            .cell {
+                font-size: 36px;
+                border-radius: 12px;
+            }
+            .board {
+                gap: 6px;
+                padding: 6px;
+                border-radius: 18px;
+            }
+            .tabs button {
+                font-size: 12px;
+                padding: 8px 4px;
+                min-width: 60px;
+            }
+            .tabs button .icon {
+                font-size: 15px;
+            }
+            .opponent-toggle button {
+                font-size: 12px;
+                padding: 6px 10px;
+                max-width: 110px;
+            }
+            .status .msg {
+                font-size: 14px;
+            }
+            .controls button {
+                font-size: 13px;
+                padding: 10px 16px;
+                min-width: 80px;
+            }
+        }
+        @media (max-width: 360px) {
+            .cell {
+                font-size: 28px;
+            }
+            .status .msg .turn-indicator {
+                width: 22px;
+                height: 22px;
+                font-size: 13px;
+            }
+            .status {
+                padding: 6px 12px;
+                min-height: 42px;
+            }
+        }
+
+        .cell.disabled {
+            cursor: default;
+            opacity: 0.7;
+        }
+        .cell.disabled:active {
+            transform: none;
+        }
+
+        @keyframes pop {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            70% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .cell .mark.pop {
+            animation: pop 0.25s ease forwards;
+        }
+
+        @keyframes glow-pulse {
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(96, 165, 250, 0.05);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(96, 165, 250, 0.12);
+            }
+        }
+        .board.memory-active .cell {
+            animation: glow-pulse 2s ease infinite;
+        }
+
+        ::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+        }
+
+        .cell .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(0);
+            animation: ripple 0.4s ease forwards;
+            pointer-events: none;
+            z-index: 0;
+        }
+        @keyframes ripple {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app" id="app">
+        <!-- Header -->
+        <div class="header">
+            <h1>✦ Крестики-Нолики</h1>
+            <div class="sub">3 режима · играй на память</div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs" id="tabs">
+            <button data-mode="classic" class="active">
+                <span class="icon">♟</span> Классика
+            </button>
+            <button data-mode="modern">
+                <span class="icon">✦</span> Современный
+            </button>
+            <button data-mode="memory">
+                <span class="icon">🧠</span> Память
+            </button>
+        </div>
+
+        <!-- Opponent toggle -->
+        <div class="opponent-toggle" id="opponentToggle">
+            <button data-opponent="human" class="active">👥 С другом</button>
+            <button data-opponent="bot">🤖 С ботом</button>
+        </div>
+
+        <!-- Status -->
+        <div class="status" id="status">
+            <div class="msg" id="msg">
+                <span class="turn-indicator x" id="turnIndicator">X</span>
+                <span id="statusText">Ход X</span>
+            </div>
+            <div class="score" id="score">
+                <span class="x-score">X <span id="scoreX">0</span></span>
+                <span class="draw-score">•</span>
+                <span class="o-score">O <span id="scoreO">0</span></span>
+            </div>
+        </div>
+
+        <!-- Board -->
+        <div class="board-wrapper">
+            <div class="board" id="board">
+                <!-- 9 cells generated by JS -->
+            </div>
+        </div>
+
+        <!-- Memory level -->
+        <div class="mem-level" id="memLevel" style="display:none;">
+            Уровень <strong id="levelNum">1</strong> · запомни последовательность
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="primary" id="btnRestart">↻ Сброс</button>
+            <button class="secondary" id="btnResetScore">Счёт</button>
+        </div>
+    </div>
+
+    <script>
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  STATE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const state = {
+            mode: 'classic',
+            opponent: 'human',
+            board: Array(9).fill(null),
+            currentPlayer: 'X',
+            gameOver: false,
+            winner: null,
+            winLine: null,
+            scoreX: 0,
+            scoreO: 0,
+            orderX: [],
+            orderO: [],
+            // memory
+            sequence: [],
+            playerIndex: 0,
+            isShowing: false,
+            level: 1,
+            memoryLocked: false,
+            memCorrect: 0,
+            memWrong: 0,
+            botTimer: null,
+        };
+
+        // DOM refs
+        const boardEl = document.getElementById('board');
+        const statusText = document.getElementById('statusText');
+        const turnIndicator = document.getElementById('turnIndicator');
+        const scoreX = document.getElementById('scoreX');
+        const scoreO = document.getElementById('scoreO');
+        const memLevel = document.getElementById('memLevel');
+        const levelNum = document.getElementById('levelNum');
+        const btnRestart = document.getElementById('btnRestart');
+        const btnResetScore = document.getElementById('btnResetScore');
+        const tabs = document.querySelectorAll('#tabs button');
+        const opponentToggle = document.getElementById('opponentToggle');
+        const opponentBtns = opponentToggle.querySelectorAll('button');
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  RENDER
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.index = i;
+                const mark = document.createElement('span');
+                mark.className = 'mark';
+                mark.dataset.index = i;
+                cell.appendChild(mark);
+                const seqNum = document.createElement('span');
+                seqNum.className = 'seq-num';
+                seqNum.dataset.index = i;
+                cell.appendChild(seqNum);
+                cell.addEventListener('click', () => handleCellClick(i));
+                cell.addEventListener('touchend', (e) => { e.preventDefault();
+                    handleCellClick(i); });
+                boardEl.appendChild(cell);
+            }
+            updateBoard();
+        }
+
+        function updateBoard() {
+            const cells = boardEl.children;
+            for (let i = 0; i < 9; i++) {
+                const cell = cells[i];
+                const mark = cell.querySelector('.mark');
+                const seqNum = cell.querySelector('.seq-num');
+                mark.textContent = state.board[i] || '';
+                mark.className = 'mark';
+                if (state.board[i]) {
+                    mark.classList.add(state.board[i].toLowerCase());
+                    mark.classList.add('pop');
+                }
+                cell.classList.remove('win', 'mem-highlight', 'mem-correct', 'mem-wrong', 'disabled');
+                mark.classList.remove('old-mark', 'removing');
+                if (state.winLine && state.winLine.includes(i)) {
+                    cell.classList.add('win');
+                }
+                if (state.mode === 'modern' && state.board[i]) {
+                    const symbol = state.board[i];
+                    const order = symbol === 'X' ? state.orderX : state.orderO;
+                    if (order.length === 3 && order[0] === i) {
+                        mark.classList.add('old-mark');
+                    }
+                }
+                if (state.mode === 'memory') {
+                    const idx = state.sequence.indexOf(i);
+                    if (idx !== -1 && state.isShowing) {
+                        cell.classList.add('mem-highlight');
+                        seqNum.textContent = idx + 1;
+                    } else {
+                        seqNum.textContent = '';
+                    }
+                } else {
+                    seqNum.textContent = '';
+                }
+                if (state.gameOver || state.isShowing || state.memoryLocked || (state.opponent === 'bot' && state
+                        .currentPlayer === 'O' && !state.gameOver)) {
+                    cell.classList.add('disabled');
+                }
+                if (state.mode === 'memory' && state.isShowing) {
+                    cell.classList.add('disabled');
+                }
+            }
+            updateStatus();
+            updateScore();
+        }
+
+        function updateStatus() {
+            const msg = document.getElementById('statusText');
+            const ind = turnIndicator;
+            if (state.gameOver) {
+                if (state.winner) {
+                    msg.textContent = `🏆 Победил ${state.winner}!`;
+                    ind.textContent = state.winner;
+                    ind.className = 'turn-indicator ' + state.winner.toLowerCase();
+                } else {
+                    msg.textContent = '🤝 Ничья!';
+                    ind.textContent = '—';
+                    ind.className = 'turn-indicator';
+                }
+                return;
+            }
+            if (state.mode === 'memory') {
+                if (state.isShowing) {
+                    msg.textContent = '👀 Запоминай...';
+                    ind.textContent = '🧠';
+                    ind.className = 'turn-indicator';
+                } else if (state.memoryLocked) {
+                    msg.textContent = '⏳ Подожди...';
+                    ind.textContent = '⏳';
+                    ind.className = 'turn-indicator';
+                } else {
+                    msg.textContent = `🎯 Повтори (${state.playerIndex}/${state.sequence.length})`;
+                    ind.textContent = '👆';
+                    ind.className = 'turn-indicator';
+                }
+                return;
+            }
+            const player = state.currentPlayer;
+            msg.textContent = `Ход ${player}`;
+            ind.textContent = player;
+            ind.className = 'turn-indicator ' + player.toLowerCase();
+        }
+
+        function updateScore() {
+            scoreX.textContent = state.scoreX;
+            scoreO.textContent = state.scoreO;
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  CORE LOGIC
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function placeMark(index) {
+            if (state.gameOver) return false;
+            if (state.board[index]) return false;
+            if (state.mode === 'memory') return false;
+
+            const symbol = state.currentPlayer;
+            state.board[index] = symbol;
+
+            if (state.mode === 'modern') {
+                const order = symbol === 'X' ? state.orderX : state.orderO;
+                order.push(index);
+                if (order.length > 3) {
+                    const oldestIdx = order.shift();
+                    state.board[oldestIdx] = null;
+                    const cell = boardEl.children[oldestIdx];
+                    const mark = cell.querySelector('.mark');
+                    mark.classList.add('removing');
+                    setTimeout(() => {
+                        mark.classList.remove('removing');
+                        updateBoard();
+                    }, 400);
+                }
+            }
+
+            updateBoard();
+
+            const win = checkWin(state.board);
+            if (win) {
+                state.gameOver = true;
+                state.winner = symbol;
+                state.winLine = win;
+                updateBoard();
+                if (symbol === 'X') state.scoreX++;
+                else state.scoreO++;
+                updateScore();
+                return true;
+            }
+            if (state.board.every(c => c !== null)) {
+                state.gameOver = true;
+                state.winner = null;
+                state.winLine = null;
+                updateBoard();
+                return true;
+            }
+            state.currentPlayer = state.currentPlayer === 'X' ? 'O' : 'X';
+            updateBoard();
+            return true;
+        }
+
+        function checkWin(board) {
+            const lines = [
+                [0, 1, 2],
+                [3, 4, 5],
+                [6, 7, 8],
+                [0, 3, 6],
+                [1, 4, 7],
+                [2, 5, 8],
+                [0, 4, 8],
+                [2, 4, 6]
+            ];
+            for (const line of lines) {
+                const [a, b, c] = line;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return line;
+                }
+            }
+            return null;
+        }
+
+        function getWinner(board) {
+            const lines = [
+                [0, 1, 2],
+                [3, 4, 5],
+                [6, 7, 8],
+                [0, 3, 6],
+                [1, 4, 7],
+                [2, 5, 8],
+                [0, 4, 8],
+                [2, 4, 6]
+            ];
+            for (const line of lines) {
+                const [a, b, c] = line;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return board[a];
+                }
+            }
+            return null;
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  BOT (Minimax)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function getBestMove(board, player) {
+            const opponent = player === 'X' ? 'O' : 'X';
+            let bestScore = -Infinity;
+            let bestMove = null;
+            const available = [];
+            for (let i = 0; i < 9; i++) {
+                if (!board[i]) available.push(i);
+            }
+            if (available.length === 0) return null;
+
+            for (const move of available) {
+                const newBoard = [...board];
+                newBoard[move] = player;
+                const score = minimax(newBoard, 0, false, player, opponent);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+            }
+            return bestMove;
+        }
+
+        function minimax(board, depth, isMaximizing, player, opponent) {
+            const winner = getWinner(board);
+            if (winner === player) return 10 - depth;
+            if (winner === opponent) return depth - 10;
+            if (board.every(c => c !== null)) return 0;
+
+            if (isMaximizing) {
+                let best = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (!board[i]) {
+                        const newBoard = [...board];
+                        newBoard[i] = player;
+                        const score = minimax(newBoard, depth + 1, false, player, opponent);
+                        best = Math.max(best, score);
+                    }
+                }
+                return best;
+            } else {
+                let best = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (!board[i]) {
+                        const newBoard = [...board];
+                        newBoard[i] = opponent;
+                        const score = minimax(newBoard, depth + 1, true, player, opponent);
+                        best = Math.min(best, score);
+                    }
+                }
+                return best;
+            }
+        }
+
+        function scheduleBotMove() {
+            if (state.botTimer) clearTimeout(state.botTimer);
+            state.botTimer = setTimeout(() => {
+                if (state.gameOver) return;
+                if (state.currentPlayer !== 'O') return;
+                if (state.mode === 'memory') return;
+                botMove();
+            }, 400);
+        }
+
+        function botMove() {
+            if (state.gameOver) return;
+            if (state.currentPlayer !== 'O') return;
+
+            const available = [];
+            for (let i = 0; i < 9; i++) {
+                if (!state.board[i]) available.push(i);
+            }
+            if (available.length === 0) return;
+
+            const best = getBestMove(state.board, 'O');
+            if (best !== null && available.includes(best)) {
+                const moved = placeMark(best);
+                if (!moved) return;
+                if (state.opponent === 'bot' && !state.gameOver && state.currentPlayer === 'O') {
+                    scheduleBotMove();
+                }
+            } else {
+                // fallback (never happens with minimax, but just in case)
+                const random = available[Math.floor(Math.random() * available.length)];
+                const moved = placeMark(random);
+                if (!moved) return;
+                if (state.opponent === 'bot' && !state.gameOver && state.currentPlayer === 'O') {
+                    scheduleBotMove();
+                }
+            }
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  HANDLE CLICK
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function handleCellClick(index) {
+            if (state.mode === 'memory') {
+                handleMemoryClick(index);
+                return;
+            }
+            if (state.gameOver) return;
+            if (state.opponent === 'bot' && state.currentPlayer === 'O') return;
+            if (state.board[index]) return;
+
+            const moved = placeMark(index);
+            if (!moved) return;
+
+            if (state.opponent === 'bot' && !state.gameOver && state.currentPlayer === 'O') {
+                scheduleBotMove();
+            }
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  MEMORY MODE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function startMemoryRound() {
+            state.isShowing = true;
+            state.memoryLocked = true;
+            state.playerIndex = 0;
+            state.sequence = [];
+            state.memCorrect = 0;
+            state.memWrong = 0;
+
+            const available = Array.from({ length: 9 }, (_, i) => i);
+            for (let i = 0; i < state.level; i++) {
+                const idx = Math.floor(Math.random() * available.length);
+                state.sequence.push(available[idx]);
+                available.splice(idx, 1);
+            }
+
+            memLevel.style.display = 'block';
+            levelNum.textContent = state.level;
+            updateBoard();
+            updateStatus();
+
+            let delay = 0;
+            const stepDelay = 600;
+            const gap = 300;
+
+            for (let i = 0; i < state.sequence.length; i++) {
+                const idx = state.sequence[i];
+                setTimeout(() => {
+                    const cell = boardEl.children[idx];
+                    cell.classList.add('mem-highlight');
+                    setTimeout(() => {
+                        cell.classList.remove('mem-highlight');
+                    }, stepDelay - 100);
+                }, delay);
+                delay += stepDelay + gap;
+            }
+
+            setTimeout(() => {
+                state.isShowing = false;
+                state.memoryLocked = false;
+                state.playerIndex = 0;
+                updateBoard();
+                updateStatus();
+                memLevel.style.display = 'block';
+                levelNum.textContent = state.level;
+            }, delay + 200);
+        }
+
+        function handleMemoryClick(index) {
+            if (state.isShowing || state.memoryLocked || state.gameOver) return;
+            if (state.playerIndex >= state.sequence.length) return;
+
+            const expected = state.sequence[state.playerIndex];
+            const cell = boardEl.children[index];
+
+            if (index === expected) {
+                state.playerIndex++;
+                cell.classList.add('mem-correct');
+                setTimeout(() => cell.classList.remove('mem-correct'), 300);
+
+                if (state.playerIndex === state.sequence.length) {
+                    state.memCorrect++;
+                    state.level++;
+                    if (state.level > 9) {
+                        state.gameOver = true;
+                        state.winner = '🧠';
+                        updateBoard();
+                        updateStatus();
+                        memLevel.innerHTML = '🎉 <strong>Ты гений!</strong> Все уровни пройдены!';
+                        return;
+                    }
+                    state.memoryLocked = true;
+                    updateStatus();
+                    setTimeout(() => {
+                        startMemoryRound();
+                    }, 500);
+                } else {
+                    updateStatus();
+                }
+            } else {
+                state.memWrong++;
+                cell.classList.add('mem-wrong');
+                setTimeout(() => cell.classList.remove('mem-wrong'), 500);
+                state.gameOver = true;
+                state.winner = null;
+                state.memoryLocked = true;
+                updateBoard();
+                updateStatus();
+                memLevel.innerHTML = `❌ Ошибка! Правильная последовательность: <strong>${state.sequence.map(i => i+1).join(' → ')}</strong>`;
+                for (let i = 0; i < state.sequence.length; i++) {
+                    const idx = state.sequence[i];
+                    setTimeout(() => {
+                        const c = boardEl.children[idx];
+                        c.classList.add('mem-highlight', 'green');
+                        setTimeout(() => c.classList.remove('mem-highlight', 'green'), 400);
+                    }, i * 300);
+                }
+            }
+        }
+
+        function resetMemory() {
+            state.gameOver = false;
+            state.winner = null;
+            state.level = 1;
+            state.sequence = [];
+            state.playerIndex = 0;
+            state.isShowing = false;
+            state.memoryLocked = false;
+            state.memCorrect = 0;
+            state.memWrong = 0;
+            state.board = Array(9).fill(null);
+            memLevel.style.display = 'block';
+            levelNum.textContent = '1';
+            updateBoard();
+            updateStatus();
+            setTimeout(() => startMemoryRound(), 300);
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  SWITCH MODE / OPPONENT
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function setMode(mode) {
+            if (state.botTimer) {
+                clearTimeout(state.botTimer);
+                state.botTimer = null;
+            }
+            state.board = Array(9).fill(null);
+            state.gameOver = false;
+            state.winner = null;
+            state.winLine = null;
+            state.currentPlayer = 'X';
+            state.mode = mode;
+            state.orderX = [];
+            state.orderO = [];
+
+            state.isShowing = false;
+            state.memoryLocked = false;
+            state.sequence = [];
+            state.playerIndex = 0;
+            state.level = 1;
+            state.memCorrect = 0;
+            state.memWrong = 0;
+
+            if (mode === 'memory') {
+                opponentToggle.classList.add('hidden');
+                state.opponent = 'human';
+                opponentBtns.forEach(b => b.classList.remove('active'));
+                document.querySelector('[data-opponent="human"]').classList.add('active');
+            } else {
+                opponentToggle.classList.remove('hidden');
+            }
+
+            memLevel.style.display = mode === 'memory' ? 'block' : 'none';
+            if (mode === 'memory') {
+                levelNum.textContent = '1';
+                memLevel.innerHTML = 'Уровень <strong id="levelNum">1</strong> · запомни последовательность';
+                const newLevelNum = document.getElementById('levelNum');
+                if (newLevelNum) newLevelNum.textContent = '1';
+                state.board = Array(9).fill(null);
+                updateBoard();
+                updateStatus();
+                setTimeout(() => startMemoryRound(), 400);
+            } else {
+                state.board = Array(9).fill(null);
+                updateBoard();
+                updateStatus();
+            }
+
+            tabs.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            boardEl.classList.toggle('memory-active', mode === 'memory');
+        }
+
+        function setOpponent(opponent) {
+            if (state.mode === 'memory') return;
+            if (state.opponent === opponent) return;
+            state.opponent = opponent;
+            opponentBtns.forEach(b => {
+                b.classList.toggle('active', b.dataset.opponent === opponent);
+            });
+            restartGame();
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  RESTART / RESET
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function restartGame() {
+            if (state.botTimer) {
+                clearTimeout(state.botTimer);
+                state.botTimer = null;
+            }
+            state.board = Array(9).fill(null);
+            state.gameOver = false;
+            state.winner = null;
+            state.winLine = null;
+            state.currentPlayer = 'X';
+            state.orderX = [];
+            state.orderO = [];
+
+            if (state.mode === 'memory') {
+                state.level = 1;
+                state.sequence = [];
+                state.playerIndex = 0;
+                state.isShowing = false;
+                state.memoryLocked = false;
+                state.memCorrect = 0;
+                state.memWrong = 0;
+                memLevel.style.display = 'block';
+                levelNum.textContent = '1';
+                memLevel.innerHTML = 'Уровень <strong id="levelNum">1</strong> · запомни последовательность';
+                const newLevelNum = document.getElementById('levelNum');
+                if (newLevelNum) newLevelNum.textContent = '1';
+                updateBoard();
+                updateStatus();
+                setTimeout(() => startMemoryRound(), 400);
+                return;
+            }
+
+            updateBoard();
+            updateStatus();
+            if (state.opponent === 'bot' && !state.gameOver && state.currentPlayer === 'O') {
+                scheduleBotMove();
+            }
+        }
+
+        function resetScore() {
+            state.scoreX = 0;
+            state.scoreO = 0;
+            updateScore();
+            restartGame();
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  INIT
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function init() {
+            renderBoard();
+
+            tabs.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.mode;
+                    if (mode === state.mode) return;
+                    setMode(mode);
+                });
+            });
+
+            opponentBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const opp = btn.dataset.opponent;
+                    setOpponent(opp);
+                });
+            });
+
+            btnRestart.addEventListener('click', restartGame);
+            btnResetScore.addEventListener('click', resetScore);
+
+            setMode('classic');
+            state.opponent = 'human';
+            document.querySelector('[data-opponent="human"]').classList.add('active');
+            opponentToggle.classList.remove('hidden');
+        }
+
+        // fix dynamic levelNum
+        const origUpdateBoard = updateBoard;
+        updateBoard = function() {
+            origUpdateBoard();
+            if (state.mode === 'memory') {
+                const el = document.getElementById('levelNum');
+                if (el) el.textContent = state.level;
+            }
+        };
+
+        const origSetMode = setMode;
+        setMode = function(mode) {
+            origSetMode(mode);
+            if (mode === 'memory') {
+                const el = document.getElementById('levelNum');
+                if (el) el.textContent = state.level;
+                memLevel.style.display = 'block';
+                memLevel.innerHTML = 'Уровень <strong id="levelNum">1</strong> · запомни последовательность';
+                const newEl = document.getElementById('levelNum');
+                if (newEl) newEl.textContent = '1';
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

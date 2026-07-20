@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Рисуем на песке</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body,
+        html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            touch-action: none;
+        }
+        .instructions {
+            position: absolute;
+            bottom: clamp(20px, 6vh, 50px);
+            left: 50%;
+            transform: translateX(-50%);
+            color: #5d4037;
+            background: rgba(255, 255, 255, 0.88);
+            padding: 10px clamp(16px, 4vw, 32px);
+            border-radius: 30px;
+            font-size: clamp(13px, 3.2vw, 18px);
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            direction: rtl;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            transition: opacity 0.6s ease;
+        }
+        @media (max-width: 480px) {
+            .instructions {
+                padding: 8px 14px;
+                bottom: 16px;
+                border-radius: 20px;
+            }
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+            .instructions {
+                bottom: 12px;
+                padding: 6px 14px;
+                font-size: 12px;
+            }
+        }
+
+        /* Кнопка настроек (шестерёнка) */
+        .settings-toggle {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 30;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(30, 30, 30, 0.7);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            font-size: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s ease, background 0.2s ease;
+            touch-action: manipulation;
+        }
+        .settings-toggle:active {
+            transform: scale(0.92);
+            background: rgba(50, 50, 50, 0.8);
+        }
+        @media (max-width: 480px) {
+            .settings-toggle {
+                top: 12px;
+                right: 12px;
+                width: 44px;
+                height: 44px;
+                font-size: 22px;
+            }
+        }
+
+        /* Затемнение и панель */
+        .settings-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 40;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.25s ease;
+        }
+        .settings-overlay.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .settings-panel {
+            background: rgba(40, 35, 30, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 32px;
+            padding: 28px 30px 34px;
+            max-width: 360px;
+            width: 100%;
+            color: #f0e8d8;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 215, 160, 0.15);
+        }
+        .settings-panel h2 {
+            text-align: center;
+            font-weight: 500;
+            font-size: 22px;
+            margin-bottom: 22px;
+            letter-spacing: 0.5px;
+            color: #f5e6d0;
+        }
+        .settings-group {
+            margin-bottom: 24px;
+        }
+        .settings-group label {
+            display: block;
+            font-size: 15px;
+            font-weight: 400;
+            color: #d4c5b0;
+            margin-bottom: 6px;
+        }
+        .settings-group .value-display {
+            float: right;
+            color: #f0dcc0;
+            font-weight: 500;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(90deg, #b8a48a, #e6d4bc);
+            border-radius: 4px;
+            outline: none;
+            margin: 10px 0 4px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #f5e6d0;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            border: 2px solid #b8a087;
+            transition: 0.1s;
+        }
+        input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.1);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #f5e6d0;
+            cursor: pointer;
+            border: 2px solid #b8a087;
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .settings-actions button {
+            flex: 1;
+            min-width: 80px;
+            padding: 12px 10px;
+            border: none;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 600;
+            background: #b8a087;
+            color: #2d241e;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            touch-action: manipulation;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .settings-actions button:active {
+            transform: scale(0.96);
+        }
+        .settings-actions .btn-wave {
+            background: #6a8fa0;
+            color: #f0f4f0;
+        }
+        .settings-actions .btn-wave:active {
+            background: #4f7485;
+        }
+        .settings-actions .btn-close {
+            background: #5a4e42;
+            color: #e8ddd0;
+        }
+        .settings-actions .btn-close:active {
+            background: #3f362d;
+        }
+        @media (max-width: 400px) {
+            .settings-panel {
+                padding: 20px 18px 26px;
+            }
+            .settings-actions button {
+                font-size: 14px;
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div class="instructions" id="instructions">לחץ וגרור כדי לכתוב בחול</div>
+
+    <!-- Кнопка шестерёнки -->
+    <button class="settings-toggle" id="settingsToggle" aria-label="Настройки">⚙️</button>
+
+    <!-- Панель настроек -->
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="settings-panel">
+            <h2>Настройки</h2>
+            <div class="settings-group">
+                <label>
+                    Размер кисти
+                    <span class="value-display" id="brushSizeValue">18</span>
+                </label>
+                <input type="range" id="brushSizeRange" min="5" max="40" value="18" step="1">
+            </div>
+            <div class="settings-actions">
+                <button class="btn-wave" id="waveTriggerBtn">🌊 Смыть</button>
+                <button class="btn-close" id="settingsCloseBtn">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+    <script>
+        class Real3DSandBeach {
+            constructor() {
+                this.container = document.getElementById("canvas-container");
+
+                this.drawingCanvas = document.createElement("canvas");
+                this.drawingCanvas.width = 1024;
+                this.drawingCanvas.height = 1024;
+                this.ctx = this.drawingCanvas.getContext("2d");
+
+                this.ctx.fillStyle = "black";
+                this.ctx.fillRect(0, 0, 1024, 1024);
+
+                this.isDrawing = false;
+                this.waveProgress = 0;
+                this.time = 0;
+
+                this.lastX = null;
+                this.lastY = null;
+
+                // Начальный размер кисти (определяем по устройству)
+                const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+                const screenArea = window.innerWidth * window.innerHeight;
+                let initialRadius = 18;
+                if (isTouch) {
+                    initialRadius = screenArea < 400000 ? 24 : 20;
+                } else {
+                    initialRadius = 14;
+                }
+                this.brushRadius = Math.min(Math.max(initialRadius, 8), 36);
+
+                // Элементы интерфейса
+                this.settingsToggle = document.getElementById("settingsToggle");
+                this.settingsOverlay = document.getElementById("settingsOverlay");
+                this.brushRange = document.getElementById("brushSizeRange");
+                this.brushValue = document.getElementById("brushSizeValue");
+                this.waveBtn = document.getElementById("waveTriggerBtn");
+                this.closeBtn = document.getElementById("settingsCloseBtn");
+
+                // Установить текущее значение в ползунок
+                this.brushRange.value = this.brushRadius;
+                this.brushValue.textContent = this.brushRadius;
+
+                this.initThree();
+                this.initEventListeners();
+                this.initUI();
+                this.startWaveLoop();
+                this.animate();
+
+                this.instructionsHidden = false;
+            }
+
+            initThree() {
+                this.scene = new THREE.Scene();
+
+                this.camera = new THREE.PerspectiveCamera(
+                    45,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    10
+                );
+                this.camera.position.set(0, 0, 1.2);
+                this.camera.lookAt(0, 0, 0);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.container.appendChild(this.renderer.domElement);
+
+                this.canvasTexture = new THREE.CanvasTexture(this.drawingCanvas);
+                this.canvasTexture.needsUpdate = true;
+
+                const vertexShader = `
+              varying vec2 vUv;
+              varying vec3 vNormal;
+              varying vec3 vViewPosition;
+              uniform sampler2D uDrawMap;
+
+              void main() {
+                vUv = uv;
+                vec4 drawData = texture2D(uDrawMap, vUv);
+
+                float depth = drawData.r * 0.05;
+                vec3 displacedPosition = position - vec3(0.0, 0.0, depth);
+
+                vec4 mvPosition = modelViewMatrix * vec4(displacedPosition, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+                vNormal = normalMatrix * normal;
+                vViewPosition = -mvPosition.xyz;
+              }
+            `;
+
+                const fragmentShader = `
+              uniform sampler2D uDrawMap;
+              uniform float uWaveProgress;
+              uniform float uTime;
+              varying vec2 vUv;
+              varying vec3 vNormal;
+              varying vec3 vViewPosition;
+
+              float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+              }
+
+              void main() {
+                vec4 drawData = texture2D(uDrawMap, vUv);
+                float mask = drawData.r;
+                float wetness = drawData.g;
+
+                vec3 drySand = vec3(0.88, 0.78, 0.63);
+                vec3 wetSand = vec3(0.52, 0.42, 0.32);
+
+                vec3 baseSand = mix(drySand, wetSand, max(wetness, mask * 0.75));
+
+                float grain = hash(vUv * 1000.0) * 0.05;
+                baseSand += grain;
+
+                float offset = 1.0 / 1024.0;
+                float dL = texture2D(uDrawMap, vUv + vec2(-offset, 0.0)).r - texture2D(uDrawMap, vUv + vec2(offset, 0.0)).r;
+                float dT = texture2D(uDrawMap, vUv + vec2(0.0, -offset)).r - texture2D(uDrawMap, vUv + vec2(0.0, offset)).r;
+
+                vec3 normal = normalize(vNormal - vec3(dL * 3.5, dT * 3.5, 0.0));
+
+                vec3 sunDir = normalize(vec3(0.4, -0.3, 0.8));
+                float diffuse = max(dot(normal, sunDir), 0.0);
+
+                vec3 viewDir = normalize(vViewPosition);
+                vec3 halfDir = normalize(sunDir + viewDir);
+                float spec = pow(max(dot(normal, halfDir), 0.0), 50.0) * wetness * 0.5;
+
+                float glint = pow(hash(vUv * 1500.0 + sin(uTime * 0.05)), 42.0) * (1.0 - wetness) * 0.25;
+
+                float cavityShadow = mix(1.0, 0.75, mask);
+                vec3 finalColor = baseSand * (diffuse * 0.85 + 0.25) * cavityShadow + vec3(spec) + vec3(glint);
+
+                float waveNoise = sin(vUv.x * 10.0 + uTime) * 0.03 + sin(vUv.x * 4.0) * 0.015;
+                float waveFront = (uWaveProgress * 1.4 - 0.2) - vUv.y + waveNoise;
+
+                if (waveFront > 0.0 && waveFront < 0.22) {
+                  vec3 waterColor = vec3(0.4, 0.75, 0.85);
+                  float foamEdge = smoothstep(0.0, 0.02, waveFront) * (1.0 - smoothstep(0.02, 0.20, waveFront));
+                  float waterSheet = smoothstep(0.0, 0.20, waveFront) * 0.35;
+
+                  finalColor = mix(finalColor, waterColor, waterSheet);
+                  finalColor += vec3(foamEdge * 0.85);
+                }
+
+                gl_FragColor = vec4(finalColor, 1.0);
+              }
+            `;
+
+                const geometry = new THREE.PlaneGeometry(2, 2, 512, 512);
+                this.material = new THREE.ShaderMaterial({
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader,
+                    uniforms: {
+                        uDrawMap: { value: this.canvasTexture },
+                        uWaveProgress: { value: 0 },
+                        uTime: { value: 0 }
+                    }
+                });
+
+                const mesh = new THREE.Mesh(geometry, this.material);
+                this.scene.add(mesh);
+            }
+
+            startWaveLoop() {
+                // Убиваем предыдущий tween, если есть
+                if (this.waveTween) {
+                    this.waveTween.kill();
+                    this.waveTween = null;
+                }
+                // Сбрасываем прогресс, чтобы волна начиналась с нуля
+                this.waveProgress = 0;
+                this.material.uniforms.uWaveProgress.value = 0;
+
+                this.waveTween = gsap.to(this, {
+                    waveProgress: 1.0,
+                    duration: 5.0,
+                    ease: "power2.inOut",
+                    repeat: -1,
+                    repeatDelay: 4.0,
+                    onUpdate: () => {
+                        this.material.uniforms.uWaveProgress.value = this.waveProgress;
+                        // Обновление вспомогательного эффекта на canvas (зелёная полоса) – оставляем
+                        const waveY = (this.waveProgress * 1.4 - 0.2) * 1024;
+                        if (waveY > 0) {
+                            this.ctx.fillStyle = "rgba(0, 240, 0, 0.2)";
+                            this.ctx.fillRect(0, 1024 - waveY - 40, 1024, 100);
+                        }
+                    },
+                    onRepeat: () => {
+                        this.waveProgress = 0;
+                    }
+                });
+            }
+
+            // Принудительный запуск волны (кнопка "Смыть")
+            triggerWave() {
+                if (this.waveTween) {
+                    this.waveTween.kill();
+                    this.waveTween = null;
+                }
+                this.waveProgress = 0;
+                this.material.uniforms.uWaveProgress.value = 0;
+
+                // Быстрая волна
+                this.waveTween = gsap.to(this, {
+                    waveProgress: 1.0,
+                    duration: 2.0,
+                    ease: "power2.inOut",
+                    onUpdate: () => {
+                        this.material.uniforms.uWaveProgress.value = this.waveProgress;
+                        const waveY = (this.waveProgress * 1.4 - 0.2) * 1024;
+                        if (waveY > 0) {
+                            this.ctx.fillStyle = "rgba(0, 240, 0, 0.2)";
+                            this.ctx.fillRect(0, 1024 - waveY - 40, 1024, 100);
+                        }
+                    },
+                    onComplete: () => {
+                        // После завершения запускаем обычный цикл
+                        this.startWaveLoop();
+                    }
+                });
+            }
+
+            drawBrushPoint(x, y) {
+                const r = this.brushRadius;
+                const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, r);
+                gradient.addColorStop(0, "rgba(255, 0, 0, 1.0)");
+                gradient.addColorStop(0.5, "rgba(255, 0, 0, 0.6)");
+                gradient.addColorStop(1, "rgba(255, 0, 0, 0.0)");
+
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, r, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            initEventListeners() {
+                const raycaster = new THREE.Raycaster();
+                const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+
+                const handlePointer = (clientX, clientY, isNewStroke) => {
+                    if (clientX === undefined || clientY === undefined) return;
+
+                    const mouse = new THREE.Vector2(
+                        (clientX / window.innerWidth) * 2 - 1,
+                        -(clientY / window.innerHeight) * 2 + 1
+                    );
+
+                    raycaster.setFromCamera(mouse, this.camera);
+                    const intersectPoint = new THREE.Vector3();
+                    raycaster.ray.intersectPlane(plane, intersectPoint);
+
+                    const x = (intersectPoint.x / 2 + 0.5) * 1024;
+                    const y = (1.0 - (intersectPoint.y / 2 + 0.5)) * 1024;
+
+                    if (this.isDrawing) {
+                        if (!this.instructionsHidden) {
+                            const inst = document.getElementById("instructions");
+                            if (inst) { inst.style.opacity = "0";
+                                this.instructionsHidden = true; }
+                        }
+
+                        if (isNewStroke || this.lastX === null || this.lastY === null) {
+                            this.drawBrushPoint(x, y);
+                        } else {
+                            const dx = x - this.lastX;
+                            const dy = y - this.lastY;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+
+                            const stepSize = Math.max(2, this.brushRadius * 0.3);
+                            const steps = Math.ceil(distance / stepSize);
+                            for (let i = 0; i <= steps; i++) {
+                                const t = i / steps;
+                                const ix = this.lastX + dx * t;
+                                const iy = this.lastY + dy * t;
+                                this.drawBrushPoint(ix, iy);
+                            }
+                        }
+
+                        this.lastX = x;
+                        this.lastY = y;
+                        this.canvasTexture.needsUpdate = true;
+                    }
+                };
+
+                const onDown = (e) => {
+                    this.isDrawing = true;
+                    const x = e.clientX ?? e.touches?.[0]?.clientX;
+                    const y = e.clientY ?? e.touches?.[0]?.clientY;
+                    handlePointer(x, y, true);
+                };
+
+                const onMove = (e) => {
+                    const x = e.clientX ?? e.touches?.[0]?.clientX;
+                    const y = e.clientY ?? e.touches?.[0]?.clientY;
+                    if (x !== undefined && y !== undefined) {
+                        handlePointer(x, y, false);
+                        if (e.cancelable) e.preventDefault();
+                    }
+                };
+
+                const onUp = () => {
+                    this.isDrawing = false;
+                    this.lastX = null;
+                    this.lastY = null;
+                };
+
+                window.addEventListener("mousedown", onDown);
+                window.addEventListener("mousemove", onMove);
+                window.addEventListener("mouseup", onUp);
+                window.addEventListener("mouseleave", onUp);
+
+                window.addEventListener("touchstart", onDown, { passive: true });
+                window.addEventListener("touchmove", onMove, { passive: false });
+                window.addEventListener("touchend", onUp, { passive: true });
+                window.addEventListener("touchcancel", onUp, { passive: true });
+
+                let resizeTimeout;
+                window.addEventListener("resize", () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        this.camera.aspect = window.innerWidth / window.innerHeight;
+                        this.camera.updateProjectionMatrix();
+                        this.renderer.setSize(window.innerWidth, window.innerHeight);
+                    }, 150);
+                });
+
+                window.addEventListener("contextmenu", (e) => e.preventDefault());
+            }
+
+            initUI() {
+                // Открыть / закрыть настройки
+                const toggle = () => {
+                    const overlay = this.settingsOverlay;
+                    const isActive = overlay.classList.contains("active");
+                    if (isActive) {
+                        overlay.classList.remove("active");
+                    } else {
+                        overlay.classList.add("active");
+                    }
+                };
+
+                this.settingsToggle.addEventListener("click", toggle);
+                this.closeBtn.addEventListener("click", toggle);
+                // Закрыть по клику на фон
+                this.settingsOverlay.addEventListener("click", (e) => {
+                    if (e.target === e.currentTarget) {
+                        toggle();
+                    }
+                });
+
+                // Ползунок размера
+                this.brushRange.addEventListener("input", (e) => {
+                    const val = parseInt(e.target.value, 10);
+                    this.brushRadius = val;
+                    this.brushValue.textContent = val;
+                });
+
+                // Кнопка "Смыть"
+                this.waveBtn.addEventListener("click", () => {
+                    this.triggerWave();
+                    // Закрыть панель (опционально)
+                    this.settingsOverlay.classList.remove("active");
+                });
+
+                // Обновить отображение значения при открытии (на случай если изменилось извне)
+                // Не требуется, т.к. синхронизация через input
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                this.time += 0.03;
+                this.material.uniforms.uTime.value = this.time;
+
+                // Медленное затухание для эффекта "оседания" песка
+                this.ctx.fillStyle = "rgba(0, 0, 0, 0.002)";
+                this.ctx.fillRect(0, 0, 1024, 1024);
+                this.canvasTexture.needsUpdate = true;
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            new Real3DSandBeach();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>💣 Бомбомэн — улучшенная версия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #0f0f1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            touch-action: none;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        #game-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 520px;
+            height: 100vh;
+            height: 100dvh;
+            max-height: 920px;
+            justify-content: center;
+            padding: 6px;
+            gap: 4px;
+        }
+
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 8px 14px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            background: rgba(15, 15, 30, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px 16px 0 0;
+            z-index: 10;
+            min-height: 48px;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: none;
+            flex-wrap: wrap;
+        }
+
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        .hud-item .icon { font-size: 18px; }
+        .hud-item .val { font-weight: 900; min-width: 18px; text-align: center; }
+        .hud-score .val { color: #ffd700; }
+        .hud-enemies .val { color: #ff6b6b; }
+        .hud-bombs .val { color: #74b9ff; }
+        .hud-radius .val { color: #ff9f43; }
+        .hud-speed .val { color: #2ed573; }
+
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #1a1a2e;
+            border-radius: 0 0 16px 16px;
+            overflow: hidden;
+            touch-action: none;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            background: #1a1a2e;
+        }
+
+        #swipe-indicator {
+            position: absolute;
+            pointer-events: none;
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            opacity: 0;
+            z-index: 20;
+            transition: none;
+        }
+        #swipe-indicator.active {
+            animation: swipePop 0.35s ease-out forwards;
+        }
+        @keyframes swipePop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+        }
+        #swipe-indicator.tap-active {
+            border-color: rgba(100, 255, 150, 0.9) !important;
+            animation: tapPop 0.3s ease-out forwards;
+        }
+        @keyframes tapPop {
+            0% { transform: translate(-50%, -50%) scale(0.6); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0; }
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 30;
+            border-radius: 0 0 16px 16px;
+            flex-direction: column;
+            gap: 14px;
+            animation: fadeIn 0.5s ease;
+        }
+        #overlay.show { display: flex; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        #overlay .title {
+            font-size: 46px;
+            font-weight: 900;
+            text-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+            letter-spacing: 2px;
+        }
+        #overlay .title.win { color: #ffd700; }
+        #overlay .title.lose { color: #ff4757; }
+        #overlay .sub {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 17px;
+            margin-top: -6px;
+            text-align: center;
+            line-height: 1.4;
+        }
+        #overlay .final-score {
+            color: #fff;
+            font-size: 20px;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 10px 28px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #restartBtn {
+            background: linear-gradient(135deg, #ff6b6b, #e74c3c);
+            color: #fff;
+            border: none;
+            padding: 16px 52px;
+            font-size: 19px;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.2s, filter 0.2s;
+            box-shadow: 0 8px 28px rgba(231, 76, 60, 0.5);
+            touch-action: manipulation;
+            letter-spacing: 0.8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        #restartBtn:active {
+            transform: scale(0.93);
+            filter: brightness(1.1);
+            box-shadow: 0 4px 14px rgba(231, 76, 60, 0.4);
+        }
+
+        #controls-hint {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 12px;
+            padding: 4px 0 0;
+            letter-spacing: 0.5px;
+            text-align: center;
+            width: 100%;
+        }
+
+        @media (max-width: 420px) {
+            #hud { font-size: 13px; padding: 6px 8px; gap: 4px; }
+            .hud-item { padding: 3px 7px; font-size: 12px; }
+            .hud-item .icon { font-size: 15px; }
+            #overlay .title { font-size: 34px; }
+            #restartBtn { padding: 14px 40px; font-size: 17px; }
+            #controls-hint { font-size: 11px; }
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+            #game-wrapper { max-width: 65vh; padding: 2px; }
+            #hud { min-height: 34px; padding: 4px 8px; font-size: 12px; }
+            .hud-item { padding: 2px 6px; font-size: 11px; }
+            #controls-hint { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-wrapper">
+        <div id="hud">
+            <div class="hud-item hud-score"><span class="icon">🏆</span> <span class="val" id="scoreDisplay">0</span></div>
+            <div class="hud-item hud-enemies"><span class="icon">👾</span> <span class="val" id="enemiesDisplay">0</span></div>
+            <div class="hud-item hud-bombs"><span class="icon">💣</span> <span class="val" id="bombsDisplay">1</span></div>
+            <div class="hud-item hud-radius"><span class="icon">💥</span> <span class="val" id="radiusDisplay">2</span></div>
+            <div class="hud-item hud-speed"><span class="icon">⚡</span> <span class="val" id="speedDisplay">1</span></div>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="swipe-indicator"></div>
+            <div id="overlay">
+                <div class="title" id="overlayTitle">💥</div>
+                <div class="sub" id="overlaySub"></div>
+                <div class="final-score" id="finalScore">Счёт: 0</div>
+                <button id="restartBtn">🔄 Играть снова</button>
+            </div>
+        </div>
+        <div id="controls-hint">👆 Свайп — движение · Тап — бомба · ⌨️ Стрелки+Пробел</div>
+    </div>
+
+    <script>
+        (function() {
+            // ======================== КОНСТАНТЫ ========================
+            const COLS = 13;
+            const ROWS = 13;
+            const CELL = { EMPTY: 0, WALL: 1, BLOCK: 2 };
+            const DIRS = {
+                UP:    { dr: -1, dc: 0 },
+                DOWN:  { dr: 1,  dc: 0 },
+                LEFT:  { dr: 0,  dc: -1 },
+                RIGHT: { dr: 0,  dc: 1 },
+            };
+            const POWERUP_TYPES = {
+                BOMB:   { icon: '💣', color: '#74b9ff', label: 'Бомба +1' },
+                RADIUS: { icon: '💥', color: '#ff9f43', label: 'Радиус +1' },
+                SPEED:  { icon: '⚡', color: '#2ed573', label: 'Скорость +1' },
+            };
+
+            // ======================== DOM-ЭЛЕМЕНТЫ ========================
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.getElementById('canvas-container');
+            const scoreSpan = document.getElementById('scoreDisplay');
+            const enemiesSpan = document.getElementById('enemiesDisplay');
+            const bombsSpan = document.getElementById('bombsDisplay');
+            const radiusSpan = document.getElementById('radiusDisplay');
+            const speedSpan = document.getElementById('speedDisplay');
+            const overlay = document.getElementById('overlay');
+            const overlayTitle = document.getElementById('overlayTitle');
+            const overlaySub = document.getElementById('overlaySub');
+            const finalScoreSpan = document.getElementById('finalScore');
+            const restartBtn = document.getElementById('restartBtn');
+            const swipeIndicator = document.getElementById('swipe-indicator');
+
+            // ======================== ПЕРЕМЕННЫЕ РАЗМЕРОВ ========================
+            let cellSize = 0;
+            let canvasSize = 0;
+            let screenShake = 0; // Для эффекта тряски
+
+            function resizeCanvas() {
+                const rect = container.getBoundingClientRect();
+                const size = Math.floor(rect.width);
+                canvasSize = size;
+                canvas.width = size * devicePixelRatio;
+                canvas.height = size * devicePixelRatio;
+                canvas.style.width = size + 'px';
+                canvas.style.height = size + 'px';
+                ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+                cellSize = size / COLS;
+            }
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                if (game) game.render();
+            });
+            window.addEventListener('orientationchange', () => {
+                setTimeout(() => { resizeCanvas(); if (game) game.render(); }, 200);
+            });
+
+            // ======================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ========================
+            function isWalkable(r, c, grid, bombs) {
+                if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return false;
+                if (grid[r][c] === CELL.WALL) return false;
+                if (grid[r][c] === CELL.BLOCK) return false;
+                for (const b of bombs) {
+                    if (b.row === r && b.col === c && !b.exploded) return false;
+                }
+                return true;
+            }
+
+            function isWalkableForEnemy(r, c, grid, bombs, enemies, self) {
+                if (!isWalkable(r, c, grid, bombs)) return false;
+                for (const e of enemies) {
+                    if (e === self || !e.alive) continue;
+                    if (e.row === r && e.col === c) return false;
+                }
+                return true;
+            }
+
+            function posToPixel(row, col) {
+                return { x: col * cellSize + cellSize / 2, y: row * cellSize + cellSize / 2 };
+            }
+
+            function shuffle(arr) {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            // ======================== КЛАСС ИГРЫ ========================
+            class Game {
+                constructor() {
+                    this.grid = [];
+                    this.player = { row: 1, col: 1, alive: true, speed: 1.0 }; // speed — множитель кулдауна
+                    this.enemies = [];
+                    this.bombs = [];
+                    this.explosions = [];
+                    this.powerups = []; // { row, col, type: 'BOMB'|'RADIUS'|'SPEED', timer: 8 }
+                    this.score = 0;
+                    this.gameOver = false;
+                    this.won = false;
+                    this.bombCooldown = 0;
+                    this.maxBombs = 1;
+                    this.activeBombs = 0;
+                    this.bombRadius = 2;
+                    this.moveCooldown = 0;
+                    this.baseMoveCooldown = 0.12;
+                    this.enemyMoveInterval = 0.55;
+                    this.tick = 0;
+                    this.screenShakeTimer = 0;
+                    this.screenShakeIntensity = 0;
+
+                    this._initGrid();
+                    this._placeBlocks();
+                    this._placePlayer();
+                    this._placeEnemies();
+                    this._updateHUD();
+                }
+
+                _initGrid() {
+                    this.grid = Array.from({ length: ROWS }, (_, r) =>
+                        Array.from({ length: COLS }, (_, c) => {
+                            if (r === 0 || r === ROWS - 1 || c === 0 || c === COLS - 1) return CELL.WALL;
+                            if (r % 2 === 0 && c % 2 === 0) return CELL.WALL;
+                            return CELL.EMPTY;
+                        })
+                    );
+                }
+
+                _placeBlocks() {
+                    const protectedZones = [
+                        [1,1], [1,2], [2,1],
+                        [1,COLS-2], [1,COLS-3], [2,COLS-2],
+                        [ROWS-2,1], [ROWS-3,1], [ROWS-2,2],
+                        [ROWS-2,COLS-2], [ROWS-2,COLS-3], [ROWS-3,COLS-2],
+                    ];
+                    const protectedSet = new Set(protectedZones.map(([r,c]) => `${r},${c}`));
+
+                    const candidates = [];
+                    for (let r = 1; r < ROWS - 1; r++) {
+                        for (let c = 1; c < COLS - 1; c++) {
+                            if (this.grid[r][c] === CELL.EMPTY && !protectedSet.has(`${r},${c}`)) {
+                                candidates.push({ r, c });
+                            }
+                        }
+                    }
+                    shuffle(candidates);
+                    const count = Math.floor(candidates.length * 0.45);
+                    for (let i = 0; i < count; i++) {
+                        this.grid[candidates[i].r][candidates[i].c] = CELL.BLOCK;
+                    }
+                }
+
+                _placePlayer() {
+                    this.player.row = 1;
+                    this.player.col = 1;
+                    this.player.alive = true;
+                    this.player.speed = 1.0;
+                }
+
+                _placeEnemies() {
+                    const starts = [
+                        { row: 1, col: COLS - 2 },
+                        { row: ROWS - 2, col: 1 },
+                        { row: ROWS - 2, col: COLS - 2 },
+                        { row: 1, col: Math.floor(COLS / 2) },
+                    ];
+                    this.enemies = starts.map(s => ({
+                        row: s.row,
+                        col: s.col,
+                        dir: Object.values(DIRS)[Math.floor(Math.random() * 4)],
+                        alive: true,
+                        moveTimer: Math.random() * 0.4,
+                    }));
+                }
+
+                _updateHUD() {
+                    scoreSpan.textContent = this.score;
+                    const alive = this.enemies.filter(e => e.alive).length;
+                    enemiesSpan.textContent = alive;
+                    bombsSpan.textContent = Math.max(0, this.maxBombs - this.activeBombs);
+                    radiusSpan.textContent = this.bombRadius;
+                    speedSpan.textContent = this.player.speed.toFixed(1);
+                }
+
+                movePlayer(dr, dc) {
+                    if (this.gameOver || !this.player.alive) return false;
+                    if (this.moveCooldown > 0) return false;
+                    const nr = this.player.row + dr;
+                    const nc = this.player.col + dc;
+                    if (!isWalkable(nr, nc, this.grid, this.bombs)) return false;
+                    // Проверка на врага в клетке (не даём зайти на врага — игрок умирает при контакте)
+                    for (const e of this.enemies) {
+                        if (e.alive && e.row === nr && e.col === nc) {
+                            this._killPlayer('Враг поймал тебя!');
+                            return false;
+                        }
+                    }
+                    this.player.row = nr;
+                    this.player.col = nc;
+                    this.moveCooldown = this.baseMoveCooldown / this.player.speed;
+                    // Подбор бонусов
+                    this._collectPowerup(nr, nc);
+                    return true;
+                }
+
+                placeBomb() {
+                    if (this.gameOver || !this.player.alive) return;
+                    if (this.bombCooldown > 0) return;
+                    if (this.activeBombs >= this.maxBombs) return;
+                    const pr = this.player.row;
+                    const pc = this.player.col;
+                    for (const b of this.bombs) {
+                        if (b.row === pr && b.col === pc && !b.exploded) return;
+                    }
+                    this.bombs.push({
+                        row: pr,
+                        col: pc,
+                        timer: 2.5,
+                        radius: this.bombRadius,
+                        exploded: false,
+                        owner: 'player',
+                    });
+                    this.activeBombs++;
+                    this.bombCooldown = 0.2;
+                    this._updateHUD();
+                }
+
+                _collectPowerup(r, c) {
+                    const idx = this.powerups.findIndex(p => p.row === r && p.col === c);
+                    if (idx === -1) return;
+                    const pu = this.powerups[idx];
+                    this.powerups.splice(idx, 1);
+                    switch (pu.type) {
+                        case 'BOMB':
+                            this.maxBombs = Math.min(5, this.maxBombs + 1);
+                            this.score += 15;
+                            break;
+                        case 'RADIUS':
+                            this.bombRadius = Math.min(5, this.bombRadius + 1);
+                            this.score += 15;
+                            break;
+                        case 'SPEED':
+                            this.player.speed = Math.min(3.0, this.player.speed + 0.3);
+                            this.score += 15;
+                            break;
+                    }
+                    this._updateHUD();
+                    // Визуальный эффект подбора
+                    this._addPickupEffect(r, c, pu.type);
+                }
+
+                _addPickupEffect(r, c, type) {
+                    // Добавляем короткий взрыв-эффект другого цвета
+                    this.explosions.push({
+                        row: r, col: c, timer: 0.4,
+                        color: POWERUP_TYPES[type]?.color || '#fff',
+                        isPickup: true,
+                    });
+                }
+
+                _killPlayer(reason) {
+                    if (!this.player.alive) return;
+                    this.player.alive = false;
+                    this.gameOver = true;
+                    this._showOverlay('lose', reason);
+                }
+
+                update(dt) {
+                    if (this.gameOver) return;
+                    this.tick += dt;
+                    // Тряска экрана
+                    if (this.screenShakeTimer > 0) {
+                        this.screenShakeTimer -= dt;
+                        this.screenShakeIntensity = Math.max(0, this.screenShakeIntensity * 0.85);
+                    }
+                    // Кулдауны
+                    if (this.moveCooldown > 0) this.moveCooldown -= dt;
+                    if (this.bombCooldown > 0) this.bombCooldown -= dt;
+                    // Обновление бонусов (таймер исчезновения)
+                    for (const pu of this.powerups) pu.timer -= dt;
+                    this.powerups = this.powerups.filter(p => p.timer > 0);
+                    // Бомбы
+                    this._updateBombs(dt);
+                    // Враги
+                    this._updateEnemies(dt);
+                    // Взрывы
+                    this._updateExplosions(dt);
+                    // Проверка игрока
+                    this._checkPlayerInExplosion();
+                    // Проверка контакта с врагом
+                    this._checkEnemyContact();
+                    // Проверка победы
+                    if (this.enemies.every(e => !e.alive) && !this.gameOver) {
+                        this.gameOver = true;
+                        this.won = true;
+                        this._showOverlay('win');
+                    }
+                    this._updateHUD();
+                }
+
+                _updateBombs(dt) {
+                    for (const bomb of this.bombs) {
+                        if (bomb.exploded) continue;
+                        bomb.timer -= dt;
+                        if (bomb.timer <= 0) this._explodeBomb(bomb);
+                    }
+                    this.bombs = this.bombs.filter(b => !b.exploded);
+                    this.activeBombs = this.bombs.length;
+                }
+
+                _explodeBomb(bomb) {
+                    if (bomb.exploded) return;
+                    bomb.exploded = true;
+                    this.activeBombs = Math.max(0, this.activeBombs - 1);
+                    const { row, col, radius } = bomb;
+                    // Тряска
+                    this.screenShakeTimer = 0.25;
+                    this.screenShakeIntensity = 6;
+
+                    const directions = [
+                        { dr: -1, dc: 0 }, { dr: 1, dc: 0 },
+                        { dr: 0, dc: -1 }, { dr: 0, dc: 1 },
+                    ];
+                    // Центр
+                    this._addExplosion(row, col);
+                    this._hitEntitiesAt(row, col);
+
+                    for (const d of directions) {
+                        for (let i = 1; i <= radius; i++) {
+                            const nr = row + d.dr * i;
+                            const nc = col + d.dc * i;
+                            if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) break;
+                            if (this.grid[nr][nc] === CELL.WALL) break;
+                            if (this.grid[nr][nc] === CELL.BLOCK) {
+                                this.grid[nr][nc] = CELL.EMPTY;
+                                this.score += 10;
+                                this._addExplosion(nr, nc);
+                                this._hitEntitiesAt(nr, nc);
+                                // Шанс выпадения бонуса (30%)
+                                if (Math.random() < 0.3) {
+                                    const types = Object.keys(POWERUP_TYPES);
+                                    const t = types[Math.floor(Math.random() * types.length)];
+                                    // Не создаём бонус, если на клетке уже что-то есть
+                                    if (!this.powerups.some(p => p.row === nr && p.col === nc) &&
+                                        !this.bombs.some(b => b.row === nr && b.col === nc && !b.exploded)) {
+                                        this.powerups.push({ row: nr, col: nc, type: t, timer: 10 });
+                                    }
+                                }
+                                break;
+                            }
+                            this._addExplosion(nr, nc);
+                            this._hitEntitiesAt(nr, nc);
+                            // Детонация соседних бомб
+                            for (const other of this.bombs) {
+                                if (!other.exploded && other.row === nr && other.col === nc) {
+                                    other.timer = 0.05; // Взорвётся в следующем кадре
+                                }
+                            }
+                        }
+                    }
+                    this._updateHUD();
+                }
+
+                _addExplosion(row, col, color = null, isPickup = false) {
+                    if (this.explosions.some(e => e.row === row && e.col === col && e.timer > 0.3 && !e.isPickup)) return;
+                    this.explosions.push({
+                        row, col,
+                        timer: 0.55,
+                        color: color || '#ff6b35',
+                        isPickup,
+                    });
+                }
+
+                _hitEntitiesAt(r, c) {
+                    for (const enemy of this.enemies) {
+                        if (enemy.alive && enemy.row === r && enemy.col === c) {
+                            enemy.alive = false;
+                            this.score += 50;
+                        }
+                    }
+                    if (this.player.alive && this.player.row === r && this.player.col === c) {
+                        this._killPlayer('Ты подорвался на бомбе!');
+                    }
+                }
+
+                _updateExplosions(dt) {
+                    for (const exp of this.explosions) exp.timer -= dt;
+                    this.explosions = this.explosions.filter(e => e.timer > 0);
+                }
+
+                _updateEnemies(dt) {
+                    for (const enemy of this.enemies) {
+                        if (!enemy.alive) continue;
+                        enemy.moveTimer -= dt;
+                        if (enemy.moveTimer > 0) continue;
+
+                        const nr = enemy.row + enemy.dir.dr;
+                        const nc = enemy.col + enemy.dir.dc;
+                        let moved = false;
+
+                        if (isWalkableForEnemy(nr, nc, this.grid, this.bombs, this.enemies, enemy)) {
+                            // Проверяем, не игрок ли в этой клетке (враг атакует)
+                            if (this.player.alive && this.player.row === nr && this.player.col === nc) {
+                                this._killPlayer('Враг схватил тебя!');
+                                enemy.row = nr;
+                                enemy.col = nc;
+                                moved = true;
+                            } else {
+                                enemy.row = nr;
+                                enemy.col = nc;
+                                moved = true;
+                            }
+                        }
+
+                        if (!moved || Math.random() < 0.2) {
+                            const shuffled = shuffle([...Object.values(DIRS)]);
+                            for (const d of shuffled) {
+                                const tr = enemy.row + d.dr;
+                                const tc = enemy.col + d.dc;
+                                if (isWalkableForEnemy(tr, tc, this.grid, this.bombs, this.enemies, enemy)) {
+                                    if (this.player.alive && this.player.row === tr && this.player.col === tc) {
+                                        this._killPlayer('Враг схватил тебя!');
+                                    }
+                                    enemy.dir = d;
+                                    break;
+                                }
+                            }
+                        }
+                        enemy.moveTimer = this.enemyMoveInterval + (Math.random() - 0.5) * 0.2;
+                    }
+                }
+
+                _checkPlayerInExplosion() {
+                    if (!this.player.alive) return;
+                    for (const exp of this.explosions) {
+                        if (!exp.isPickup && this.player.row === exp.row && this.player.col === exp.col) {
+                            this._killPlayer('Взрыв достал тебя!');
+                            return;
+                        }
+                    }
+                }
+
+                _checkEnemyContact() {
+                    if (!this.player.alive) return;
+                    for (const enemy of this.enemies) {
+                        if (enemy.alive && enemy.row === this.player.row && enemy.col === this.player.col) {
+                            this._killPlayer('Враг поймал тебя!');
+                            return;
+                        }
+                    }
+                }
+
+                _showOverlay(type, reason = '') {
+                    overlay.classList.add('show');
+                    if (type === 'win') {
+                        overlayTitle.textContent = '🎉 ПОБЕДА!';
+                        overlayTitle.className = 'title win';
+                        overlaySub.textContent = 'Все враги повержены!';
+                    } else {
+                        overlayTitle.textContent = '💀 ПРОИГРЫШ';
+                        overlayTitle.className = 'title lose';
+                        overlaySub.textContent = reason || 'Тебя уничтожили...';
+                    }
+                    finalScoreSpan.textContent = '🏆 Счёт: ' + this.score;
+                }
+
+                render() {
+                    const shakeX = this.screenShakeIntensity * (Math.random() - 0.5) * 2;
+                    const shakeY = this.screenShakeIntensity * (Math.random() - 0.5) * 2;
+
+                    ctx.clearRect(0, 0, canvasSize, canvasSize);
+                    ctx.save();
+                    ctx.translate(shakeX, shakeY);
+
+                    // Фон
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.fillRect(0, 0, canvasSize, canvasSize);
+
+                    // Сетка
+                    for (let r = 0; r < ROWS; r++) {
+                        for (let c = 0; c < COLS; c++) {
+                            const x = c * cellSize, y = r * cellSize;
+                            const type = this.grid[r][c];
+                            if (type === CELL.WALL) {
+                                ctx.fillStyle = '#3d3d5c';
+                                ctx.fillRect(x, y, cellSize, cellSize);
+                                ctx.fillStyle = '#4e4e72';
+                                ctx.fillRect(x + 2, y + 2, cellSize * 0.35, cellSize * 0.35);
+                                ctx.fillRect(x + cellSize * 0.6, y + cellSize * 0.6, cellSize * 0.35, cellSize * 0.35);
+                            } else if (type === CELL.BLOCK) {
+                                const grad = ctx.createRadialGradient(x + cellSize*0.35, y + cellSize*0.35, 2, x + cellSize*0.5, y + cellSize*0.5, cellSize*0.7);
+                                grad.addColorStop(0, '#d4a574');
+                                grad.addColorStop(0.7, '#a0724a');
+                                grad.addColorStop(1, '#6b4028');
+                                ctx.fillStyle = grad;
+                                ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+                                ctx.strokeStyle = 'rgba(80,50,30,0.4)';
+                                ctx.lineWidth = 0.8;
+                                ctx.beginPath();
+                                ctx.moveTo(x + 4, y + cellSize/2);
+                                ctx.lineTo(x + cellSize - 4, y + cellSize/2);
+                                ctx.moveTo(x + cellSize/2, y + 4);
+                                ctx.lineTo(x + cellSize/2, y + cellSize - 4);
+                                ctx.stroke();
+                            } else {
+                                ctx.fillStyle = (r + c) % 2 === 0 ? '#22223a' : '#282844';
+                                ctx.fillRect(x, y, cellSize, cellSize);
+                            }
+                        }
+                    }
+
+                    // Бонусы
+                    for (const pu of this.powerups) {
+                        const { x, y } = posToPixel(pu.row, pu.col);
+                        const r = cellSize * 0.3;
+                        const alpha = pu.timer < 2 ? (pu.timer / 2) : 1;
+                        ctx.save();
+                        ctx.globalAlpha = alpha;
+                        // Пульсация
+                        const pulse = 1 + Math.sin(this.tick * 5) * 0.15;
+                        ctx.beginPath();
+                        ctx.arc(x, y, r * pulse, 0, Math.PI * 2);
+                        const col = POWERUP_TYPES[pu.type]?.color || '#fff';
+                        ctx.fillStyle = col;
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        ctx.fillStyle = '#fff';
+                        ctx.font = `${cellSize * 0.45}px sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(POWERUP_TYPES[pu.type]?.icon || '?', x, y);
+                        ctx.restore();
+                    }
+
+                    // Бомбы
+                    for (const bomb of this.bombs) {
+                        if (bomb.exploded) continue;
+                        const { x, y } = posToPixel(bomb.row, bomb.col);
+                        const radius = cellSize * 0.38;
+                        // Тень
+                        ctx.beginPath();
+                        ctx.arc(x, y + 2, radius, 0, Math.PI*2);
+                        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                        ctx.fill();
+                        // Корпус
+                        const grad = ctx.createRadialGradient(x - radius*0.3, y - radius*0.3, 2, x, y, radius);
+                        grad.addColorStop(0, '#666');
+                        grad.addColorStop(0.7, '#1a1a1a');
+                        grad.addColorStop(1, '#000');
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius, 0, Math.PI*2);
+                        ctx.fillStyle = grad;
+                        ctx.fill();
+                        // Фитиль
+                        const fuseLen = radius * 0.55;
+                        const angle = this.tick * 4;
+                        ctx.beginPath();
+                        ctx.moveTo(x + radius*0.4, y - radius*0.5);
+                        ctx.quadraticCurveTo(
+                            x + radius*0.7 + Math.sin(angle)*3,
+                            y - radius*0.85 + Math.cos(angle*1.3)*3,
+                            x + radius*0.4 + Math.sin(angle+0.5)*4,
+                            y - radius*1.0 + Math.cos(angle*0.7+1)*3
+                        );
+                        ctx.strokeStyle = '#a09070';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        // Искра
+                        const sx = x + radius*0.4 + Math.sin(angle+0.5)*4;
+                        const sy = y - radius*1.0 + Math.cos(angle*0.7+1)*3;
+                        ctx.beginPath();
+                        ctx.arc(sx, sy, 3 + Math.sin(this.tick*12)*1.5, 0, Math.PI*2);
+                        ctx.fillStyle = '#ff6b35';
+                        ctx.fill();
+                        // Таймер-кольцо
+                        const progress = bomb.timer / 2.5;
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius + 3, -Math.PI/2, -Math.PI/2 + progress * Math.PI*2);
+                        ctx.strokeStyle = progress < 0.3 ? 'rgba(255,50,50,0.8)' : 'rgba(255,150,50,0.5)';
+                        ctx.lineWidth = 2.5;
+                        ctx.stroke();
+                    }
+
+                    // Взрывы
+                    for (const exp of this.explosions) {
+                        const { x, y } = posToPixel(exp.row, exp.col);
+                        const progress = 1 - exp.timer / 0.55;
+                        const alpha = Math.min(1, progress * 2.5) * (1 - progress);
+                        const size = cellSize * (0.6 + progress * 0.4);
+                        if (exp.isPickup) {
+                            ctx.beginPath();
+                            ctx.arc(x, y, size * 0.5, 0, Math.PI*2);
+                            ctx.fillStyle = exp.color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
+                            if (exp.color.startsWith('#')) {
+                                ctx.fillStyle = exp.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+                            }
+                            ctx.fill();
+                        } else {
+                            const grad = ctx.createRadialGradient(x, y, 1, x, y, size);
+                            grad.addColorStop(0, `rgba(255,255,200,${alpha})`);
+                            grad.addColorStop(0.4, `rgba(255,150,30,${alpha*0.9})`);
+                            grad.addColorStop(1, `rgba(200,30,0,0)`);
+                            ctx.beginPath();
+                            ctx.arc(x, y, size, 0, Math.PI*2);
+                            ctx.fillStyle = grad;
+                            ctx.fill();
+                            // Лучи
+                            for (let i = 0; i < 6; i++) {
+                                const a = i * Math.PI/3 + this.tick * 3;
+                                ctx.beginPath();
+                                ctx.moveTo(x, y);
+                                ctx.lineTo(x + Math.cos(a)*size*0.8, y + Math.sin(a)*size*0.8);
+                                ctx.strokeStyle = `rgba(255,200,60,${alpha*0.5})`;
+                                ctx.lineWidth = 2 + Math.random();
+                                ctx.stroke();
+                            }
+                        }
+                    }
+
+                    // Враги
+                    for (const enemy of this.enemies) {
+                        if (!enemy.alive) continue;
+                        const { x, y } = posToPixel(enemy.row, enemy.col);
+                        const r = cellSize * 0.36;
+                        ctx.beginPath();
+                        ctx.arc(x, y + 2, r, 0, Math.PI*2);
+                        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                        ctx.fill();
+                        const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.3, 2, x, y, r);
+                        grad.addColorStop(0, '#ff6b81');
+                        grad.addColorStop(0.7, '#d63031');
+                        grad.addColorStop(1, '#8b0000');
+                        ctx.beginPath();
+                        ctx.arc(x, y, r, 0, Math.PI*2);
+                        ctx.fillStyle = grad;
+                        ctx.fill();
+                        // Глаза
+                        const eo = r * 0.3, er = r * 0.2;
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath(); ctx.arc(x - eo, y - r*0.15, er, 0, Math.PI*2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(x + eo, y - r*0.15, er, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath(); ctx.arc(x - eo + 2, y - r*0.1, er*0.5, 0, Math.PI*2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(x + eo + 2, y - r*0.1, er*0.5, 0, Math.PI*2); ctx.fill();
+                        // Рот
+                        ctx.beginPath();
+                        ctx.arc(x, y + r*0.15, r*0.22, 0, Math.PI);
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        // Зубки
+                        ctx.fillStyle = '#fff';
+                        for (let s = -1; s <= 1; s += 2) {
+                            ctx.fillRect(x + s * r*0.15 - 2, y + r*0.15, 4, 4);
+                        }
+                    }
+
+                    // Игрок
+                    if (this.player.alive) {
+                        const { x, y } = posToPixel(this.player.row, this.player.col);
+                        const r = cellSize * 0.4;
+                        ctx.beginPath();
+                        ctx.arc(x, y + 2, r, 0, Math.PI*2);
+                        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                        ctx.fill();
+                        const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.3, 2, x, y, r);
+                        grad.addColorStop(0, '#74b9ff');
+                        grad.addColorStop(0.6, '#0984e3');
+                        grad.addColorStop(1, '#0544a0');
+                        ctx.beginPath();
+                        ctx.arc(x, y, r, 0, Math.PI*2);
+                        ctx.fillStyle = grad;
+                        ctx.fill();
+                        // Повязка
+                        ctx.strokeStyle = '#e74c3c';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(x, y - r*0.15, r*0.7, -Math.PI*0.85, -Math.PI*0.15);
+                        ctx.stroke();
+                        // Глаза
+                        const eo = r * 0.3, er = r * 0.18;
+                        ctx.fillStyle = '#fff';
+                        ctx.beginPath(); ctx.arc(x - eo, y - r*0.1, er, 0, Math.PI*2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(x + eo, y - r*0.1, er, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath(); ctx.arc(x - eo + 2, y - r*0.05, er*0.5, 0, Math.PI*2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(x + eo + 2, y - r*0.05, er*0.5, 0, Math.PI*2); ctx.fill();
+                        // Улыбка
+                        ctx.beginPath();
+                        ctx.arc(x, y + r*0.05, r*0.22, 0.15, Math.PI - 0.15);
+                        ctx.strokeStyle = '#000';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+
+                    ctx.restore();
+
+                    // Сетка (едва заметная)
+                    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+                    ctx.lineWidth = 0.5;
+                    for (let r = 0; r <= ROWS; r++) {
+                        ctx.beginPath(); ctx.moveTo(0, r*cellSize); ctx.lineTo(canvasSize, r*cellSize); ctx.stroke();
+                    }
+                    for (let c = 0; c <= COLS; c++) {
+                        ctx.beginPath(); ctx.moveTo(c*cellSize, 0); ctx.lineTo(c*cellSize, canvasSize); ctx.stroke();
+                    }
+                }
+
+                restart() {
+                    this.grid = [];
+                    this.bombs = [];
+                    this.explosions = [];
+                    this.powerups = [];
+                    this.enemies = [];
+                    this.score = 0;
+                    this.gameOver = false;
+                    this.won = false;
+                    this.activeBombs = 0;
+                    this.maxBombs = 1;
+                    this.bombRadius = 2;
+                    this.moveCooldown = 0;
+                    this.bombCooldown = 0;
+                    this.tick = 0;
+                    this.screenShakeTimer = 0;
+                    this.screenShakeIntensity = 0;
+                    this.player.speed = 1.0;
+                    overlay.classList.remove('show');
+                    this._initGrid();
+                    this._placeBlocks();
+                    this._placePlayer();
+                    this._placeEnemies();
+                    this._updateHUD();
+                }
+            }
+
+            // ======================== УПРАВЛЕНИЕ ========================
+            let game = null;
+            let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+            let touchMoved = false;
+            let lastSwipeDir = null;
+            const SWIPE_THRESHOLD = 18;
+            const TAP_MAX_DIST = 12;
+            const TAP_MAX_TIME = 280;
+
+            function getCanvasPos(touch) {
+                const rect = canvas.getBoundingClientRect();
+                return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+            }
+
+            function handleTouchStart(e) {
+                e.preventDefault();
+                if (!game || game.gameOver) return;
+                const t = e.touches[0];
+                const pos = getCanvasPos(t);
+                touchStartX = pos.x;
+                touchStartY = pos.y;
+                touchStartTime = Date.now();
+                touchMoved = false;
+                lastSwipeDir = null;
+            }
+
+            function handleTouchMove(e) {
+                e.preventDefault();
+                if (!game || game.gameOver) return;
+                const t = e.touches[0];
+                const pos = getCanvasPos(t);
+                const dx = pos.x - touchStartX;
+                const dy = pos.y - touchStartY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist > SWIPE_THRESHOLD) {
+                    touchMoved = true;
+                    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+                    let dir = null;
+                    if (angle > -45 && angle <= 45) dir = DIRS.RIGHT;
+                    else if (angle > 45 && angle <= 135) dir = DIRS.DOWN;
+                    else if (angle > -135 && angle <= -45) dir = DIRS.UP;
+                    else dir = DIRS.LEFT;
+
+                    if (dir && dir !== lastSwipeDir) {
+                        lastSwipeDir = dir;
+                        if (game.movePlayer(dir.dr, dir.dc)) {
+                            showSwipeIndicator(dir);
+                        }
+                    }
+                    // Сбрасываем точку отсчёта для непрерывного движения
+                    touchStartX = pos.x;
+                    touchStartY = pos.y;
+                }
+            }
+
+            function handleTouchEnd(e) {
+                e.preventDefault();
+                if (!game || game.gameOver) { touchMoved = false; return; }
+                if (!touchMoved) {
+                    const t = e.changedTouches[0];
+                    const pos = getCanvasPos(t);
+                    const dx = pos.x - touchStartX;
+                    const dy = pos.y - touchStartY;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    const elapsed = Date.now() - touchStartTime;
+                    if (dist < TAP_MAX_DIST && elapsed < TAP_MAX_TIME) {
+                        game.placeBomb();
+                        showTapIndicator();
+                    }
+                }
+                touchMoved = false;
+                lastSwipeDir = null;
+            }
+
+            function showSwipeIndicator(dir) {
+                swipeIndicator.classList.remove('active', 'tap-active');
+                void swipeIndicator.offsetWidth;
+                let angle = 0;
+                if (dir === DIRS.RIGHT) angle = 0;
+                else if (dir === DIRS.DOWN) angle = 90;
+                else if (dir === DIRS.LEFT) angle = 180;
+                else if (dir === DIRS.UP) angle = 270;
+                swipeIndicator.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+                swipeIndicator.style.borderColor = 'rgba(255,255,255,0.5)';
+                swipeIndicator.classList.add('active');
+            }
+
+            function showTapIndicator() {
+                swipeIndicator.classList.remove('active', 'tap-active');
+                void swipeIndicator.offsetWidth;
+                swipeIndicator.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+                swipeIndicator.classList.add('tap-active');
+            }
+
+            // Клавиатура
+            const keys = {};
+            window.addEventListener('keydown', e => {
+                keys[e.key] = true;
+                if (!game || game.gameOver) return;
+                switch (e.key) {
+                    case 'ArrowUp': case 'w': case 'W': e.preventDefault(); game.movePlayer(-1, 0); break;
+                    case 'ArrowDown': case 's': case 'S': e.preventDefault(); game.movePlayer(1, 0); break;
+                    case 'ArrowLeft': case 'a': case 'A': e.preventDefault(); game.movePlayer(0, -1); break;
+                    case 'ArrowRight': case 'd': case 'D': e.preventDefault(); game.movePlayer(0, 1); break;
+                    case ' ': e.preventDefault(); game.placeBomb(); break;
+                }
+            });
+            window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+            // Регистрация touch-событий
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+            canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+            // Кнопка рестарта
+            restartBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (game) { game.restart(); game.render(); }
+            });
+            restartBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                if (game) { game.restart(); game.render(); }
+            });
+
+            // ======================== ИГРОВОЙ ЦИКЛ ========================
+            let lastTime = 0;
+            function gameLoop(time) {
+                const dt = Math.min((time - lastTime) / 1000, 0.06);
+                lastTime = time;
+                if (game) {
+                    game.update(dt);
+                    game.render();
+                }
+                requestAnimationFrame(gameLoop);
+            }
+
+            // ======================== ИНИЦИАЛИЗАЦИЯ ========================
+            resizeCanvas();
+            game = new Game();
+            game.render();
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+
+            console.log('💣 Бомбомэн 2.0 готов!');
+            console.log('👆 Свайп — движение | Тап — бомба | ⌨️ Стрелки + Пробел');
+            console.log('🎁 Разрушай блоки — собирай бонусы!');
+        })();
+    </script>
+</body>
+</html>

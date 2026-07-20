@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🌾 Симулятор Фермы PRO</title>
+    <style>
+        :root {
+            --bg: #1e3b1e;
+            --panel-bg: rgba(30, 18, 10, 0.8);
+            --gold: #ffd700;
+            --wood: #6b4c32;
+            --leaf: #6b8f5a;
+            --text: #f5e6c8;
+            --danger: #b55a4a;
+            --info: #5a8aba;
+            --radius: 20px;
+            --shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background: radial-gradient(circle at 20% 20%, #2d4a2d, #152015);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 15px;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: linear-gradient(145deg, #3d2b1f, #2a1c12);
+            border-radius: 35px;
+            padding: 18px 18px 14px;
+            border: 3px solid #5a3f2b;
+            box-shadow: var(--shadow), inset 0 2px 8px rgba(255, 215, 150, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* ---------- Header ---------- */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(20, 14, 8, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 10px 18px;
+            border-radius: 40px;
+            border: 1px solid #5f4a33;
+            gap: 8px;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0,0,0,0.35);
+            padding: 5px 14px;
+            border-radius: 30px;
+            color: var(--text);
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+            border: 1px solid rgba(255,255,200,0.15);
+            transition: all 0.2s;
+        }
+        .stat .icon {
+            font-size: 1.2rem;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+        }
+        .stat .value {
+            background: rgba(0,0,0,0.25);
+            padding: 0px 10px;
+            border-radius: 20px;
+            min-width: 34px;
+            text-align: center;
+            font-weight: 700;
+        }
+        .gold .value { color: #ffd700; text-shadow: 0 0 10px #ffd70066; }
+        .seeds .value { color: #9eff9e; }
+        .level .value { color: #7fb4ff; }
+
+        /* ---------- Tabs ---------- */
+        .tabs {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .tab-btn {
+            background: rgba(30, 20, 12, 0.7);
+            backdrop-filter: blur(5px);
+            border: 2px solid #5f4a33;
+            color: #ddd;
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+            letter-spacing: 0.4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .tab-btn:hover {
+            background: rgba(60, 40, 20, 0.8);
+            transform: translateY(-2px);
+            border-color: #b8945c;
+        }
+        .tab-btn.active {
+            border-color: var(--gold);
+            background: rgba(70, 50, 20, 0.9);
+            color: var(--gold);
+            box-shadow: 0 0 18px rgba(255, 215, 0, 0.5);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeSlide 0.25s ease;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeSlide {
+            from { opacity: 0.5; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ---------- Farm Grid ---------- */
+        .farm-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            background: #4d7a4a;
+            background-image: linear-gradient(45deg, #3d5a3a 2%, #5a8a4a 98%);
+            padding: 14px;
+            border-radius: 30px;
+            border: 4px solid #6b8f5a;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+            aspect-ratio: 3 / 3.2;
+            margin-bottom: 6px;
+        }
+        @media (min-width: 500px) {
+            .farm-grid {
+                grid-template-columns: repeat(4, 1fr);
+                aspect-ratio: 4 / 3.2;
+            }
+        }
+        @media (min-width: 700px) {
+            .farm-grid {
+                grid-template-columns: repeat(6, 1fr);
+                aspect-ratio: 6 / 4.5;
+            }
+        }
+
+        .plot {
+            background: #6d8f5a;
+            background: radial-gradient(circle at 40% 30%, #8aaa70, #5a7840);
+            border-radius: 16px;
+            border: 2px solid #4d6a3a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 1.8rem;
+            position: relative;
+            aspect-ratio: 1 / 1;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .plot:hover {
+            transform: translateY(-3px);
+            filter: brightness(1.1);
+            box-shadow: 0 8px 14px rgba(0,0,0,0.4);
+        }
+        .plot:active {
+            transform: scale(0.94);
+            transition: 0.08s;
+        }
+        .plot .crop-emoji {
+            font-size: 2.2rem;
+            line-height: 1;
+            filter: drop-shadow(0 4px 3px rgba(0,0,0,0.5));
+            transition: 0.2s;
+        }
+        .plot .empty-soil {
+            font-size: 1.8rem;
+            opacity: 0.55;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.4));
+        }
+        .growth-bar {
+            position: absolute;
+            bottom: 5px;
+            left: 12%;
+            width: 76%;
+            height: 6px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .growth-bar .fill {
+            height: 100%;
+            background: linear-gradient(90deg, #b3ff7a, #ffe55c);
+            border-radius: 10px;
+            transition: width 0.4s;
+        }
+        .plot.ready {
+            border-color: #ffd700;
+            box-shadow: 0 0 22px rgba(255, 215, 0, 0.55);
+            animation: pulseGold 1.8s infinite;
+        }
+        @keyframes pulseGold {
+            0%, 100% { box-shadow: 0 0 8px rgba(255,215,0,0.3); }
+            50% { box-shadow: 0 0 32px rgba(255,215,0,0.8); }
+        }
+
+        /* ---------- Panels ---------- */
+        .panel {
+            background: rgba(20, 15, 10, 0.75);
+            backdrop-filter: blur(6px);
+            border-radius: 26px;
+            padding: 16px;
+            border: 1px solid #7a5f44;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.4);
+        }
+        .panel-title {
+            color: var(--text);
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px dashed #5f4a33;
+            padding-bottom: 8px;
+        }
+
+        /* ---------- Buttons ---------- */
+        .btn {
+            background: rgba(40, 30, 18, 0.8);
+            border: 2px solid #5f4a33;
+            color: #f0ddc8;
+            padding: 7px 16px;
+            border-radius: 30px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.8rem;
+            letter-spacing: 0.3px;
+            backdrop-filter: blur(2px);
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.15);
+            border-color: #aa8a5a;
+        }
+        .btn:active {
+            transform: scale(0.94);
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            filter: none;
+        }
+        .btn-buy {
+            background: #3a6030;
+            border-color: #6aaa4a;
+            color: #fff;
+        }
+        .btn-sell {
+            background: #8b4a3a;
+            border-color: #c06040;
+        }
+        .btn-action {
+            background: #3a5088;
+            border-color: #5a8aba;
+        }
+        .btn-danger {
+            background: #6b3028;
+            border-color: #a04030;
+            color: #ffd;
+        }
+
+        /* ---------- Cards (Animals, Buildings, Orders) ---------- */
+        .animal-list, .building-list, .order-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 6px;
+        }
+        .animal-card, .building-card, .order-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 18px;
+            padding: 12px 14px;
+            border: 1px solid #5f7a4a;
+            color: #ddd;
+            flex: 1 0 150px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            backdrop-filter: blur(2px);
+        }
+        .animal-emoji {
+            font-size: 2rem;
+            filter: drop-shadow(0 3px 3px black);
+        }
+        .order-reward {
+            color: #ffd700;
+            font-weight: 700;
+        }
+        .order-time {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        /* ---------- Shop Grid ---------- */
+        .shop-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .shop-item {
+            background: rgba(0, 0, 0, 0.35);
+            border-radius: 18px;
+            padding: 12px 14px;
+            border: 1px solid #5f7a4a;
+            color: #ddd;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            min-width: 110px;
+            flex: 1 0 auto;
+        }
+
+        /* ---------- Message ---------- */
+        .message {
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(8px);
+            border-radius: 30px;
+            padding: 10px 18px;
+            color: var(--text);
+            text-align: center;
+            font-weight: 600;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 1px solid #5f7a4a;
+            font-size: 0.9rem;
+        }
+        .message-icon {
+            font-size: 1.3rem;
+        }
+
+        /* ---------- Responsive ---------- */
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            .stat {
+                font-size: 0.7rem;
+                padding: 3px 8px;
+            }
+            .tab-btn {
+                font-size: 0.7rem;
+                padding: 5px 11px;
+            }
+            .btn {
+                font-size: 0.7rem;
+                padding: 5px 12px;
+            }
+            .plot .crop-emoji {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <!-- Header -->
+    <div class="header">
+        <div class="stat gold"><span class="icon">💰</span><span class="value" id="goldDisplay">100</span></div>
+        <div class="stat seeds"><span class="icon">🌱</span><span class="value" id="seedsDisplay">0</span></div>
+        <div class="stat level"><span class="icon">⭐</span><span class="value" id="levelDisplay">1</span></div>
+        <div class="stat"><span class="icon">📦</span><span class="value" id="harvestCount">0</span></div>
+        <div class="stat"><span class="icon">🌤️</span><span class="value" id="weatherDisplay">☀️</span></div>
+        <div class="stat"><span class="icon">📅</span><span class="value" id="seasonDisplay">Весна</span></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="farm">🌾 Поле</button>
+        <button class="tab-btn" data-tab="animals">🐄 Животные</button>
+        <button class="tab-btn" data-tab="production">🏭 Производство</button>
+        <button class="tab-btn" data-tab="orders">📋 Заказы</button>
+        <button class="tab-btn" data-tab="shop">🛒 Магазин</button>
+    </div>
+
+    <!-- Farm tab -->
+    <div class="tab-content active" id="tab-farm">
+        <div class="panel">
+            <div class="panel-title">🌿 Посадка (выберите культуру)</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;" id="cropSelector"></div>
+            <div class="farm-grid" id="farmGrid"></div>
+            <button class="btn btn-danger" id="clearPlotBtn" style="margin-top:8px;">🔻 Выкорчевать выделенную клетку</button>
+        </div>
+    </div>
+
+    <!-- Animals tab -->
+    <div class="tab-content" id="tab-animals">
+        <div class="panel">
+            <div class="panel-title">🐄 Животные</div>
+            <div class="animal-list" id="animalList"></div>
+            <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;">
+                <button class="btn btn-buy" id="buyChickenBtn">🐔 Курица ($20)</button>
+                <button class="btn btn-buy" id="buyCowBtn">🐮 Корова ($50)</button>
+                <button class="btn btn-action" id="feedAllBtn">🌾 Кормить всех (пшеница)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Production tab -->
+    <div class="tab-content" id="tab-production">
+        <div class="panel">
+            <div class="panel-title">🏭 Здания и переработка</div>
+            <div class="building-list" id="buildingList"></div>
+            <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:8px;">
+                <button class="btn btn-buy" id="buildMillBtn">🏗️ Мельница ($100)</button>
+                <button class="btn btn-buy" id="buildBakeryBtn">🏗️ Пекарня ($150)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders tab -->
+    <div class="tab-content" id="tab-orders">
+        <div class="panel">
+            <div class="panel-title">📋 Активные заказы (выполните до истечения времени)</div>
+            <div class="order-list" id="orderList"></div>
+            <button class="btn btn-action" id="refreshOrdersBtn" style="margin-top:10px;">🔄 Новые заказы (5 золота)</button>
+        </div>
+    </div>
+
+    <!-- Shop tab -->
+    <div class="tab-content" id="tab-shop">
+        <div class="panel">
+            <div class="panel-title">🛒 Покупка семян и продажа ресурсов</div>
+            <div class="shop-grid" id="shopGrid"></div>
+        </div>
+    </div>
+
+    <!-- Message bar -->
+    <div class="message" id="messageArea">
+        <span class="message-icon" id="messageIcon">🌾</span>
+        <span id="messageText">Добро пожаловать на ферму!</span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- DATA ----------
+        const CROPS = {
+            wheat:   { name:'Пшеница', emoji:'🌾', seedCost:3, sellPrice:10, growTime:7000,  stages:['🌱','🌿','🌾'], season:['весна','лето'] },
+            corn:    { name:'Кукуруза', emoji:'🌽', seedCost:5, sellPrice:25, growTime:11000, stages:['🌱','🌿','🌽'], season:['лето'] },
+            carrot:  { name:'Морковь', emoji:'🥕', seedCost:8, sellPrice:40, growTime:16000, stages:['🌱','🌿','🥕'], season:['весна','осень'] },
+            apple:   { name:'Яблоня', emoji:'🍎', seedCost:15,sellPrice:60, growTime:28000, stages:['🌱','🌿','🍎'], season:['осень'] }
+        };
+        const ANIMALS = {
+            chicken: { name:'Курица', emoji:'🐔', cost:20, product:'egg', productEmoji:'🥚', prodTime:8000, feedCost:2 },
+            cow:     { name:'Корова', emoji:'🐮', cost:50, product:'milk', productEmoji:'🥛', prodTime:14000, feedCost:5 }
+        };
+        const BUILDINGS = {
+            mill:   { name:'Мельница', emoji:'🏭', cost:100, input:{wheat:2}, output:{flour:1}, time:6000 },
+            bakery: { name:'Пекарня', emoji:'🍞', cost:150, input:{flour:2, egg:1}, output:{bread:1}, time:8000 }
+        };
+
+        // ---------- GAME STATE ----------
+        let game = {
+            gold: 100,
+            experience: 0,
+            level: 1,
+            inventory: { wheat:0, corn:0, carrot:0, apple:0, flour:0, egg:0, milk:0, bread:0 },
+            seeds: { wheat:5, corn:3, carrot:2, apple:1 },
+            selectedCrop: 'wheat',
+            grid: [],
+            animals: [],
+            buildings: [],
+            orders: [],
+            season: 'весна',
+            weather: '☀️',
+            weatherTimer: 0,
+            seasonTimer: 0,
+            totalHarvested: 0,
+            orderCounter: 0,
+            selectedPlot: null, // {r, c} для выкорчёвывания
+        };
+
+        // ---------- UTILS ----------
+        const getCrop = k => CROPS[k];
+        const getAnimal = k => ANIMALS[k];
+        const getBuilding = k => BUILDINGS[k];
+
+        const hasSeed = c => (game.seeds[c]||0) > 0;
+        const useSeed = c => { if(game.seeds[c]>0){game.seeds[c]--; return true;} return false; };
+        const addSeed = (c,n=1) => { game.seeds[c] = (game.seeds[c]||0) + n; };
+
+        const hasRes = (r,n=1) => (game.inventory[r]||0) >= n;
+        const useRes = (r,n=1) => { if(hasRes(r,n)){game.inventory[r]-=n; return true;} return false; };
+        const addRes = (r,n=1) => { game.inventory[r] = (game.inventory[r]||0) + n; };
+
+        const addGold = a => { game.gold += a; };
+        const spendGold = a => { if(game.gold >= a){ game.gold -= a; return true; } return false; };
+
+        function addExp(amount) {
+            game.experience += amount;
+            let needed = game.level * 25;
+            while(game.experience >= needed) {
+                game.experience -= needed;
+                game.level++;
+                setMessage('⭐', `Новый уровень! Теперь ${game.level} (бонус к урожаю +${game.level*2}%)`);
+                needed = game.level * 25;
+            }
+        }
+
+        function setMessage(icon, text) {
+            document.getElementById('messageIcon').textContent = icon || '🌾';
+            document.getElementById('messageText').textContent = text;
+        }
+
+        function getLevelBonus() {
+            return 1 + (game.level * 0.02); // +2% за уровень к продажной цене
+        }
+
+        // ---------- GRID ----------
+        function initGrid() {
+            game.grid = [];
+            for(let r=0; r<6; r++) {
+                let row = [];
+                for(let c=0; c<6; c++) row.push({ crop:null, plantedAt:null, growth:0, ready:false });
+                game.grid.push(row);
+            }
+        }
+
+        function renderGrid() {
+            const gridEl = document.getElementById('farmGrid');
+            gridEl.innerHTML = '';
+            for(let r=0; r<6; r++) {
+                for(let c=0; c<6; c++) {
+                    let plot = game.grid[r][c];
+                    let cell = document.createElement('div');
+                    cell.className = 'plot';
+                    if(plot.ready) cell.classList.add('ready');
+                    if(game.selectedPlot && game.selectedPlot.r===r && game.selectedPlot.c===c) {
+                        cell.style.outline = '3px solid #ffbb00';
+                        cell.style.outlineOffset = '2px';
+                    }
+
+                    let emoji = document.createElement('span');
+                    if(plot.crop) {
+                        let data = getCrop(plot.crop);
+                        if(plot.ready) emoji.textContent = data.emoji;
+                        else {
+                            let p = plot.growth;
+                            if(p<0.35) emoji.textContent = '🌱';
+                            else if(p<0.75) emoji.textContent = '🌿';
+                            else emoji.textContent = data.stages[2] || data.emoji;
+                        }
+                        emoji.className = 'crop-emoji';
+                    } else {
+                        emoji.textContent = '🟫';
+                        emoji.className = 'empty-soil';
+                    }
+                    cell.appendChild(emoji);
+
+                    if(plot.crop && !plot.ready) {
+                        let bar = document.createElement('div');
+                        bar.className = 'growth-bar';
+                        let fill = document.createElement('div');
+                        fill.className = 'fill';
+                        fill.style.width = (plot.growth*100)+'%';
+                        bar.appendChild(fill);
+                        cell.appendChild(bar);
+                    }
+
+                    cell.addEventListener('click', ()=>handlePlotClick(r,c));
+                    gridEl.appendChild(cell);
+                }
+            }
+        }
+
+        function handlePlotClick(r,c) {
+            let plot = game.grid[r][c];
+
+            // Если выделена эта же клетка – снимаем выделение
+            if(game.selectedPlot && game.selectedPlot.r===r && game.selectedPlot.c===c) {
+                game.selectedPlot = null;
+                setMessage('🔍', 'Выделение снято.');
+                renderGrid();
+                return;
+            }
+
+            // Если участок готов – собираем
+            if(plot.ready && plot.crop) {
+                let data = getCrop(plot.crop);
+                if(data) {
+                    addRes(plot.crop, 1);
+                    let bonusPrice = Math.floor(data.sellPrice * getLevelBonus());
+                    addGold(bonusPrice);
+                    addExp(6);
+                    game.totalHarvested++;
+                    plot.crop = null;
+                    plot.ready = false;
+                    plot.growth = 0;
+                    plot.plantedAt = null;
+                    setMessage('💰', `Собрано ${data.emoji} ${data.name}! +${bonusPrice} золота.`);
+                    game.selectedPlot = null;
+                    updateUI();
+                    renderGrid();
+                }
+                return;
+            }
+
+            // Если пустой участок – сажаем
+            if(!plot.crop) {
+                let crop = game.selectedCrop;
+                let data = getCrop(crop);
+                if(!data) return;
+                if(!hasSeed(crop)) { setMessage('❌', 'Нет семян этой культуры!'); return; }
+                if(!spendGold(data.seedCost)) { setMessage('❌', 'Недостаточно золота!'); return; }
+                useSeed(crop);
+                plot.crop = crop;
+                plot.plantedAt = Date.now();
+                plot.growth = 0;
+                plot.ready = false;
+                game.selectedPlot = null;
+                setMessage('🌱', `Посажена ${data.emoji} ${data.name}`);
+                updateUI();
+                renderGrid();
+                return;
+            }
+
+            // Иначе – растение растёт, выделяем для возможного выкорчёвывания
+            game.selectedPlot = { r, c };
+            setMessage('🔍', 'Клетка выделена. Нажмите "Выкорчевать" чтобы удалить.');
+            renderGrid();
+        }
+
+        function clearSelectedPlot() {
+            if(!game.selectedPlot) { setMessage('⚠️', 'Сначала выделите клетку на поле!'); return; }
+            let {r,c} = game.selectedPlot;
+            let plot = game.grid[r][c];
+            if(!plot.crop || plot.ready) {
+                setMessage('⚠️', 'Нечего выкорчёвывать.');
+                game.selectedPlot = null;
+                renderGrid();
+                return;
+            }
+            // Удаляем растение без возврата ресурсов
+            plot.crop = null;
+            plot.plantedAt = null;
+            plot.growth = 0;
+            plot.ready = false;
+            game.selectedPlot = null;
+            setMessage('🔻', 'Растение удалено.');
+            updateUI();
+            renderGrid();
+        }
+
+        // ---------- ANIMALS ----------
+        function addAnimal(type) {
+            let data = getAnimal(type);
+            if(!data) return;
+            if(!spendGold(data.cost)) { setMessage('❌','Не хватает золота!'); return; }
+            game.animals.push({ type, hunger:80, timer:0, ready:false });
+            setMessage('✅', `Куплен ${data.emoji} ${data.name}`);
+            updateUI();
+        }
+
+        function feedAllAnimals() {
+            let fed = 0;
+            for(let a of game.animals) {
+                if(a.hunger < 100 && hasRes('wheat',1)) {
+                    useRes('wheat',1);
+                    a.hunger = Math.min(a.hunger+30, 100);
+                    fed++;
+                } else if(a.hunger >= 100) continue;
+                else break;
+            }
+            if(fed>0) setMessage('🌾', `Покормлено ${fed} животных.`);
+            else setMessage('⚠️', 'Нет пшеницы или все сыты.');
+            updateUI();
+        }
+
+        function collectAnimalProduct(index) {
+            let a = game.animals[index];
+            if(!a.ready) { setMessage('⏳','Продукт ещё не готов.'); return; }
+            let data = getAnimal(a.type);
+            addRes(data.product, 1);
+            addExp(5);
+            a.ready = false;
+            a.timer = 0;
+            setMessage('🎁', `Собрано ${data.productEmoji} ${data.product}!`);
+            updateUI();
+        }
+
+        // ---------- BUILDINGS ----------
+        function addBuilding(type) {
+            let data = getBuilding(type);
+            if(!data) return;
+            if(!spendGold(data.cost)) { setMessage('❌','Недостаточно золота!'); return; }
+            game.buildings.push({ type, working:false, timer:0 });
+            setMessage('🏗️', `Построена ${data.name}`);
+            updateUI();
+        }
+
+        function startBuilding(index) {
+            let b = game.buildings[index];
+            let data = getBuilding(b.type);
+            if(b.working) { setMessage('⚙️','Уже работает.'); return; }
+            // Проверка ингредиентов
+            for(let ing in data.input) {
+                if(!hasRes(ing, data.input[ing])) {
+                    setMessage('❌', `Не хватает ${ing}!`);
+                    return;
+                }
+            }
+            // Забираем
+            for(let ing in data.input) useRes(ing, data.input[ing]);
+            b.working = true;
+            b.timer = 0;
+            setMessage('⚙️', `${data.name} запущена.`);
+            updateUI();
+        }
+
+        // ---------- ORDERS ----------
+        function generateOrder() {
+            const items = [
+                { item:'wheat', emoji:'🌾', base:15 }, { item:'corn', emoji:'🌽', base:30 },
+                { item:'carrot', emoji:'🥕', base:45 }, { item:'apple', emoji:'🍎', base:70 },
+                { item:'egg', emoji:'🥚', base:25 }, { item:'milk', emoji:'🥛', base:35 },
+                { item:'flour', emoji:'🌪️', base:20 }, { item:'bread', emoji:'🍞', base:50 }
+            ];
+            let choice = items[Math.floor(Math.random()*items.length)];
+            let amount = 1 + Math.floor(Math.random()*3);
+            let reward = Math.floor(choice.base * amount + Math.random()*20 + 5);
+            game.orderCounter++;
+            game.orders.push({
+                id: game.orderCounter,
+                item: choice.item,
+                amount,
+                reward,
+                timeLeft: 45 + Math.floor(Math.random()*50),
+                completed: false
+            });
+            setMessage('📋', `Новый заказ: ${choice.emoji} ${choice.item} x${amount} (💰${reward})`);
+        }
+
+        function completeOrder(index) {
+            let o = game.orders[index];
+            if(o.completed) return;
+            if(!hasRes(o.item, o.amount)) { setMessage('❌', `Не хватает ${o.item}!`); return; }
+            useRes(o.item, o.amount);
+            addGold(o.reward);
+            addExp(10 + o.amount*2);
+            o.completed = true;
+            setMessage('✅', `Заказ выполнен! +${o.reward} золота.`);
+            updateUI();
+        }
+
+        // ---------- SHOP ----------
+        function buySeedFromShop(crop) {
+            let data = getCrop(crop);
+            if(!data) return;
+            if(!spendGold(data.seedCost)) { setMessage('❌','Недостаточно золота!'); return; }
+            addSeed(crop,1);
+            setMessage('🛒', `Куплены семена ${data.emoji} ${data.name}`);
+            updateUI();
+        }
+
+        function sellResource(res, price) {
+            if(!hasRes(res,1)) { setMessage('❌', 'Нет ресурса!'); return; }
+            useRes(res,1);
+            let bonusPrice = Math.floor(price * getLevelBonus());
+            addGold(bonusPrice);
+            addExp(2);
+            setMessage('💰', `Продано ${res} за ${bonusPrice} золота`);
+            updateUI();
+        }
+
+        // ---------- GAME LOOP ----------
+        function updateGame() {
+            const now = Date.now();
+
+            // 1. Crops growth
+            for(let r=0; r<6; r++) {
+                for(let c=0; c<6; c++) {
+                    let plot = game.grid[r][c];
+                    if(!plot.crop || plot.ready) continue;
+                    let data = getCrop(plot.crop);
+                    if(!data) continue;
+                    let seasonOK = data.season.includes(game.season);
+                    let weatherMod = 1;
+                    if(game.weather==='🌧️') weatherMod=1.5;
+                    else if(game.weather==='🌵') weatherMod=0.4;
+                    else if(game.weather==='❄️') weatherMod=0.25;
+                    if(!seasonOK) weatherMod *= 0.3;
+                    let elapsed = (now - plot.plantedAt) * weatherMod;
+                    plot.growth = Math.min(elapsed / data.growTime, 1);
+                    if(plot.growth >= 1) plot.ready = true;
+                }
+            }
+
+            // 2. Animals
+            for(let a of game.animals) {
+                let data = getAnimal(a.type);
+                // Голод
+                a.hunger -= 0.25;
+                if(a.hunger < 0) a.hunger = 0;
+                if(a.hunger <= 0) { a.timer = 0; a.ready = false; continue; }
+                // Производство с учётом погоды (зимой медленнее)
+                let weatherPenalty = (game.weather==='❄️') ? 0.5 : 1;
+                a.timer += 1 * weatherPenalty;
+                if(a.timer >= data.prodTime/1000) {
+                    a.ready = true;
+                    a.timer = 0;
+                }
+            }
+
+            // 3. Buildings
+            for(let b of game.buildings) {
+                if(!b.working) continue;
+                let data = getBuilding(b.type);
+                b.timer += 1;
+                if(b.timer >= data.time/1000) {
+                    for(let res in data.output) addRes(res, data.output[res]);
+                    b.working = false;
+                    b.timer = 0;
+                    setMessage('🏭', `${data.name}: произведено ${Object.entries(data.output).map(([k,v])=>k+' x'+v).join(', ')}`);
+                }
+            }
+
+            // 4. Orders timer
+            for(let i=game.orders.length-1; i>=0; i--) {
+                let o = game.orders[i];
+                if(!o.completed) {
+                    o.timeLeft--;
+                    if(o.timeLeft <= 0) {
+                        game.orders.splice(i,1);
+                        setMessage('⏰', 'Заказ просрочен и удалён.');
+                    }
+                }
+            }
+
+            // 5. Weather & season
+            game.weatherTimer++;
+            if(game.weatherTimer > 35) {
+                game.weatherTimer = 0;
+                let pool = ['☀️','☀️','🌧️','🌵','❄️'];
+                if(game.season==='зима') pool = ['❄️','❄️','☀️','🌧️'];
+                game.weather = pool[Math.floor(Math.random()*pool.length)];
+            }
+            game.seasonTimer++;
+            if(game.seasonTimer > 70) {
+                game.seasonTimer = 0;
+                const seasons = ['весна','лето','осень','зима'];
+                let idx = seasons.indexOf(game.season);
+                game.season = seasons[(idx+1)%4];
+                game.weather = '☀️';
+                game.weatherTimer = 0;
+                setMessage('📅', `Наступила ${game.season}!`);
+            }
+
+            // 6. Auto orders
+            if(game.orders.filter(o=>!o.completed).length < 3 && Math.random()<0.03) {
+                generateOrder();
+            }
+
+            renderGrid();
+            updateUI();
+        }
+
+        // ---------- UI RENDERING ----------
+        function updateUI() {
+            document.getElementById('goldDisplay').textContent = game.gold;
+            let totalSeeds = Object.values(game.seeds).reduce((a,b)=>a+b,0);
+            document.getElementById('seedsDisplay').textContent = totalSeeds;
+            document.getElementById('levelDisplay').textContent = game.level;
+            document.getElementById('harvestCount').textContent = game.totalHarvested;
+            document.getElementById('weatherDisplay').textContent = game.weather;
+            document.getElementById('seasonDisplay').textContent = game.season;
+
+            // Crop selector buttons
+            let sel = document.getElementById('cropSelector');
+            sel.innerHTML = '';
+            for(let c in CROPS) {
+                let data = CROPS[c];
+                let btn = document.createElement('button');
+                btn.className = 'btn seed-btn';
+                if(c === game.selectedCrop) btn.classList.add('active');
+                btn.textContent = `${data.emoji} ${data.name} (${game.seeds[c]||0})`;
+                btn.addEventListener('click', ()=> {
+                    game.selectedCrop = c;
+                    updateUI();
+                });
+                sel.appendChild(btn);
+            }
+
+            // Animals
+            let animalList = document.getElementById('animalList');
+            animalList.innerHTML = '';
+            game.animals.forEach((a,idx)=>{
+                let data = getAnimal(a.type);
+                let card = document.createElement('div');
+                card.className = 'animal-card';
+                card.innerHTML = `
+                    <div><span class="animal-emoji">${data.emoji}</span> ${data.name}</div>
+                    <div>Сытость: ${Math.floor(a.hunger)}%</div>
+                    <div>${a.ready ? '✅ Готово' : (a.hunger>0 ? `⏳ ${Math.floor(a.timer)}с` : '😵 Голоден')}</div>
+                    <button class="btn btn-action" ${!a.ready?'disabled':''}>Собрать</button>
+                `;
+                card.querySelector('button').addEventListener('click', ()=>collectAnimalProduct(idx));
+                animalList.appendChild(card);
+            });
+
+            // Buildings
+            let buildingList = document.getElementById('buildingList');
+            buildingList.innerHTML = '';
+            game.buildings.forEach((b,idx)=>{
+                let data = getBuilding(b.type);
+                let inputStr = Object.entries(data.input).map(([k,v])=>`${k}:${v}`).join(', ');
+                let outputStr = Object.entries(data.output).map(([k,v])=>`${k}:${v}`).join(', ');
+                let card = document.createElement('div');
+                card.className = 'building-card';
+                card.innerHTML = `
+                    <div><strong>${data.emoji} ${data.name}</strong></div>
+                    <div style="font-size:0.75rem;">🔧 ${inputStr} → ${outputStr}</div>
+                    <div>${b.working ? `⚙️ Работает (${Math.floor(b.timer)}с)` : '⏸️ Готов к запуску'}</div>
+                    <button class="btn btn-buy" ${b.working?'disabled':''}>Запустить</button>
+                `;
+                card.querySelector('button').addEventListener('click', ()=>startBuilding(idx));
+                buildingList.appendChild(card);
+            });
+
+            // Orders
+            let orderList = document.getElementById('orderList');
+            orderList.innerHTML = '';
+            const itemEmojiMap = { wheat:'🌾', corn:'🌽', carrot:'🥕', apple:'🍎', flour:'🌪️', egg:'🥚', milk:'🥛', bread:'🍞' };
+            game.orders.forEach((o,idx)=>{
+                if(o.completed) return;
+                let card = document.createElement('div');
+                card.className = 'order-card';
+                card.innerHTML = `
+                    <div>${itemEmojiMap[o.item]||'📦'} ${o.item} x${o.amount}</div>
+                    <div class="order-reward">💰 ${o.reward} золота</div>
+                    <div class="order-time">⏳ ${Math.floor(o.timeLeft)}с</div>
+                    <button class="btn btn-buy">Выполнить</button>
+                `;
+                card.querySelector('button').addEventListener('click', ()=>completeOrder(idx));
+                orderList.appendChild(card);
+            });
+
+            // Shop
+            let shopGrid = document.getElementById('shopGrid');
+            shopGrid.innerHTML = '';
+            // Seeds
+            for(let c in CROPS) {
+                let data = CROPS[c];
+                let div = document.createElement('div');
+                div.className = 'shop-item';
+                div.innerHTML = `
+                    <span>${data.emoji} ${data.name}</span>
+                    <span>💰${data.seedCost}</span>
+                    <button class="btn btn-buy">Купить 1</button>
+                `;
+                div.querySelector('button').addEventListener('click', ()=>buySeedFromShop(c));
+                shopGrid.appendChild(div);
+            }
+            // Sell resources
+            const sellPrices = { wheat:8, corn:20, carrot:35, apple:50, flour:18, egg:15, milk:25, bread:40 };
+            let sellable = Object.keys(game.inventory).filter(k=>game.inventory[k]>0);
+            if(sellable.length>0) {
+                let div = document.createElement('div');
+                div.className = 'shop-item';
+                div.style.flex = '1 0 100%';
+                div.innerHTML = '<strong>📤 Продажа ресурсов</strong><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>';
+                let btnsDiv = div.querySelector('div');
+                for(let r of sellable) {
+                    let price = sellPrices[r]||5;
+                    let btn = document.createElement('button');
+                    btn.className = 'btn btn-sell';
+                    btn.textContent = `${r} (${game.inventory[r]}) +${price}`;
+                    btn.addEventListener('click', ()=>sellResource(r, price));
+                    btnsDiv.appendChild(btn);
+                }
+                shopGrid.appendChild(div);
+            }
+        }
+
+        // ---------- SAVE / LOAD ----------
+        function saveGame() {
+            try {
+                let save = {
+                    gold: game.gold, experience: game.experience, level: game.level,
+                    inventory: game.inventory, seeds: game.seeds,
+                    animals: game.animals.map(a=>({...a})),
+                    buildings: game.buildings.map(b=>({...b})),
+                    orders: game.orders.map(o=>({...o})),
+                    season: game.season, weather: game.weather,
+                    weatherTimer: game.weatherTimer, seasonTimer: game.seasonTimer,
+                    totalHarvested: game.totalHarvested, orderCounter: game.orderCounter,
+                    grid: game.grid.map(row=>row.map(plot=>({
+                        crop:plot.crop, plantedAt:plot.plantedAt, growth:plot.growth, ready:plot.ready
+                    })))
+                };
+                localStorage.setItem('farmProSave', JSON.stringify(save));
+            } catch(e){}
+        }
+
+        function loadGame() {
+            try {
+                let raw = localStorage.getItem('farmProSave');
+                if(!raw) return false;
+                let save = JSON.parse(raw);
+                game.gold = save.gold; game.experience = save.experience; game.level = save.level;
+                game.inventory = save.inventory; game.seeds = save.seeds;
+                game.animals = save.animals; game.buildings = save.buildings;
+                game.orders = save.orders; game.season = save.season; game.weather = save.weather;
+                game.weatherTimer = save.weatherTimer; game.seasonTimer = save.seasonTimer;
+                game.totalHarvested = save.totalHarvested; game.orderCounter = save.orderCounter;
+                game.grid = save.grid;
+                game.selectedPlot = null;
+                return true;
+            } catch(e){ return false; }
+        }
+
+        // ---------- INIT ----------
+        function init() {
+            if(!loadGame()) {
+                initGrid();
+                addRes('wheat', 10);
+                addRes('corn', 5);
+                generateOrder();
+                generateOrder();
+                game.selectedPlot = null;
+                setMessage('🌾', 'Новая ферма! Добро пожаловать.');
+            } else {
+                setMessage('💾', 'Игра загружена.');
+            }
+            updateUI();
+            renderGrid();
+
+            // Game loop 1s
+            setInterval(updateGame, 1000);
+            // Save every 10s
+            setInterval(saveGame, 10000);
+            window.addEventListener('beforeunload', saveGame);
+        }
+
+        // ---------- EVENT LISTENERS ----------
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function(){
+                document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+                this.classList.add('active');
+                let tab = this.dataset.tab;
+                document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+                document.getElementById('tab-'+tab).classList.add('active');
+            });
+        });
+
+        document.getElementById('clearPlotBtn').addEventListener('click', clearSelectedPlot);
+        document.getElementById('buyChickenBtn').addEventListener('click', ()=>addAnimal('chicken'));
+        document.getElementById('buyCowBtn').addEventListener('click', ()=>addAnimal('cow'));
+        document.getElementById('feedAllBtn').addEventListener('click', feedAllAnimals);
+        document.getElementById('buildMillBtn').addEventListener('click', ()=>addBuilding('mill'));
+        document.getElementById('buildBakeryBtn').addEventListener('click', ()=>addBuilding('bakery'));
+        document.getElementById('refreshOrdersBtn').addEventListener('click', ()=>{
+            if(spendGold(5)) { generateOrder(); updateUI(); }
+            else setMessage('❌','Недостаточно золота!');
+        });
+
+        init();
+    })();
+</script>
+</body>
+</html>

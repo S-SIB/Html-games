@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Drill Miner — мобильная версия</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0a1f1e;
+            font-family: 'Segoe UI', 'Courier New', monospace;
+            touch-action: none;
+        }
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            max-height: 100vh;
+            max-height: 100dvh;
+            padding: 6px 8px 6px 8px;
+            background: linear-gradient(145deg, #0a1f1e 0%, #071513 100%);
+            gap: 4px;
+            overflow: hidden;
+        }
+
+        .stats-panel {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 4px 8px;
+            background: #1f2a24cc;
+            border-radius: 14px;
+            padding: 4px 10px;
+            border: 1px solid #7e6b4e;
+            flex-shrink: 0;
+            min-height: 32px;
+            backdrop-filter: blur(4px);
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #f7ecc7;
+            text-shadow: 0 1px 2px #000000aa;
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        .stat .icon {
+            font-size: 13px;
+        }
+        .stat .val {
+            min-width: 18px;
+            text-align: center;
+        }
+        .battery-bar {
+            background: #3a2a24;
+            border-radius: 12px;
+            height: 10px;
+            width: 50px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px #00000055;
+            flex-shrink: 0;
+        }
+        .battery-fill {
+            background: linear-gradient(90deg, #ffc857, #f0b27a);
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            transition: width 0.15s ease;
+        }
+        .battery-fill.low {
+            background: #e35f21;
+        }
+        .battery-fill.critical {
+            background: #c73d23;
+            animation: pulse 0.8s infinite;
+        }
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        .game-status {
+            font-size: 10px;
+            font-weight: 700;
+            color: #b9f6ca;
+            padding: 1px 8px;
+            background: #00000077;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+        .game-status.dead {
+            color: #f8a35e;
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            position: relative;
+        }
+        .canvas-wrapper canvas {
+            display: block;
+            border-radius: 12px;
+            box-shadow: 0 0 0 2px #5e4b3c, 0 8px 20px rgba(0, 0, 0, 0.5);
+            background: #1e2a2a;
+            image-rendering: pixelated;
+            touch-action: none;
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            aspect-ratio: 1/1;
+            object-fit: contain;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-shrink: 0;
+            padding: 4px 0;
+            flex-wrap: wrap;
+        }
+
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 4px;
+            width: 140px;
+            height: 140px;
+            flex-shrink: 0;
+        }
+        .dpad button {
+            border: none;
+            border-radius: 14px;
+            background: #3d3a3a;
+            color: #f7ecc7;
+            font-size: 24px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #1f1a1a, inset 0 1px 0 #6a5f5f;
+            touch-action: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.05s;
+            min-width: 0;
+            min-height: 0;
+            padding: 0;
+        }
+        .dpad button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #1f1a1a;
+            background: #5a4f4f;
+        }
+        .dpad .empty {
+            background: transparent;
+            box-shadow: none;
+            cursor: default;
+            pointer-events: none;
+        }
+        .dpad .empty:active {
+            transform: none;
+            box-shadow: none;
+            background: transparent;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        .actions .row {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        .actions button {
+            border: none;
+            border-radius: 12px;
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 6px 10px;
+            color: #fdf6e3;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #2a1f1a;
+            touch-action: manipulation;
+            transition: all 0.05s;
+            white-space: nowrap;
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .actions button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #2a1f1a;
+        }
+        .btn-dynamite {
+            background: #b34e3a;
+            box-shadow: 0 3px 0 #6e2c1a;
+        }
+        .btn-upgrade {
+            background: #4a6a3a;
+            box-shadow: 0 3px 0 #2a3a1a;
+        }
+        .btn-restart {
+            background: #6f5843;
+            box-shadow: 0 3px 0 #3e2a1f;
+        }
+        .btn-dynamite:active {
+            background: #9a3d2e;
+        }
+        .btn-upgrade:active {
+            background: #3a552a;
+        }
+        .btn-restart:active {
+            background: #5a4433;
+        }
+
+        .controls-tip {
+            font-size: 9px;
+            color: #9a8a7a;
+            background: #00000055;
+            padding: 2px 10px;
+            border-radius: 20px;
+            flex-shrink: 0;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+        .modal-content {
+            background: #2c2e2b;
+            border-radius: 2rem;
+            padding: 1.2rem;
+            max-width: 400px;
+            width: 100%;
+            color: #f7ecc7;
+            font-family: monospace;
+            border: 2px solid #c9ae86;
+            box-shadow: 0 10px 25px black;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            text-align: center;
+            color: #ffd966;
+            font-size: 1.2rem;
+        }
+        .bank-display {
+            font-size: 1.2rem;
+            text-align: center;
+            background: #00000088;
+            border-radius: 2rem;
+            padding: 4px 12px;
+            margin-bottom: 12px;
+        }
+        .upgrade-item {
+            background: #1f2a24;
+            margin: 8px 0;
+            padding: 8px 12px;
+            border-radius: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .upgrade-item .info {
+            font-size: 12px;
+            flex: 1;
+            min-width: 120px;
+        }
+        .upgrade-item .info strong {
+            font-size: 13px;
+        }
+        .upgrade-item button {
+            border: none;
+            border-radius: 20px;
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 5px 14px;
+            color: #fdf6e3;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #2a1f1a;
+            transition: all 0.05s;
+            background: #4a6a3a;
+            white-space: nowrap;
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }
+        .upgrade-item button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #2a1f1a;
+        }
+        .upgrade-item button:disabled {
+            opacity: 0.5;
+            transform: none;
+            box-shadow: 0 3px 0 #2a1f1a;
+            cursor: default;
+        }
+        .close-modal {
+            background: #6f5843;
+            margin-top: 12px;
+            width: 100%;
+            border: none;
+            border-radius: 2rem;
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 1rem;
+            padding: 8px;
+            color: #fdf6e3;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #3e2a1f;
+            transition: all 0.05s;
+            touch-action: manipulation;
+        }
+        .close-modal:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #3e2a1f;
+        }
+        .modal .upgrade-cost {
+            font-weight: 700;
+            color: #ffb347;
+            font-size: 11px;
+        }
+
+        @media (max-width: 420px) {
+            .dpad {
+                width: 110px;
+                height: 110px;
+                gap: 3px;
+            }
+            .dpad button {
+                font-size: 18px;
+                border-radius: 10px;
+            }
+            .actions button {
+                font-size: 10px;
+                padding: 4px 8px;
+                min-height: 30px;
+            }
+            .stat {
+                font-size: 9px;
+            }
+            .battery-bar {
+                width: 36px;
+                height: 8px;
+            }
+            .stats-panel {
+                padding: 3px 6px;
+                gap: 2px 5px;
+                min-height: 26px;
+            }
+            .game-status {
+                font-size: 8px;
+                padding: 1px 6px;
+            }
+            .controls-tip {
+                font-size: 7px;
+                padding: 1px 8px;
+            }
+            .modal-content {
+                padding: 0.8rem;
+            }
+            .upgrade-item .info {
+                font-size: 10px;
+            }
+            .upgrade-item button {
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+        }
+        @media (max-width: 360px) {
+            .dpad {
+                width: 90px;
+                height: 90px;
+                gap: 2px;
+            }
+            .dpad button {
+                font-size: 14px;
+                border-radius: 8px;
+            }
+            .actions button {
+                font-size: 9px;
+                padding: 3px 6px;
+                min-height: 26px;
+            }
+            .stat {
+                font-size: 8px;
+            }
+            .battery-bar {
+                width: 28px;
+                height: 7px;
+            }
+        }
+        @media (max-height: 640px) {
+            .dpad {
+                width: 100px;
+                height: 100px;
+            }
+            .dpad button {
+                font-size: 18px;
+            }
+            .actions button {
+                font-size: 10px;
+                padding: 4px 8px;
+                min-height: 30px;
+            }
+            .stats-panel {
+                padding: 2px 6px;
+                min-height: 22px;
+            }
+            .stat {
+                font-size: 9px;
+            }
+            .controls-tip {
+                display: none;
+            }
+        }
+        @media (orientation: landscape) and (max-height: 500px) {
+            .dpad {
+                width: 80px;
+                height: 80px;
+                gap: 2px;
+            }
+            .dpad button {
+                font-size: 14px;
+                border-radius: 8px;
+            }
+            .actions button {
+                font-size: 9px;
+                padding: 3px 6px;
+                min-height: 26px;
+            }
+            .stat {
+                font-size: 8px;
+            }
+            .battery-bar {
+                width: 30px;
+                height: 6px;
+            }
+            .stats-panel {
+                padding: 2px 4px;
+                min-height: 20px;
+                gap: 2px 4px;
+            }
+            .game-status {
+                font-size: 7px;
+                padding: 0px 5px;
+            }
+            .controls-tip {
+                display: none;
+            }
+            .canvas-wrapper {
+                flex: 2;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+
+        <div class="stats-panel" id="statsPanel">
+            <div class="stat"><span class="icon">🏦</span><span class="val" id="bankVal">0</span></div>
+            <div class="stat">
+                <span class="icon">🔋</span>
+                <span class="val" id="batteryVal">100</span>
+                <div class="battery-bar"><div class="battery-fill" id="batteryFill" style="width:100%"></div></div>
+            </div>
+            <div class="stat"><span class="icon">💰</span><span class="val" id="moneyVal">0</span></div>
+            <div class="stat"><span class="icon">⚙️</span><span class="val" id="movesVal">0</span></div>
+            <div class="stat"><span class="icon">💣</span><span class="val" id="dynamiteCount">0</span></div>
+            <div class="game-status" id="gameStatusText">🟢 АКТИВЕН</div>
+        </div>
+
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <canvas id="gameCanvas" width="440" height="440"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="dpad" id="dpad">
+                <button class="empty"></button>
+                <button id="btnUp" aria-label="Вверх">↑</button>
+                <button class="empty"></button>
+                <button id="btnLeft" aria-label="Влево">←</button>
+                <button class="empty"></button>
+                <button id="btnRight" aria-label="Вправо">→</button>
+                <button class="empty"></button>
+                <button id="btnDown" aria-label="Вниз">↓</button>
+                <button class="empty"></button>
+            </div>
+
+            <div class="actions">
+                <div class="row">
+                    <button id="dynamiteUseBtn" class="btn-dynamite">💣</button>
+                    <button id="upgradeBtn" class="btn-upgrade">⚡</button>
+                </div>
+                <div class="row">
+                    <button id="resetBtn" class="btn-restart">🔄</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-tip">⬆️⬇️⬅️➡️ — движение  ·  💣 — взрыв 3×3</div>
+    </div>
+
+    <div id="upgradeModal" class="modal">
+        <div class="modal-content">
+            <h3>🔧 ПРОКАЧКА</h3>
+            <div class="bank-display">💰 В банке: <span id="modalBank">0</span> монет</div>
+
+            <div class="upgrade-item" id="batteryUpgradePanel">
+                <div class="info">
+                    <strong>🔋 Батарея</strong><br>
+                    <span id="batteryLevelDesc">Уровень 0: +0</span>
+                </div>
+                <button id="buyBatteryBtn">Купить</button>
+            </div>
+
+            <div class="upgrade-item" id="dynamiteUpgradePanel">
+                <div class="info">
+                    <strong>💣 Динамит</strong><br>
+                    <span id="dynamiteLevelDesc">Зарядов: 0</span>
+                </div>
+                <button id="buyDynamiteBtn">Купить</button>
+            </div>
+
+            <div class="upgrade-item" id="fallUpgradePanel">
+                <div class="info">
+                    <strong>🛡️ Амортизатор</strong><br>
+                    <span id="fallLevelDesc">Уровень 0</span>
+                </div>
+                <button id="buyFallBtn">Улучшить</button>
+            </div>
+
+            <button id="closeModalBtn" class="close-modal">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ---------- НАСТРОЙКИ МИРА ----------
+            const WORLD_W = 100;
+            const WORLD_H = 80;
+            const VIEW_SIZE = 11;
+            const TILE_SIZE = 40;
+
+            const TILE = {
+                AIR: 0,
+                DIRT: 1,
+                STONE: 2,
+                COAL: 3,
+                GOLD: 4,
+                CAVE_WALL: 5,
+                LADDER: 6,
+                RUBY: 7,
+                EMERALD: 8
+            };
+
+            const TILE_NAMES = {
+                0: "Воздух",
+                1: "Земля",
+                2: "Камень",
+                3: "Уголь",
+                4: "Золото",
+                5: "Стена пещеры",
+                6: "Лестница",
+                7: "Рубин",
+                8: "Изумруд"
+            };
+
+            // ---------- КАСТОМНЫЕ ТЕКСТУРЫ ----------
+            const CUSTOM_TEXTURES = {
+                [TILE.DIRT]: "data:image/png;base64,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",
+                [TILE.STONE]: "data:image/png;base64,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",
+                [TILE.COAL]: "data:image/png;base64,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",
+                [TILE.GOLD]: "data:image/png;base64,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",
+                [TILE.CAVE_WALL]: "data:image/png;base64,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",
+                [TILE.LADDER]: "data:image/png;base64,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",
+                [TILE.RUBY]: "data:image/png;base64,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",
+                [TILE.EMERALD]: "data:image/png;base64,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"
+            };
+
+            let textureImages = {};
+            let textureLoaded = {};
+
+            function loadTextureForType(type, url) {
+                if (!url || url.trim() === "") { textureLoaded[type] = false;
+                    textureImages[type] = null; return; }
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.onload = () => { textureImages[type] = img;
+                    textureLoaded[type] = true;
+                    renderView(); };
+                img.onerror = () => { console.warn('Текстура не загружена:', TILE_NAMES[type]);
+                    textureLoaded[type] = false;
+                    textureImages[type] = null;
+                    renderView(); };
+                img.src = url;
+            }
+
+            function loadAllCustomTextures() {
+                for (let t = 0; t <= 8; t++) {
+                    const url = CUSTOM_TEXTURES[t];
+                    if (url && url.trim() !== '') loadTextureForType(t, url);
+                    else { textureLoaded[t] = false;
+                        textureImages[t] = null; }
+                }
+            }
+
+            // ---------- ПЕРСИСТЕНТ ----------
+            let bankCoins = 0;
+            let batteryUpgradeLevel = 0;
+            let dynamiteUses = 0;
+            let fallProtectionLevel = 0;
+
+            function getBatteryBonus() {
+                if (batteryUpgradeLevel === 1) return 10;
+                if (batteryUpgradeLevel === 2) return 50;
+                if (batteryUpgradeLevel === 3) return 140;
+                return 0;
+            }
+
+            function getMaxBattery() { return 100 + getBatteryBonus(); }
+
+            function getUpgradeCost(level) {
+                if (level === 0) return 10;
+                if (level === 1) return 100;
+                if (level === 2) return 200;
+                return Infinity;
+            }
+            const DYNAMITE_COST = 100;
+
+            function getFallUpgradeCost(level) {
+                if (level === 0) return 50;
+                if (level === 1) return 70;
+                if (level === 2) return 90;
+                if (level === 3) return 150;
+                if (level === 4) return 200;
+                return Infinity;
+            }
+
+            function getFallDamageThreshold() { return fallProtectionLevel + 2; }
+
+            function loadPersistentData() {
+                const b = localStorage.getItem('drillBank');
+                if (b !== null) bankCoins = parseInt(b) || 0;
+                const u = localStorage.getItem('drillBatteryLevel');
+                if (u !== null) batteryUpgradeLevel = parseInt(u) || 0;
+                const d = localStorage.getItem('drillDynamiteUses');
+                if (d !== null) dynamiteUses = parseInt(d) || 0;
+                const f = localStorage.getItem('drillFallLevel');
+                if (f !== null) fallProtectionLevel = parseInt(f) || 0;
+            }
+
+            function savePersistentData() {
+                localStorage.setItem('drillBank', bankCoins);
+                localStorage.setItem('drillBatteryLevel', batteryUpgradeLevel);
+                localStorage.setItem('drillDynamiteUses', dynamiteUses);
+                localStorage.setItem('drillFallLevel', fallProtectionLevel);
+            }
+
+            let pendingGameMoney = 0;
+
+            function transferGameMoneyToBank() {
+                if (pendingGameMoney > 0) { bankCoins += pendingGameMoney;
+                    pendingGameMoney = 0;
+                    savePersistentData();
+                    updateBankUI(); }
+            }
+
+            function addGameMoney(amount) {
+                if (amount <= 0) return;
+                pendingGameMoney += amount;
+                updateInGameMoneyUI();
+            }
+
+            function updateBankUI() {
+                const b = document.getElementById('bankVal');
+                if (b) b.innerText = bankCoins;
+                const mb = document.getElementById('modalBank');
+                if (mb) mb.innerText = bankCoins;
+            }
+
+            function updateInGameMoneyUI() {
+                const m = document.getElementById('moneyVal');
+                if (m) m.innerText = pendingGameMoney;
+            }
+
+            function tryBuyBatteryUpgrade() {
+                if (batteryUpgradeLevel >= 3) { alert('Максимальный уровень батареи!'); return false; }
+                const cost = getUpgradeCost(batteryUpgradeLevel);
+                if (bankCoins >= cost) {
+                    bankCoins -= cost;
+                    batteryUpgradeLevel++;
+                    savePersistentData();
+                    updateBankUI();
+                    updateUpgradeModalInfo();
+                    alert('Батарея улучшена до уровня ' + batteryUpgradeLevel + '! +' + getBatteryBonus() + ' к максимуму.');
+                    return true;
+                } else { alert('Не хватает монет! Нужно ' + cost + ' монет.'); return false; }
+            }
+
+            function tryBuyDynamite() {
+                if (bankCoins >= DYNAMITE_COST) {
+                    bankCoins -= DYNAMITE_COST;
+                    dynamiteUses++;
+                    savePersistentData();
+                    updateBankUI();
+                    updateUpgradeModalInfo();
+                    if (gameActive) { currentDynamiteCharges++;
+                        updateDynamiteUI(); }
+                    alert('Куплен заряд динамита! Всего зарядов на игру: ' + dynamiteUses);
+                    return true;
+                } else { alert('Не хватает монет! Нужно ' + DYNAMITE_COST + ' монет.'); return false; }
+            }
+
+            function tryBuyFallProtection() {
+                if (fallProtectionLevel >= 5) { alert('Максимальный уровень амортизатора!'); return false; }
+                const cost = getFallUpgradeCost(fallProtectionLevel);
+                if (bankCoins >= cost) {
+                    bankCoins -= cost;
+                    fallProtectionLevel++;
+                    savePersistentData();
+                    updateBankUI();
+                    updateUpgradeModalInfo();
+                    alert('Амортизатор улучшен до уровня ' + fallProtectionLevel + '! Безопасная высота: ' + (getFallDamageThreshold() -
+                        1) + ' блоков.');
+                    return true;
+                } else { alert('Не хватает монет! Нужно ' + cost + ' монет.'); return false; }
+            }
+
+            function updateUpgradeModalInfo() {
+                const ds = document.getElementById('batteryLevelDesc');
+                if (ds) {
+                    const bonus = getBatteryBonus();
+                    const next = batteryUpgradeLevel >= 3 ? 'MAX' : getUpgradeCost(batteryUpgradeLevel);
+                    ds.innerHTML = 'Уровень ' + batteryUpgradeLevel + ' (бонус +' + bonus + ')<br>След. уровень: ' + (next === 'MAX' ?
+                        '—' : next + ' монет');
+                }
+                const bb = document.getElementById('buyBatteryBtn');
+                if (bb) {
+                    if (batteryUpgradeLevel >= 3) { bb.innerText = 'МАКСИМУМ';
+                        bb.disabled = true; } else { bb.innerText = 'Купить (' + getUpgradeCost(batteryUpgradeLevel) + ' монет)';
+                        bb.disabled = false; }
+                }
+                const dd = document.getElementById('dynamiteLevelDesc');
+                if (dd) dd.innerHTML = 'Зарядов на игру: ' + dynamiteUses + '<br>Стоимость заряда: ' + DYNAMITE_COST + ' монет';
+                const fd = document.getElementById('fallLevelDesc');
+                if (fd) {
+                    const th = getFallDamageThreshold();
+                    const next = fallProtectionLevel >= 5 ? 'MAX' : getFallUpgradeCost(fallProtectionLevel);
+                    fd.innerHTML = 'Уровень ' + fallProtectionLevel + ' (безопасно до ' + (th - 1) + ' блоков)<br>След. уровень: ' +
+                        (next === 'MAX' ? '—' : next + ' монет');
+                }
+                const fb = document.getElementById('buyFallBtn');
+                if (fb) {
+                    if (fallProtectionLevel >= 5) { fb.innerText = 'МАКСИМУМ';
+                        fb.disabled = true; } else { fb.innerText = 'Улучшить (' + getFallUpgradeCost(fallProtectionLevel) +
+                            ' монет)';
+                        fb.disabled = false; }
+                }
+            }
+
+            // ---------- ИГРОВОЙ МИР ----------
+            let world = [];
+            let player = { x: 50, y: 4 };
+            let currentBattery = 100;
+            let moves = 0;
+            let gameActive = true;
+            let currentDynamiteCharges = 0;
+
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            function generateWorld() {
+                let w = Array(WORLD_H).fill().map(() => Array(WORLD_W).fill(TILE.STONE));
+                for (let y = 0; y < 5; y++)
+                    for (let x = 0; x < WORLD_W; x++) w[y][x] = TILE.AIR;
+                for (let x = 0; x < WORLD_W; x++) { w[5][x] = TILE.DIRT;
+                    w[6][x] = TILE.DIRT; }
+                for (let y = 7; y < WORLD_H; y++) {
+                    for (let x = 0; x < WORLD_W; x++) {
+                        const depth = y;
+                        let r = Math.random();
+                        if (depth < 14) w[y][x] = r < 0.6 ? TILE.DIRT : TILE.STONE;
+                        else if (depth < 30) w[y][x] = r < 0.4 ? TILE.DIRT : TILE.STONE;
+                        else w[y][x] = r < 0.3 ? TILE.DIRT : TILE.STONE;
+                        if (depth >= 9 && depth < 40 && Math.random() < 0.08) w[y][x] = TILE.COAL;
+                        if (depth >= 14 && depth < 55 && Math.random() < 0.035) w[y][x] = TILE.GOLD;
+                        if (depth >= 12 && depth < 60 && Math.random() < 0.04) w[y][x] = TILE.RUBY;
+                        if (depth >= 18 && depth < 65 && Math.random() < 0.03) w[y][x] = TILE.EMERALD;
+                    }
+                }
+
+                function addCave(cx, cy, radius) {
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            const nx = cx + dx,
+                                ny = cy + dy;
+                            if (nx >= 0 && nx < WORLD_W && ny >= 0 && ny < WORLD_H) {
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+                                if (dist <= radius) w[ny][nx] = TILE.AIR;
+                                else if (dist <= radius + 1.2 && w[ny][nx] !== TILE.AIR) w[ny][nx] = TILE.CAVE_WALL;
+                            }
+                        }
+                    }
+                }
+                const count = 16 + Math.floor(Math.random() * 12);
+                for (let i = 0; i < count; i++) {
+                    const r = 2 + Math.floor(Math.random() * 4);
+                    const x = 8 + Math.floor(Math.random() * (WORLD_W - 16));
+                    const y = 12 + Math.floor(Math.random() * (WORLD_H - 18));
+                    addCave(x, y, r);
+                    if (Math.random() > 0.6) {
+                        const x2 = x + (Math.random() - 0.5) * 6;
+                        const y2 = y + (Math.random() - 0.5) * 5;
+                        if (x2 > 2 && x2 < WORLD_W - 2 && y2 > 5 && y2 < WORLD_H - 3) addCave(Math.floor(x2), Math.floor(y2), r -
+                            1);
+                    }
+                }
+                if (w[5][50] !== TILE.DIRT) w[5][50] = TILE.DIRT;
+                if (w[6][50] !== TILE.DIRT) w[6][50] = TILE.DIRT;
+                return w;
+            }
+
+            function getTile(x, y) {
+                if (x < 0 || x >= WORLD_W || y < 0 || y >= WORLD_H) return TILE.STONE;
+                return world[y][x];
+            }
+
+            function setTile(x, y, type) {
+                if (x >= 0 && x < WORLD_W && y >= 0 && y < WORLD_H) world[y][x] = type;
+            }
+
+            function updateUI() {
+                const bs = document.getElementById('batteryVal');
+                if (bs) bs.innerText = Math.max(0, currentBattery);
+                const ms = document.getElementById('movesVal');
+                if (ms) ms.innerText = moves;
+                const pct = (currentBattery / getMaxBattery()) * 100;
+                const fill = document.getElementById('batteryFill');
+                if (fill) {
+                    fill.style.width = Math.max(0, pct) + '%';
+                    fill.classList.toggle('low', pct <= 25);
+                    fill.classList.toggle('critical', pct <= 10);
+                }
+            }
+
+            function updateDynamiteUI() {
+                const el = document.getElementById('dynamiteCount');
+                if (el) el.innerText = currentDynamiteCharges;
+            }
+
+            function gameOver(reason) {
+                if (!gameActive) return;
+                gameActive = false;
+                const st = document.getElementById('gameStatusText');
+                if (st) { st.innerHTML = '💀 ' + reason;
+                    st.className = 'game-status dead'; }
+                transferGameMoneyToBank();
+                renderView();
+            }
+
+            function isSolid(tile) {
+                return tile === TILE.DIRT || tile === TILE.STONE || tile === TILE.COAL ||
+                    tile === TILE.GOLD || tile === TILE.LADDER || tile === TILE.RUBY || tile === TILE.EMERALD;
+            }
+
+            function isDrillable(tile) {
+                return tile === TILE.DIRT || tile === TILE.COAL || tile === TILE.GOLD || tile === TILE.RUBY || tile === TILE
+                    .EMERALD;
+            }
+
+            function getBatteryCost(tile) {
+                if (tile === TILE.DIRT) return 2;
+                if (tile === TILE.COAL || tile === TILE.GOLD || tile === TILE.RUBY || tile === TILE.EMERALD) return 3;
+                return 1;
+            }
+
+            function getOreValue(tile) {
+                if (tile === TILE.COAL) return 1;
+                if (tile === TILE.GOLD) return 10;
+                if (tile === TILE.RUBY) return 5;
+                if (tile === TILE.EMERALD) return 8;
+                return 0;
+            }
+
+            function applyFallAndDamage() {
+                if (isSolid(getTile(player.x, player.y + 1))) return true;
+                let fallDist = 0;
+                while (true) {
+                    const below = getTile(player.x, player.y + 1);
+                    if (!isSolid(below)) {
+                        const cost = getBatteryCost(below);
+                        if (currentBattery - cost < 0) { gameOver('батарея разрядилась во время падения'); return false; }
+                        currentBattery -= cost;
+                        fallDist++;
+                        player.y++;
+                        moves++;
+                        updateUI();
+                        if (player.y >= WORLD_H) { gameOver('упал в бездну'); return false; }
+                    } else break;
+                }
+                const threshold = getFallDamageThreshold();
+                if (fallDist >= threshold) {
+                    currentBattery = 0;
+                    updateUI();
+                    gameOver('падение с высоты ' + fallDist + ' блоков (безопасно до ' + (threshold - 1) + ')');
+                    return false;
+                }
+                return true;
+            }
+
+            function tryMove(dx, dy) {
+                if (!gameActive) return false;
+                const nx = player.x + dx,
+                    ny = player.y + dy;
+                if (nx < 0 || nx >= WORLD_W || ny < 0 || ny >= WORLD_H) return false;
+                const target = getTile(nx, ny);
+                if (target === TILE.STONE) return false;
+                let cost = getBatteryCost(target);
+                if (currentBattery - cost < 0) { gameOver('батарея разрядилась...');
+                    renderView(); return false; }
+                let addMoney = 0,
+                    willRemove = false;
+                if (isDrillable(target)) {
+                    willRemove = true;
+                    addMoney = getOreValue(target);
+                    if (addMoney > 0) addGameMoney(addMoney);
+                }
+                const oldX = player.x,
+                    oldY = player.y;
+                currentBattery -= cost;
+                moves++;
+                if (willRemove) setTile(nx, ny, TILE.AIR);
+                player.x = nx;
+                player.y = ny;
+                if (dy === -1 && dx === 0) {
+                    const oldTile = getTile(oldX, oldY);
+                    if (oldTile !== TILE.STONE && oldTile !== TILE.LADDER) setTile(oldX, oldY, TILE.LADDER);
+                }
+                updateUI();
+                renderView();
+                if (!applyFallAndDamage()) return false;
+                if (currentBattery <= 0) { gameOver('батарея исчерпана!');
+                    renderView(); return false; }
+                renderView();
+                return true;
+            }
+
+            function useDynamite() {
+                if (!gameActive) { alert('Игра не активна'); return; }
+                if (currentDynamiteCharges <= 0) { alert('Нет зарядов динамита! Купите в магазине.'); return; }
+                let earned = 0;
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const x = player.x + dx,
+                            y = player.y + dy;
+                        if (x >= 0 && x < WORLD_W && y >= 0 && y < WORLD_H) {
+                            const tile = getTile(x, y);
+                            if (tile !== TILE.AIR) {
+                                earned += getOreValue(tile);
+                                setTile(x, y, TILE.AIR);
+                            }
+                        }
+                    }
+                }
+                if (earned > 0) addGameMoney(earned);
+                currentDynamiteCharges--;
+                updateDynamiteUI();
+                renderView();
+                if (!applyFallAndDamage()) return;
+                renderView();
+            }
+
+            // ---------- ОТРИСОВКА ----------
+            function drawTile(ctx, x, y, type) {
+                if (textureLoaded[type] && textureImages[type]) {
+                    ctx.drawImage(textureImages[type], x, y, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#2c2118';
+                    ctx.lineWidth = 0.5;
+                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+                    return;
+                }
+                switch (type) {
+                    case TILE.AIR:
+                        ctx.fillStyle = '#2c3e36';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#3e5a4e';
+                        ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                        break;
+                    case TILE.DIRT:
+                        ctx.fillStyle = '#8b5a2b';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#ac743a';
+                        for (let i = 0; i < 6; i++) ctx.fillRect(x + 5 + (i * 5), y + 18, 3, 8);
+                        ctx.fillStyle = '#6b3e1a';
+                        ctx.fillRect(x + 12, y + 28, 8, 4);
+                        break;
+                    case TILE.STONE:
+                        ctx.fillStyle = '#5a5a66';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#7e7e8c';
+                        for (let i = 0; i < 8; i++) ctx.fillRect(x + 4 + (i * 5), y + 12, 3, 12);
+                        ctx.fillStyle = '#42424d';
+                        ctx.fillRect(x + 20, y + 28, 12, 5);
+                        break;
+                    case TILE.COAL:
+                        ctx.fillStyle = '#2d2b2a';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#1f1d1c';
+                        ctx.fillRect(x + 8, y + 8, 24, 24);
+                        ctx.fillStyle = '#4a3e3a';
+                        ctx.fillRect(x + 14, y + 20, 12, 5);
+                        break;
+                    case TILE.GOLD:
+                        ctx.fillStyle = '#e6b422';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#ffd966';
+                        for (let s = 0; s < 3; s++) ctx.fillRect(x + 10 + s * 8, y + 16, 5, 12);
+                        ctx.fillStyle = '#c97e2a';
+                        ctx.fillRect(x + 18, y + 28, 8, 4);
+                        break;
+                    case TILE.CAVE_WALL:
+                        ctx.fillStyle = '#6f5843';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#9b7b5c';
+                        ctx.fillRect(x + 4, y + 12, 8, 8);
+                        ctx.fillRect(x + 24, y + 24, 8, 8);
+                        ctx.fillStyle = '#c9ae86';
+                        ctx.fillRect(x + 16, y + 28, 5, 5);
+                        break;
+                    case TILE.LADDER:
+                        ctx.fillStyle = '#bc9a6c';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#e1c394';
+                        for (let i = 0; i < 4; i++) { ctx.fillRect(x + 8, y + 6 + i * 10, 24, 3);
+                            ctx.fillRect(x + 18, y + 2 + i * 10, 5, 14); }
+                        ctx.fillStyle = '#8b5a2b';
+                        ctx.fillRect(x + 18, y + 12, 5, 20);
+                        break;
+                    case TILE.RUBY:
+                        ctx.fillStyle = '#a51f2f';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#e34234';
+                        ctx.beginPath();
+                        ctx.moveTo(x + 20, y + 10);
+                        ctx.lineTo(x + 30, y + 25);
+                        ctx.lineTo(x + 20, y + 35);
+                        ctx.lineTo(x + 10, y + 25);
+                        ctx.fill();
+                        ctx.fillStyle = '#ff7f6e';
+                        ctx.fillRect(x + 16, y + 22, 8, 6);
+                        break;
+                    case TILE.EMERALD:
+                        ctx.fillStyle = '#2e7032';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#50c878';
+                        ctx.beginPath();
+                        ctx.moveTo(x + 20, y + 8);
+                        ctx.lineTo(x + 32, y + 20);
+                        ctx.lineTo(x + 20, y + 32);
+                        ctx.lineTo(x + 8, y + 20);
+                        ctx.fill();
+                        ctx.fillStyle = '#b0ffb0';
+                        ctx.fillRect(x + 16, y + 18, 8, 5);
+                        break;
+                    default:
+                        ctx.fillStyle = '#2e2b26';
+                        ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
+                }
+                ctx.strokeStyle = '#2c2118';
+                ctx.lineWidth = 0.5;
+                ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
+            }
+
+            function renderView() {
+                if (!canvas) return;
+                ctx.clearRect(0, 0, 440, 440);
+                const camX = player.x - Math.floor(VIEW_SIZE / 2);
+                const camY = player.y - Math.floor(VIEW_SIZE / 2);
+                for (let row = 0; row < VIEW_SIZE; row++) {
+                    for (let col = 0; col < VIEW_SIZE; col++) {
+                        const wx = camX + col,
+                            wy = camY + row;
+                        let tile = TILE.AIR;
+                        if (wx >= 0 && wx < WORLD_W && wy >= 0 && wy < WORLD_H) tile = world[wy][wx];
+                        else tile = TILE.STONE;
+                        const xPos = col * TILE_SIZE,
+                            yPos = row * TILE_SIZE;
+                        drawTile(ctx, xPos, yPos, tile);
+                        if (wx === player.x && wy === player.y) {
+                            ctx.save();
+                            ctx.shadowBlur = 0;
+                            ctx.beginPath();
+                            ctx.rect(xPos + 2, yPos + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                            ctx.fillStyle = '#445c6e';
+                            ctx.fill();
+                            ctx.fillStyle = '#8fc5e8';
+                            ctx.font = 'bold ' + (TILE_SIZE - 12) + 'px monospace';
+                            ctx.fillText('⚙', xPos + 8, yPos + TILE_SIZE - 10);
+                            ctx.fillStyle = '#f2c94c';
+                            ctx.font = (TILE_SIZE - 14) + 'px monospace';
+                            ctx.fillText('⛏️', xPos + 12, yPos + TILE_SIZE - 14);
+                            ctx.restore();
+                            ctx.strokeStyle = '#ffd966';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(xPos + 1, yPos + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                        }
+                    }
+                }
+                if (!gameActive) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+                    ctx.fillRect(0, 0, 440, 440);
+                    ctx.fillStyle = '#ffbe76';
+                    ctx.font = 'bold 20px monospace';
+                    ctx.fillText('GAME OVER', 140, 220);
+                }
+            }
+
+            // ---------- УПРАВЛЕНИЕ ----------
+            function restartGame() {
+                if (gameActive && pendingGameMoney > 0) transferGameMoneyToBank();
+                world = generateWorld();
+                player = { x: 50, y: 4 };
+                currentBattery = getMaxBattery();
+                moves = 0;
+                gameActive = true;
+                currentDynamiteCharges = dynamiteUses;
+                pendingGameMoney = 0;
+                updateInGameMoneyUI();
+                updateUI();
+                updateDynamiteUI();
+                const st = document.getElementById('gameStatusText');
+                if (st) { st.innerHTML = '🟢 АКТИВЕН';
+                    st.className = 'game-status'; }
+                if (!isSolid(getTile(player.x, player.y + 1))) setTile(player.x, player.y + 1, TILE.DIRT);
+                renderView();
+            }
+
+            // ---------- МОДАЛКА ----------
+            function openUpgradeModal() { updateBankUI();
+                updateUpgradeModalInfo();
+                document.getElementById('upgradeModal').style.display = 'flex'; }
+
+            function closeUpgradeModal() { document.getElementById('upgradeModal').style.display = 'none'; }
+
+            // ---------- РАЗМЕР КАНВАСА ----------
+            function resizeCanvas() {
+                const wrapper = document.getElementById('canvasWrapper');
+                if (!wrapper) return;
+                const rect = wrapper.getBoundingClientRect();
+                const size = Math.min(rect.width, rect.height);
+                if (size > 0) {
+                    canvas.style.width = size + 'px';
+                    canvas.style.height = size + 'px';
+                }
+            }
+
+            // ---------- ИНИЦИАЛИЗАЦИЯ ----------
+            loadPersistentData();
+            world = generateWorld();
+            currentBattery = getMaxBattery();
+            player = { x: 50, y: 4 };
+            moves = 0;
+            gameActive = true;
+            currentDynamiteCharges = dynamiteUses;
+            pendingGameMoney = 0;
+            updateInGameMoneyUI();
+            updateUI();
+            updateBankUI();
+            updateDynamiteUI();
+            if (!isSolid(getTile(player.x, player.y + 1))) setTile(player.x, player.y + 1, TILE.DIRT);
+            loadAllCustomTextures();
+            renderView();
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 300));
+            const ro = new ResizeObserver(() => resizeCanvas());
+            const wrapper = document.getElementById('canvasWrapper');
+            if (wrapper) ro.observe(wrapper);
+
+            // ---------- СОБЫТИЯ КНОПОК ----------
+            // D-Pad (touchstart + mousedown)
+            document.getElementById('btnUp').addEventListener('touchstart', e => { e.preventDefault();
+                tryMove(0, -1); });
+            document.getElementById('btnDown').addEventListener('touchstart', e => { e.preventDefault();
+                tryMove(0, 1); });
+            document.getElementById('btnLeft').addEventListener('touchstart', e => { e.preventDefault();
+                tryMove(-1, 0); });
+            document.getElementById('btnRight').addEventListener('touchstart', e => { e.preventDefault();
+                tryMove(1, 0); });
+            // Для мыши
+            document.getElementById('btnUp').addEventListener('mousedown', e => { e.preventDefault();
+                tryMove(0, -1); });
+            document.getElementById('btnDown').addEventListener('mousedown', e => { e.preventDefault();
+                tryMove(0, 1); });
+            document.getElementById('btnLeft').addEventListener('mousedown', e => { e.preventDefault();
+                tryMove(-1, 0); });
+            document.getElementById('btnRight').addEventListener('mousedown', e => { e.preventDefault();
+                tryMove(1, 0); });
+
+            // Остальные кнопки — только click, без блокировки touch
+            document.getElementById('resetBtn').addEventListener('click', () => restartGame());
+            document.getElementById('upgradeBtn').addEventListener('click', openUpgradeModal);
+            document.getElementById('closeModalBtn').addEventListener('click', closeUpgradeModal);
+            document.getElementById('dynamiteUseBtn').addEventListener('click', () => useDynamite());
+            document.getElementById('buyBatteryBtn').addEventListener('click', () => tryBuyBatteryUpgrade());
+            document.getElementById('buyDynamiteBtn').addEventListener('click', () => tryBuyDynamite());
+            document.getElementById('buyFallBtn').addEventListener('click', () => tryBuyFallProtection());
+            window.addEventListener('click', (e) => { if (e.target === document.getElementById('upgradeModal'))
+                closeUpgradeModal(); });
+
+            // Клавиши для десктопа
+            window.addEventListener('keydown', (e) => {
+                if (!gameActive) return;
+                let dx = 0,
+                    dy = 0;
+                if (e.key === 'ArrowUp') dy = -1;
+                else if (e.key === 'ArrowDown') dy = 1;
+                else if (e.key === 'ArrowLeft') dx = -1;
+                else if (e.key === 'ArrowRight') dx = 1;
+                else return;
+                e.preventDefault();
+                tryMove(dx, dy);
+            });
+
+            console.log('🔥 Drill Miner Mobile готов!');
+        })();
+    </script>
+</body>
+</html>

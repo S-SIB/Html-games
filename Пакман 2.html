@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="ru" dir="ltr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Pac-Man с музыкой</title>
+    <link rel="icon" href="https://i.ibb.co/M6KTWnf/pic.jpg" />
+    <style>
+        /* Сброс и база */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at top, #06142e 0%, #01010a 55%, #000 100%);
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            color: #f8f8ff;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+
+        .wrapper {
+            width: 100%;
+            max-width: 620px;
+            padding: 10px 12px 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100dvh;
+            justify-content: flex-start;
+            gap: 4px;
+        }
+
+        /* Шапка */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 4px 6px;
+            padding: 0 2px;
+            flex-shrink: 0;
+        }
+
+        .title {
+            font-size: 1.15rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f5c33b, #ffd966);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            white-space: nowrap;
+        }
+
+        .scoreboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 6px;
+            align-items: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .score-label,
+        .lives-label {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            backdrop-filter: blur(2px);
+            white-space: nowrap;
+        }
+
+        .restart-btn,
+        .music-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 3px 10px;
+            background: #f5c33b;
+            color: #1b1b1b;
+            font-weight: 700;
+            font-size: 0.7rem;
+            cursor: pointer;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.4);
+            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+            touch-action: manipulation;
+            white-space: nowrap;
+            line-height: 1.4;
+        }
+        .restart-btn:hover,
+        .music-btn:hover {
+            background: #ffd54a;
+        }
+        .restart-btn:active,
+        .music-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .music-btn {
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-size: 0.9rem;
+            padding: 3px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .music-btn.muted {
+            opacity: 0.5;
+            background: rgba(255, 50, 50, 0.15);
+            border-color: rgba(255, 50, 50, 0.3);
+        }
+
+        /* Игровое поле */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            flex: 1 1 auto;
+            min-height: 0;
+            justify-content: center;
+        }
+
+        canvas {
+            border-radius: 8px;
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            background: #000016;
+            box-shadow: 0 0 24px rgba(0, 255, 255, 0.20);
+            width: 100%;
+            height: auto;
+            aspect-ratio: 560 / 620;
+            display: block;
+            touch-action: none;
+        }
+
+        .hint {
+            font-size: 0.6rem;
+            opacity: 0.5;
+            text-align: center;
+            margin-top: 2px;
+            display: none;
+        }
+
+        /* Кнопки управления (D‑Pad) */
+        .touch-controls {
+            flex-shrink: 0;
+            width: 100%;
+            max-width: 360px;
+            margin: 2px auto 0;
+            padding: 4px 0 8px;
+            display: flex;
+            justify-content: center;
+            touch-action: none;
+        }
+
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 5px;
+            width: 100%;
+            max-width: 220px;
+            aspect-ratio: 1 / 1;
+            touch-action: none;
+        }
+
+        .dpad-btn {
+            border: none;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-size: 1.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            touch-action: none;
+            transition: background 0.08s ease, transform 0.06s ease, box-shadow 0.08s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            font-weight: 300;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .dpad-btn:active,
+        .dpad-btn.active {
+            background: rgba(255, 215, 0, 0.25);
+            border-color: rgba(255, 215, 0, 0.4);
+            transform: scale(0.92);
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.15), inset 0 0 20px rgba(255, 215, 0, 0.05);
+        }
+
+        .dpad-btn .arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            font-size: 1.8rem;
+            pointer-events: none;
+        }
+
+        .dpad-up {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        .dpad-left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        .dpad-right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        .dpad-down {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        .dpad-center {
+            grid-column: 2;
+            grid-row: 2;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            pointer-events: none;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 480px) {
+            .title {
+                font-size: 0.95rem;
+            }
+            .score-label,
+            .lives-label {
+                font-size: 0.65rem;
+                padding: 2px 6px;
+            }
+            .restart-btn,
+            .music-btn {
+                font-size: 0.6rem;
+                padding: 2px 8px;
+            }
+            .dpad-btn {
+                border-radius: 12px;
+                font-size: 1.2rem;
+            }
+            .dpad-btn .arrow {
+                font-size: 1.4rem;
+            }
+            .dpad {
+                max-width: 170px;
+                gap: 4px;
+            }
+            .wrapper {
+                padding: 6px 8px 2px;
+                gap: 2px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .dpad {
+                max-width: 140px;
+                gap: 3px;
+            }
+            .dpad-btn {
+                border-radius: 10px;
+                font-size: 1rem;
+            }
+            .dpad-btn .arrow {
+                font-size: 1.1rem;
+            }
+            .title {
+                font-size: 0.8rem;
+            }
+            .score-label,
+            .lives-label {
+                font-size: 0.55rem;
+                padding: 1px 5px;
+            }
+            .restart-btn,
+            .music-btn {
+                font-size: 0.5rem;
+                padding: 1px 6px;
+            }
+        }
+
+        @media (orientation: landscape) and (max-height: 500px) {
+            .wrapper {
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: center;
+                height: 100dvh;
+                padding: 4px 8px;
+                gap: 4px;
+            }
+            .header {
+                width: 100%;
+                flex: 0 0 auto;
+            }
+            .game-container {
+                flex: 1 1 50%;
+                min-width: 200px;
+                max-height: 80vh;
+            }
+            canvas {
+                max-height: 70vh;
+                width: auto;
+                height: 100%;
+                aspect-ratio: 560 / 620;
+            }
+            .touch-controls {
+                flex: 0 0 auto;
+                max-width: 180px;
+                margin: 0;
+                padding: 0;
+            }
+            .dpad {
+                max-width: 140px;
+                gap: 4px;
+            }
+            .dpad-btn {
+                border-radius: 10px;
+                font-size: 1rem;
+            }
+            .dpad-btn .arrow {
+                font-size: 1.2rem;
+            }
+            .hint {
+                display: none;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .touch-controls {
+                display: none;
+            }
+            .hint {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="wrapper">
+        <!-- Шапка -->
+        <header class="header">
+            <h1 class="title">Pac‑Man</h1>
+            <div class="scoreboard">
+                <span class="score-label">Счёт: <span id="score">0</span></span>
+                <span class="lives-label">Жизни: <span id="lives">3</span></span>
+                <button id="restartBtn" class="restart-btn">↻</button>
+                <button id="musicToggle" class="music-btn" aria-label="Переключить музыку">🔊</button>
+            </div>
+        </header>
+
+        <!-- Игра -->
+        <div class="game-container">
+            <canvas id="gameCanvas" width="560" height="620"></canvas>
+            <p class="hint">▲ ▼ ◀ ▶ или WASD &nbsp;·&nbsp; Собирай точки, избегай призраков!</p>
+        </div>
+
+        <!-- Сенсорный D‑Pad -->
+        <div class="touch-controls" id="touchControls">
+            <div class="dpad" id="dpad">
+                <button class="dpad-btn dpad-up" data-dx="0" data-dy="-1" aria-label="Вверх">
+                    <span class="arrow">▲</span>
+                </button>
+                <button class="dpad-btn dpad-left" data-dx="-1" data-dy="0" aria-label="Влево">
+                    <span class="arrow">◀</span>
+                </button>
+                <div class="dpad-center"></div>
+                <button class="dpad-btn dpad-right" data-dx="1" data-dy="0" aria-label="Вправо">
+                    <span class="arrow">▶</span>
+                </button>
+                <button class="dpad-btn dpad-down" data-dx="0" data-dy="1" aria-label="Вниз">
+                    <span class="arrow">▼</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        //  PAC-MAN  —  с новой мелодией и переключателем
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        (function() {
+            "use strict";
+
+            // ---- Canvas ----
+            const canvas = document.getElementById("gameCanvas");
+            const ctx = canvas.getContext("2d");
+
+            const tileSize = 16;
+            const corridorScale = 1.25;
+            const corridorTile = Math.round(tileSize * corridorScale); // 20
+            const wallSize = tileSize;
+            const cols = 28;
+            const rows = 31;
+
+            canvas.width = cols * corridorTile;
+            canvas.height = rows * corridorTile;
+
+            // ---- DOM ----
+            const scoreEl = document.getElementById("score");
+            const livesEl = document.getElementById("lives");
+            const restartBtn = document.getElementById("restartBtn");
+            const musicToggleBtn = document.getElementById("musicToggle");
+
+            // ---- Карта ----
+            const levelLayout = [
+                "1111111111111111111111111111",
+                "1222222222112222222222222221",
+                "1211112112112112112111112121",
+                "1311112112112112112111112131",
+                "1222222222222222222222222221",
+                "1211112111112111112111112121",
+                "1222222112222222211222222221",
+                "1111112112111112112111111111",
+                "0000012112110002112110000000",
+                "1111112112111112112111111111",
+                "1222222222222112222222222221",
+                "1211112111112111112111112121",
+                "1222212222222222222222122221",
+                "1111212111110001111122111111",
+                "0000212110000000000122110000",
+                "1111212110111111101122111111",
+                "1222222220222222202222222221",
+                "1211112112111112112111112121",
+                "1222222112222222211222222221",
+                "1111112112111112112111111111",
+                "0000012112110002112110000000",
+                "1111112112111112112111111111",
+                "1222222222222222222222222221",
+                "1211112111112111112111112121",
+                "1311112222222112222222112131",
+                "1222222111112111111122222221",
+                "1111112112222222212111111111",
+                "1222222222112222112222222221",
+                "1211111112112112111111112121",
+                "1222222222222222222222222221",
+                "1111111111111111111111111111",
+            ];
+
+            let map = [];
+            let pelletsRemaining = 0;
+
+            // ---- Игрок и призраки ----
+            const pacman = {
+                x: 1,
+                y: 29,
+                dirX: 0,
+                dirY: 0,
+                nextDirX: 0,
+                nextDirY: 0,
+                speed: 8,
+                radius: tileSize * 0.6,
+            };
+
+            const ghosts = [
+                { x: 13, y: 14, dirX: 1, dirY: 0, color: "#ff4b4b" },
+                { x: 14, y: 14, dirX: -1, dirY: 0, color: "#4bc6ff" },
+            ];
+
+            let score = 0;
+            let lives = 3;
+            let gameOver = false;
+            let lastTime = 0;
+            let gameTime = 0;
+
+            // ---- Музыка ----
+            let audioCtx = null;
+            let backgroundOsc = null;
+            let backgroundGain = null;
+            let backgroundInterval = null;
+            let backgroundStarted = false;
+            let isMusicMuted = false; // выключена ли музыка пользователем
+
+            function getAudioContext() {
+                if (audioCtx) return audioCtx;
+                const Ctx = window.AudioContext || window.webkitAudioContext;
+                if (!Ctx) return null;
+                audioCtx = new Ctx();
+                return audioCtx;
+            }
+
+            // Запуск фоновой мелодии
+            function startBackgroundSound() {
+                if (backgroundStarted || isMusicMuted) return;
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                try {
+                    ctx.resume();
+                    backgroundOsc = ctx.createOscillator();
+                    backgroundGain = ctx.createGain();
+                    backgroundOsc.connect(backgroundGain);
+                    backgroundGain.connect(ctx.destination);
+                    backgroundOsc.type = "sine";
+                    backgroundGain.gain.setValueAtTime(0.07, ctx.currentTime);
+                    backgroundOsc.start(ctx.currentTime);
+                    backgroundStarted = true;
+
+                    // Простая мелодия: арпеджио до-мажор
+                    const notes = [262, 330, 392, 523, 392, 330]; // C4, E4, G4, C5, G4, E4
+                    let index = 0;
+                    backgroundInterval = setInterval(() => {
+                        if (!backgroundOsc || !ctx) return;
+                        const freq = notes[index % notes.length];
+                        backgroundOsc.frequency.setTargetAtTime(freq, ctx.currentTime, 0.04);
+                        index++;
+                    }, 170);
+                } catch (_) { /* игнорируем ошибки аудио */ }
+            }
+
+            // Остановка фоновой музыки
+            function stopBackgroundSound() {
+                if (backgroundInterval) {
+                    clearInterval(backgroundInterval);
+                    backgroundInterval = null;
+                }
+                if (backgroundOsc) {
+                    try {
+                        backgroundOsc.stop();
+                        backgroundOsc.disconnect();
+                    } catch (_) {}
+                    backgroundOsc = null;
+                }
+                if (backgroundGain) {
+                    try { backgroundGain.disconnect(); } catch (_) {}
+                    backgroundGain = null;
+                }
+                backgroundStarted = false;
+            }
+
+            // Переключение музыки по кнопке
+            function toggleMusic() {
+                isMusicMuted = !isMusicMuted;
+                if (isMusicMuted) {
+                    stopBackgroundSound();
+                    musicToggleBtn.textContent = "🔇";
+                    musicToggleBtn.classList.add("muted");
+                } else {
+                    musicToggleBtn.textContent = "🔊";
+                    musicToggleBtn.classList.remove("muted");
+                    // Если контекст уже есть, запускаем музыку
+                    if (audioCtx && audioCtx.state === "running") {
+                        startBackgroundSound();
+                    } else {
+                        // Иначе контекст будет запущен при первом касании
+                        const ctx = getAudioContext();
+                        if (ctx && ctx.state === "suspended") ctx.resume();
+                    }
+                }
+            }
+
+            // Активировать аудио (вызывать при первом взаимодействии)
+            function ensureAudioStarted() {
+                const ctx = getAudioContext();
+                if (ctx && ctx.state === "suspended") {
+                    ctx.resume().catch(() => {});
+                }
+                if (!isMusicMuted && !backgroundStarted) {
+                    startBackgroundSound();
+                }
+            }
+
+            // Звук поедания
+            function playPelletSound() {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                try {
+                    ctx.resume();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = "square";
+                    osc.frequency.setValueAtTime(680, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.06);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.06);
+                } catch (_) {}
+            }
+
+            // Звук смерти
+            function playDeathSound() {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                try {
+                    ctx.resume();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = "sawtooth";
+                    osc.frequency.setValueAtTime(220, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.6);
+                    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.6);
+                } catch (_) {}
+            }
+
+            // ---- Инициализация карты ----
+            function initMap() {
+                map = [];
+                pelletsRemaining = 0;
+                for (let r = 0; r < rows; r++) {
+                    const row = [];
+                    for (let c = 0; c < cols; c++) {
+                        let val = Number(levelLayout[r][c]);
+                        if (val === 2 || val === 3) pelletsRemaining++;
+                        row.push(val);
+                    }
+                    map.push(row);
+                }
+            }
+
+            function resetEntities() {
+                pacman.x = 1;
+                pacman.y = 29;
+                pacman.dirX = 0;
+                pacman.dirY = 0;
+                pacman.nextDirX = 0;
+                pacman.nextDirY = 0;
+
+                ghosts[0].x = 13;
+                ghosts[0].y = 14;
+                ghosts[0].dirX = 1;
+                ghosts[0].dirY = 0;
+
+                ghosts[1].x = 14;
+                ghosts[1].y = 14;
+                ghosts[1].dirX = -1;
+                ghosts[1].dirY = 0;
+            }
+
+            function restartGame() {
+                score = 0;
+                lives = 3;
+                gameOver = false;
+                initMap();
+                resetEntities();
+                updateUI();
+                // Если музыка включена и не играет — запустить
+                if (!isMusicMuted && !backgroundStarted) {
+                    startBackgroundSound();
+                }
+            }
+
+            function updateUI() {
+                scoreEl.textContent = score;
+                livesEl.textContent = lives;
+            }
+
+            function isWall(col, row) {
+                if (row < 0 || row >= rows || col < 0 || col >= cols) return true;
+                return map[row][col] === 1;
+            }
+
+            function trySetDirection(dx, dy) {
+                pacman.nextDirX = dx;
+                pacman.nextDirY = dy;
+            }
+
+            // ---- Обработка ввода ----
+            function handleInput() {
+                const centerCol = Math.round(pacman.x);
+                const centerRow = Math.round(pacman.y);
+                const offsetX = Math.abs(pacman.x - centerCol);
+                const offsetY = Math.abs(pacman.y - centerRow);
+                const aligned = offsetX < 0.35 && offsetY < 0.35;
+                const stopped = pacman.dirX === 0 && pacman.dirY === 0;
+
+                if (aligned || stopped) {
+                    const targetCol = centerCol + pacman.nextDirX;
+                    const targetRow = centerRow + pacman.nextDirY;
+                    if (!isWall(targetCol, targetRow)) {
+                        pacman.dirX = pacman.nextDirX;
+                        pacman.dirY = pacman.nextDirY;
+                    }
+                }
+            }
+
+            // ---- Движение ----
+            function movePacman(deltaSeconds) {
+                handleInput();
+
+                const speedPerFrame = pacman.speed * deltaSeconds;
+                let newX = pacman.x + pacman.dirX * speedPerFrame;
+                let newY = pacman.y + pacman.dirY * speedPerFrame;
+
+                if (newX < 0) newX = cols - 1;
+                if (newX > cols - 1) newX = 0;
+
+                const nextCol = Math.round(newX);
+                const nextRow = Math.round(newY);
+
+                if (isWall(nextCol, nextRow)) {
+                    const dx = pacman.dirX;
+                    const dy = pacman.dirY;
+                    pacman.dirX = 0;
+                    pacman.dirY = 0;
+                    pacman.x = nextCol - dx;
+                    pacman.y = nextRow - dy;
+                    return;
+                }
+
+                pacman.x = newX;
+                pacman.y = newY;
+
+                const col = Math.round(pacman.x);
+                const row = Math.round(pacman.y);
+                if (map[row] && (map[row][col] === 2 || map[row][col] === 3)) {
+                    playPelletSound();
+                    if (map[row][col] === 2) score += 10;
+                    if (map[row][col] === 3) score += 50;
+                    map[row][col] = 0;
+                    pelletsRemaining--;
+                    updateUI();
+
+                    if (pelletsRemaining <= 0) {
+                        gameOver = true;
+                        setTimeout(() => alert("🎉 Вы очистили лабиринт!"), 100);
+                    }
+                }
+            }
+
+            function moveGhost(ghost, deltaSeconds) {
+                const speed = 6 * deltaSeconds;
+                let newX = ghost.x + ghost.dirX * speed;
+                let newY = ghost.y + ghost.dirY * speed;
+
+                const nextCol = Math.round(newX);
+                const nextRow = Math.round(newY);
+
+                if (isWall(nextCol, nextRow)) {
+                    const dirs = [
+                        { x: 1, y: 0 },
+                        { x: -1, y: 0 },
+                        { x: 0, y: 1 },
+                        { x: 0, y: -1 },
+                    ];
+                    const currentOppX = -ghost.dirX;
+                    const currentOppY = -ghost.dirY;
+                    const valid = dirs.filter(d => !(d.x === currentOppX && d.y === currentOppY));
+                    const choice = valid[Math.floor(Math.random() * valid.length)];
+                    ghost.dirX = choice.x;
+                    ghost.dirY = choice.y;
+                    return;
+                }
+
+                ghost.x = newX;
+                ghost.y = newY;
+
+                if (ghost.x < 0) ghost.x = cols - 1;
+                if (ghost.x > cols - 1) ghost.x = 0;
+            }
+
+            function distance(a, b) {
+                const dx = a.x - b.x;
+                const dy = a.y - b.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            function checkCollisions() {
+                for (const ghost of ghosts) {
+                    if (distance(ghost, pacman) < 0.7) {
+                        playDeathSound();
+                        lives--;
+                        updateUI();
+                        if (lives <= 0) {
+                            gameOver = true;
+                            setTimeout(() => alert("💀 Игра окончена!"), 100);
+                        }
+                        resetEntities();
+                        break;
+                    }
+                }
+            }
+
+            // ---- Отрисовка ----
+            function drawMap() {
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const val = map[r][c];
+                        const x = c * corridorTile;
+                        const y = r * corridorTile;
+
+                        if (val === 1) {
+                            const wallX = x + (corridorTile - wallSize) / 2;
+                            const wallY = y + (corridorTile - wallSize) / 2;
+                            ctx.fillStyle = "#001b4d";
+                            ctx.fillRect(wallX, wallY, wallSize, wallSize);
+                            ctx.strokeStyle = "#0ff";
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(wallX + 2, wallY + 2, wallSize - 4, wallSize - 4);
+                        } else {
+                            ctx.fillStyle = "#000016";
+                            ctx.fillRect(x, y, corridorTile, corridorTile);
+
+                            if (val === 2) {
+                                ctx.fillStyle = "#ffd966";
+                                ctx.beginPath();
+                                ctx.arc(x + corridorTile / 2, y + corridorTile / 2, 2, 0, Math.PI * 2);
+                                ctx.fill();
+                            } else if (val === 3) {
+                                ctx.fillStyle = "#ffd966";
+                                ctx.beginPath();
+                                ctx.arc(x + corridorTile / 2, y + corridorTile / 2, 4, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                        }
+                    }
+                }
+            }
+
+            function drawPacman() {
+                const px = pacman.x * corridorTile + corridorTile / 2;
+                const py = pacman.y * corridorTile + corridorTile / 2;
+
+                const angleOffset = pacman.dirX === 1 ? 0 :
+                    pacman.dirX === -1 ? Math.PI :
+                    pacman.dirY === -1 ? -Math.PI / 2 :
+                    pacman.dirY === 1 ? Math.PI / 2 : 0;
+
+                const chompSpeed = 18;
+                const mouthOpen = 0.08 + 0.28 * (0.5 + 0.5 * Math.sin(gameTime * chompSpeed));
+
+                ctx.fillStyle = "#ffd966";
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.arc(px, py, corridorTile * 0.6, angleOffset + mouthOpen, angleOffset + Math.PI * 2 - mouthOpen);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            function drawGhost(ghost) {
+                const gx = (Math.round(ghost.x) * corridorTile) + corridorTile / 2;
+                const gy = (Math.round(ghost.y) * corridorTile) + corridorTile / 2;
+                const r = corridorTile * 0.6;
+
+                ctx.fillStyle = ghost.color;
+                ctx.beginPath();
+                ctx.arc(gx, gy, r, Math.PI, 0);
+                ctx.lineTo(gx + r, gy + r);
+                ctx.lineTo(gx - r, gy + r);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = "#fff";
+                ctx.beginPath();
+                ctx.arc(gx - r / 3, gy - r / 4, r / 4, 0, Math.PI * 2);
+                ctx.arc(gx + r / 3, gy - r / 4, r / 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "#000";
+                ctx.beginPath();
+                ctx.arc(gx - r / 3, gy - r / 4, r / 8, 0, Math.PI * 2);
+                ctx.arc(gx + r / 3, gy - r / 4, r / 8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawMap();
+                drawPacman();
+                ghosts.forEach(drawGhost);
+            }
+
+            // ---- Игровой цикл ----
+            function loop(timestamp) {
+                if (!lastTime) lastTime = timestamp;
+                const delta = Math.min((timestamp - lastTime) / 1000, 0.05);
+                lastTime = timestamp;
+                gameTime = timestamp / 1000;
+
+                if (!gameOver) {
+                    movePacman(delta);
+                    ghosts.forEach(g => moveGhost(g, delta));
+                    checkCollisions();
+                }
+
+                draw();
+                requestAnimationFrame(loop);
+            }
+
+            // ---- Клавиатура ----
+            document.addEventListener("keydown", (e) => {
+                ensureAudioStarted();
+                switch (e.key) {
+                    case "ArrowUp":
+                    case "w":
+                    case "W":
+                        e.preventDefault();
+                        trySetDirection(0, -1);
+                        break;
+                    case "ArrowDown":
+                    case "s":
+                    case "S":
+                        e.preventDefault();
+                        trySetDirection(0, 1);
+                        break;
+                    case "ArrowLeft":
+                    case "a":
+                    case "A":
+                        e.preventDefault();
+                        trySetDirection(-1, 0);
+                        break;
+                    case "ArrowRight":
+                    case "d":
+                    case "D":
+                        e.preventDefault();
+                        trySetDirection(1, 0);
+                        break;
+                }
+            });
+
+            // ---- Сенсорное управление ----
+            function setupTouchControls() {
+                const buttons = document.querySelectorAll(".dpad-btn");
+
+                buttons.forEach(btn => {
+                    btn.addEventListener("contextmenu", e => e.preventDefault());
+
+                    const dx = parseInt(btn.dataset.dx, 10);
+                    const dy = parseInt(btn.dataset.dy, 10);
+
+                    function handleStart(e) {
+                        e.preventDefault();
+                        ensureAudioStarted();
+                        btn.classList.add("active");
+                        trySetDirection(dx, dy);
+                        if (navigator.vibrate) navigator.vibrate(8);
+                    }
+
+                    function handleEnd(e) {
+                        e.preventDefault();
+                        btn.classList.remove("active");
+                    }
+
+                    btn.addEventListener("touchstart", handleStart, { passive: false });
+                    btn.addEventListener("touchend", handleEnd, { passive: false });
+                    btn.addEventListener("touchcancel", handleEnd, { passive: false });
+
+                    btn.addEventListener("mousedown", handleStart);
+                    btn.addEventListener("mouseup", handleEnd);
+                    btn.addEventListener("mouseleave", handleEnd);
+                });
+
+                const dpad = document.getElementById("dpad");
+                if (dpad) {
+                    dpad.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
+                }
+            }
+
+            // ---- Кнопки ----
+            restartBtn.addEventListener("click", () => {
+                ensureAudioStarted();
+                restartGame();
+            });
+
+            musicToggleBtn.addEventListener("click", () => {
+                toggleMusic();
+                // Принудительно запускаем контекст, если он ещё не запущен
+                const ctx = getAudioContext();
+                if (ctx && ctx.state === "suspended") ctx.resume();
+            });
+
+            // ---- Инициализация ----
+            initMap();
+            resetEntities();
+            updateUI();
+            setupTouchControls();
+            requestAnimationFrame(loop);
+
+            // Активируем аудио при первом касании (если музыка не выключена)
+            document.addEventListener("touchstart", () => {
+                ensureAudioStarted();
+            }, { once: true });
+
+            // Также при клике мыши (для ПК)
+            document.addEventListener("click", () => {
+                ensureAudioStarted();
+            }, { once: true });
+
+        })();
+    </script>
+
+</body>
+</html>

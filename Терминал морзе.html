@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>⏣ MORSE TRAINER · MATRIX</title>
+    <style>
+        /* ── RESET & ROOT ── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --panel: #111111;
+            --border: #1f3f1f;
+            --green: #00ff41;
+            --green-dim: #00cc33;
+            --green-glow: rgba(0, 255, 65, 0.15);
+            --green-weak: rgba(0, 255, 65, 0.05);
+            --text: #00ff41;
+            --text-dim: #00cc33;
+            --text-muted: #1f6b2a;
+            --font-mono: 'Courier New', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+            --radius: 8px;
+            --shadow-glow: 0 0 30px rgba(0, 255, 65, 0.06);
+            --transition: 0.15s ease;
+        }
+
+        html,
+        body {
+            height: 100%;
+            background: var(--bg);
+            font-family: var(--font-mono);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        /* ── SCANLINE OVERLAY ── */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: repeating-linear-gradient(0deg,
+                    rgba(0, 255, 65, 0.015) 0px,
+                    rgba(0, 255, 65, 0.015) 2px,
+                    transparent 2px,
+                    transparent 6px);
+            z-index: 9999;
+        }
+
+        /* ── APP ── */
+        .app {
+            width: 100%;
+            max-width: 720px;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px 24px 32px;
+            box-shadow: var(--shadow-glow), inset 0 0 60px rgba(0, 255, 65, 0.02);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .app::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse at 50% 0%, rgba(0, 255, 65, 0.03) 0%, transparent 70%);
+        }
+
+        /* ── HEADER ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header h1 {
+            font-size: 1.3rem;
+            font-weight: 400;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text);
+            text-shadow: 0 0 12px var(--green-glow);
+            font-family: var(--font-mono);
+        }
+
+        .header h1 span {
+            opacity: 0.4;
+            font-weight: 300;
+        }
+
+        .header .status-led {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.7rem;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        .header .status-led .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: background 0.2s;
+            box-shadow: none;
+        }
+
+        .header .status-led .dot.on {
+            background: var(--green);
+            box-shadow: 0 0 14px var(--green-glow);
+        }
+
+        /* ── DISPLAY PANEL ── */
+        .display-panel {
+            background: #050805;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
+            min-height: 80px;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .display-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 0;
+            flex-wrap: wrap;
+            min-height: 32px;
+        }
+
+        .display-row .tag {
+            font-size: 0.6rem;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+            min-width: 36px;
+            text-transform: uppercase;
+            font-weight: 300;
+        }
+
+        .display-row .value {
+            font-size: 1.05rem;
+            letter-spacing: 0.04em;
+            word-break: break-all;
+            flex: 1;
+            min-width: 80px;
+            font-family: var(--font-mono);
+            color: var(--text);
+            text-shadow: 0 0 6px rgba(0, 255, 65, 0.04);
+            position: relative;
+        }
+
+        .display-row .value .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1.1em;
+            background: var(--green);
+            vertical-align: text-bottom;
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+            box-shadow: 0 0 12px var(--green-glow);
+        }
+
+        @keyframes blink {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .display-row .value .placeholder {
+            opacity: 0.2;
+            font-weight: 300;
+            letter-spacing: 0.08em;
+        }
+
+        .display-divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            opacity: 0.3;
+            margin: 6px 0;
+        }
+
+        /* ── ENTER KEY (big rectangle) ── */
+        .enter-row {
+            display: flex;
+            justify-content: center;
+            margin: 8px 0 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .btn-enter {
+            width: 100%;
+            max-width: 320px;
+            padding: 18px 20px;
+            border-radius: 6px;
+            border: 2px solid var(--border);
+            background: radial-gradient(circle at 30% 30%, #1a2a1a, #0a120a);
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+            font-size: 1.4rem;
+            font-weight: 400;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            touch-action: manipulation;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.02), inset 0 -4px 12px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            user-select: none;
+            -webkit-user-select: none;
+            position: relative;
+        }
+
+        .btn-enter::before {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 255, 65, 0.04);
+            pointer-events: none;
+        }
+
+        .btn-enter:hover {
+            background: radial-gradient(circle at 30% 30%, #1f3f1f, #0f1f0f);
+            border-color: var(--green);
+        }
+
+        .btn-enter:active,
+        .btn-enter.pressed {
+            transform: scale(0.97);
+            border-color: var(--green);
+            box-shadow: 0 0 40px rgba(0, 255, 65, 0.2), inset 0 0 30px rgba(0, 255, 65, 0.05);
+            background: radial-gradient(circle at 30% 30%, #2a4a2a, #0f1f0f);
+            color: var(--text);
+        }
+
+        .btn-enter .enter-icon {
+            font-size: 1.6rem;
+            line-height: 1;
+            opacity: 0.6;
+        }
+
+        .btn-enter .enter-label {
+            font-size: 0.85rem;
+            letter-spacing: 0.12em;
+        }
+
+        /* ── CONTROLS ── */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 4px 0 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .controls .btn {
+            padding: 10px 18px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            touch-action: manipulation;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 40px;
+            text-transform: uppercase;
+            font-weight: 400;
+        }
+
+        .controls .btn:hover {
+            background: var(--green-weak);
+            border-color: var(--green);
+            color: var(--text);
+        }
+
+        .controls .btn:active {
+            transform: scale(0.96);
+            background: var(--green-weak);
+            border-color: var(--green);
+            color: var(--text);
+        }
+
+        .controls .btn-primary {
+            border-color: var(--green);
+            color: var(--text);
+            background: var(--green-weak);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.04);
+        }
+
+        .controls .btn-primary:hover {
+            background: rgba(0, 255, 65, 0.12);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.08);
+        }
+
+        .controls .btn-primary:active {
+            background: rgba(0, 255, 65, 0.18);
+        }
+
+        .controls .btn-danger {
+            border-color: #3f1f1f;
+            color: #cc5555;
+        }
+
+        .controls .btn-danger:hover {
+            background: rgba(255, 50, 50, 0.06);
+            border-color: #cc5555;
+            color: #ff6666;
+        }
+
+        .controls .btn-danger:active {
+            background: rgba(255, 50, 50, 0.12);
+            border-color: #ff6666;
+            color: #ff8888;
+        }
+
+        .controls .spacer {
+            flex: 1;
+            min-width: 8px;
+        }
+
+        /* ── SETTINGS ROW ── */
+        .settings {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px 18px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 4px;
+            position: relative;
+            z-index: 1;
+            opacity: 0.7;
+        }
+
+        .settings label {
+            font-size: 0.65rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .settings select {
+            background: #0a0a0a;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 4px 24px 4px 8px;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%2300ff41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 6px center;
+            transition: border-color 0.2s;
+        }
+
+        .settings select:hover,
+        .settings select:focus {
+            border-color: var(--green);
+        }
+
+        .settings .threshold-hint {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            letter-spacing: 0.04em;
+            margin-left: auto;
+        }
+
+        .settings .threshold-hint strong {
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            margin-top: 16px;
+            font-size: 0.55rem;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            text-align: center;
+            border-top: 1px solid var(--border);
+            padding-top: 14px;
+            opacity: 0.5;
+            position: relative;
+            z-index: 1;
+        }
+
+        .footer span {
+            display: inline-block;
+            margin: 0 6px;
+        }
+
+        .footer .key-hint {
+            color: var(--text-dim);
+            opacity: 0.7;
+        }
+
+        /* ── TOAST ── */
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #0a120a;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 24px;
+            border-radius: var(--radius);
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            letter-spacing: 0.06em;
+            box-shadow: 0 0 40px rgba(0, 255, 65, 0.04);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10000;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 600px) {
+            .app {
+                padding: 18px 14px 22px;
+                border-radius: 6px;
+            }
+
+            .header h1 {
+                font-size: 1.0rem;
+            }
+
+            .btn-enter {
+                max-width: 260px;
+                padding: 14px 16px;
+                font-size: 1.2rem;
+            }
+
+            .btn-enter .enter-icon {
+                font-size: 1.4rem;
+            }
+
+            .display-row .value {
+                font-size: 0.9rem;
+            }
+
+            .controls .btn {
+                font-size: 0.65rem;
+                padding: 8px 12px;
+                min-height: 36px;
+            }
+
+            .settings {
+                gap: 8px 12px;
+            }
+
+            .settings label {
+                font-size: 0.55rem;
+            }
+
+            .settings select {
+                font-size: 0.6rem;
+                padding: 3px 20px 3px 6px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .btn-enter {
+                max-width: 200px;
+                padding: 12px 14px;
+                font-size: 1rem;
+            }
+
+            .btn-enter .enter-icon {
+                font-size: 1.2rem;
+            }
+
+            .display-panel {
+                padding: 10px 12px;
+                min-height: 60px;
+            }
+
+            .display-row {
+                min-height: 26px;
+            }
+
+            .display-row .value {
+                font-size: 0.8rem;
+            }
+
+            .controls .btn {
+                font-size: 0.55rem;
+                padding: 6px 10px;
+                min-height: 32px;
+            }
+        }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--green-dim);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>⏣ MORSE <span>TRAINER</span></h1>
+            <div class="status-led">
+                <span class="dot" id="statusDot"></span>
+                <span id="statusLabel">READY</span>
+            </div>
+        </div>
+
+        <!-- DISPLAY -->
+        <div class="display-panel">
+            <div class="display-row">
+                <span class="tag">MORSE</span>
+                <span class="value" id="morseDisplay"><span class="placeholder">⏳ ожидание</span></span>
+            </div>
+            <hr class="display-divider" />
+            <div class="display-row">
+                <span class="tag">TEXT</span>
+                <span class="value" id="textDisplay"><span class="placeholder">⏳ ожидание</span></span>
+            </div>
+        </div>
+
+        <!-- ENTER KEY (big rectangle) -->
+        <div class="enter-row">
+            <button class="btn-enter" id="morseKey" role="button" aria-label="Клавиша Морзе">
+                <span class="enter-icon">⏎</span>
+                <span class="enter-label">ENTER</span>
+            </button>
+        </div>
+
+        <!-- CONTROLS -->
+        <div class="controls">
+            <button class="btn btn-danger" id="backspaceBtn" title="Стереть последнюю букву">⌫ BACK</button>
+            <button class="btn btn-danger" id="clearBtn" title="Очистить всё">⌦ DEL</button>
+            <span class="spacer"></span>
+            <button class="btn btn-primary" id="copyBtn">⌃ C</button>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="settings">
+            <label>
+                ЯЗЫК
+                <select id="trainerLang">
+                    <option value="ru">RU</option>
+                    <option value="en">EN</option>
+                </select>
+            </label>
+            <label>
+                ТЕМП
+                <select id="trainerSpeed">
+                    <option value="300">МЕДЛ</option>
+                    <option value="200" selected>СР</option>
+                    <option value="140">БЫСТ</option>
+                    <option value="100">ОЧ.БЫСТ</option>
+                </select>
+            </label>
+            <span class="threshold-hint">
+                тире &gt; <strong id="thresholdDisplay">200</strong> мс
+            </span>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <span class="key-hint">· точка — коротко</span>
+            <span class="key-hint">− тире — долго</span>
+            <span class="key-hint">␣ пробел автоматически</span>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        (() => {
+            'use strict';
+
+            // ==================== MORSE DICTIONARIES (без Ё) ====================
+            const morseMap = {
+                'A': '.-',
+                'B': '-...',
+                'C': '-.-.',
+                'D': '-..',
+                'E': '.',
+                'F': '..-.',
+                'G': '--.',
+                'H': '....',
+                'I': '..',
+                'J': '.---',
+                'K': '-.-',
+                'L': '.-..',
+                'M': '--',
+                'N': '-.',
+                'O': '---',
+                'P': '.--.',
+                'Q': '--.-',
+                'R': '.-.',
+                'S': '...',
+                'T': '-',
+                'U': '..-',
+                'V': '...-',
+                'W': '.--',
+                'X': '-..-',
+                'Y': '-.--',
+                'Z': '--..',
+                'А': '.-',
+                'Б': '-...',
+                'В': '.--',
+                'Г': '--.',
+                'Д': '-..',
+                'Е': '.',      // Ё отсутствует
+                'Ж': '...-',
+                'З': '--..',
+                'И': '..',
+                'Й': '.---',
+                'К': '-.-',
+                'Л': '.-..',
+                'М': '--',
+                'Н': '-.',
+                'О': '---',
+                'П': '.--.',
+                'Р': '.-.',
+                'С': '...',
+                'Т': '-',
+                'У': '..-',
+                'Ф': '..-.',
+                'Х': '....',
+                'Ц': '-.-.',
+                'Ч': '---.',
+                'Ш': '----',
+                'Щ': '--.-',
+                'Ъ': '--.--',
+                'Ы': '-.--',
+                'Ь': '-..-',
+                'Э': '..-..',
+                'Ю': '..--',
+                'Я': '.-.-',
+                '0': '-----',
+                '1': '.----',
+                '2': '..---',
+                '3': '...--',
+                '4': '....-',
+                '5': '.....',
+                '6': '-....',
+                '7': '--...',
+                '8': '---..',
+                '9': '----.',
+                '.': '.-.-.-',
+                ',': '--..--',
+                '?': '..--..',
+                '!': '-.-.--',
+                ':': '---...',
+                ';': '-.-.-.',
+                '-': '-....-',
+                '/': '-..-.',
+                '(': '-.--.',
+                ')': '-.--.-',
+                '"': '.-..-.',
+                '@': '.--.-.',
+                '&': '.-...',
+                '=': '-...-',
+                '+': '.-.-.',
+                '_': '..--.-',
+                '$': '...-..-',
+                "'": '.----.',
+                ' ': '/'
+            };
+
+            const reverseRu = {};
+            const reverseEn = {};
+            for (const [c, code] of Object.entries(morseMap)) {
+                if (c === ' ') continue;
+                if (/^[A-Z0-9.,?!:;\-\/()"@&=+_$']$/.test(c)) reverseEn[code] = c;
+                if (/^[А-Я0-9.,?!:;\-\/()"@&=+_$']$/.test(c)) reverseRu[code] = c; // без Ё
+            }
+            reverseEn['/'] = ' ';
+            reverseRu['/'] = ' ';
+
+            // ==================== DOM REFS ====================
+            const morseKey = document.getElementById('morseKey');
+            const morseDisplay = document.getElementById('morseDisplay');
+            const textDisplay = document.getElementById('textDisplay');
+            const statusDot = document.getElementById('statusDot');
+            const statusLabel = document.getElementById('statusLabel');
+            const trainerSpeed = document.getElementById('trainerSpeed');
+            const trainerLang = document.getElementById('trainerLang');
+            const thresholdDisplay = document.getElementById('thresholdDisplay');
+            const backspaceBtn = document.getElementById('backspaceBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const toast = document.getElementById('toast');
+
+            // ==================== STATE ====================
+            let keyDownTime = null;
+            let audioCtx = null;
+            let currentMorse = '';
+            let currentWord = '';
+            let decodedWords = [];
+            let isKeyPressed = false;
+            let letterTimeout = null;
+            let wordTimeout = null;
+
+            const LETTER_GAP = 400;
+            const WORD_GAP = 900;
+
+            // ==================== UI HELPERS ====================
+            function setStatus(ready, label) {
+                statusDot.classList.toggle('on', ready);
+                statusLabel.textContent = label || (ready ? 'READY' : 'BUSY');
+            }
+
+            function showToast(msg) {
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(toast._timeout);
+                toast._timeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 1800);
+            }
+
+            function updateThreshold() {
+                thresholdDisplay.textContent = trainerSpeed.value;
+            }
+            trainerSpeed.addEventListener('change', updateThreshold);
+            updateThreshold();
+
+            // ==================== DECODING ====================
+            function getReverseMap() {
+                return trainerLang.value === 'ru' ? reverseRu : reverseEn;
+            }
+
+            function decodeMorseSequence(morseStr) {
+                const map = getReverseMap();
+                if (!morseStr.trim()) return '';
+                const words = morseStr.trim().split(/\s*\/\s*/);
+                return words
+                    .map(w => w.split(/\s+/)
+                        .filter(s => s)
+                        .map(code => map[code] || '?')
+                        .join('')
+                    )
+                    .join(' ');
+            }
+
+            function buildFullMorse() {
+                let parts = [];
+                if (decodedWords.length) parts.push(decodedWords.join(' / '));
+                if (currentWord) {
+                    if (parts.length) parts.push(' / ');
+                    parts.push(currentWord);
+                }
+                if (currentMorse) {
+                    if (parts.length) parts.push(' ');
+                    parts.push(currentMorse);
+                }
+                return parts.join('');
+            }
+
+            function render() {
+                const full = buildFullMorse();
+                const displayMorse = full || '⏳';
+                morseDisplay.innerHTML = displayMorse + '<span class="cursor"></span>';
+
+                const decoded = decodeMorseSequence(full);
+                textDisplay.textContent = decoded || '⏳';
+            }
+
+            // ==================== TONE ====================
+            function startTone() {
+                if (!audioCtx) {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                }
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = 700;
+                    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    return { osc, gain };
+                } catch (_) {
+                    return null;
+                }
+            }
+
+            function stopTone(tone) {
+                if (!tone) return;
+                try {
+                    tone.gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.01);
+                    tone.osc.stop(audioCtx.currentTime + 0.02);
+                } catch (_) { /* ignore */ }
+            }
+
+            // ==================== KEY HANDLERS ====================
+            function handleKeyDown(e) {
+                e.preventDefault();
+                if (isKeyPressed) return;
+                isKeyPressed = true;
+                keyDownTime = Date.now();
+                morseKey.classList.add('pressed');
+                morseKey._tone = startTone();
+                setStatus(true, 'SEND');
+
+                clearTimeout(letterTimeout);
+                clearTimeout(wordTimeout);
+            }
+
+            function handleKeyUp(e) {
+                e.preventDefault();
+                if (!isKeyPressed || keyDownTime === null) return;
+                const duration = Date.now() - keyDownTime;
+                keyDownTime = null;
+                isKeyPressed = false;
+                morseKey.classList.remove('pressed');
+
+                if (morseKey._tone) {
+                    stopTone(morseKey._tone);
+                    morseKey._tone = null;
+                }
+
+                const threshold = parseInt(trainerSpeed.value, 10);
+                const symbol = duration >= threshold ? '-' : '.';
+                currentMorse += symbol;
+                render();
+                setStatus(true, 'SEND');
+
+                clearTimeout(letterTimeout);
+                letterTimeout = setTimeout(() => {
+                    if (currentMorse) {
+                        if (currentWord) currentWord += ' ';
+                        currentWord += currentMorse;
+                        currentMorse = '';
+                        render();
+                    }
+                    clearTimeout(wordTimeout);
+                    wordTimeout = setTimeout(() => {
+                        if (currentWord && !currentMorse) {
+                            decodedWords.push(currentWord);
+                            currentWord = '';
+                            render();
+                            setStatus(true, 'READY');
+                        }
+                    }, WORD_GAP);
+                }, LETTER_GAP);
+            }
+
+            // ── Mouse ──
+            morseKey.addEventListener('mousedown', handleKeyDown);
+            morseKey.addEventListener('mouseup', handleKeyUp);
+            morseKey.addEventListener('mouseleave', (e) => {
+                if (isKeyPressed) handleKeyUp(e);
+            });
+
+            // ── Touch ──
+            morseKey.addEventListener('touchstart', handleKeyDown, { passive: false });
+            morseKey.addEventListener('touchend', handleKeyUp, { passive: false });
+            morseKey.addEventListener('touchcancel', (e) => {
+                if (isKeyPressed) handleKeyUp(e);
+            });
+
+            // ── Keyboard (physical Enter) ──
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.repeat) {
+                    e.preventDefault();
+                    if (!isKeyPressed) handleKeyDown(e);
+                }
+                if (e.key === 'Backspace' && !e.repeat) {
+                    e.preventDefault();
+                    handleBackspace();
+                }
+                if (e.key === 'Delete' && !e.repeat) {
+                    e.preventDefault();
+                    handleClear();
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (isKeyPressed) handleKeyUp(e);
+                }
+            });
+
+            morseKey.addEventListener('contextmenu', e => e.preventDefault());
+
+            // ==================== ACTION BUTTONS ====================
+            function handleBackspace() {
+                if (currentMorse) {
+                    currentMorse = '';
+                } else if (currentWord) {
+                    const letters = currentWord.split(' ');
+                    if (letters.length > 0) {
+                        letters.pop();
+                        currentWord = letters.join(' ');
+                    }
+                    if (!currentWord && decodedWords.length) {
+                        const last = decodedWords.pop();
+                        if (last) currentWord = last;
+                    }
+                } else if (decodedWords.length) {
+                    decodedWords.pop();
+                }
+                clearTimeout(letterTimeout);
+                clearTimeout(wordTimeout);
+                render();
+                setStatus(true, 'READY');
+                showToast('⌫ BACK');
+            }
+
+            function handleClear() {
+                currentMorse = '';
+                currentWord = '';
+                decodedWords = [];
+                clearTimeout(letterTimeout);
+                clearTimeout(wordTimeout);
+                render();
+                setStatus(true, 'READY');
+                showToast('⌦ ОЧИЩЕНО');
+            }
+
+            backspaceBtn.addEventListener('mousedown', () => backspaceBtn.style.background = 'rgba(255,50,50,0.15)');
+            backspaceBtn.addEventListener('mouseup', () => backspaceBtn.style.background = '');
+            backspaceBtn.addEventListener('mouseleave', () => backspaceBtn.style.background = '');
+            backspaceBtn.addEventListener('touchstart', () => backspaceBtn.style.background = 'rgba(255,50,50,0.15)', { passive: true });
+            backspaceBtn.addEventListener('touchend', () => backspaceBtn.style.background = '');
+            backspaceBtn.addEventListener('touchcancel', () => backspaceBtn.style.background = '');
+            backspaceBtn.addEventListener('click', handleBackspace);
+
+            clearBtn.addEventListener('mousedown', () => clearBtn.style.background = 'rgba(255,50,50,0.15)');
+            clearBtn.addEventListener('mouseup', () => clearBtn.style.background = '');
+            clearBtn.addEventListener('mouseleave', () => clearBtn.style.background = '');
+            clearBtn.addEventListener('touchstart', () => clearBtn.style.background = 'rgba(255,50,50,0.15)', { passive: true });
+            clearBtn.addEventListener('touchend', () => clearBtn.style.background = '');
+            clearBtn.addEventListener('touchcancel', () => clearBtn.style.background = '');
+            clearBtn.addEventListener('click', handleClear);
+
+            // ==================== COPY ====================
+            copyBtn.addEventListener('click', async () => {
+                const full = buildFullMorse();
+                const decoded = decodeMorseSequence(full);
+                const text = decoded || '';
+                if (!text) {
+                    showToast('⏳ нет данных');
+                    return;
+                }
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showToast('⌃ C · СКОПИРОВАНО');
+                } catch {
+                    const el = document.createElement('textarea');
+                    el.value = text;
+                    document.body.appendChild(el);
+                    el.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(el);
+                    showToast('⌃ C · СКОПИРОВАНО');
+                }
+            });
+
+            // ==================== LANGUAGE CHANGE ====================
+            trainerLang.addEventListener('change', () => {
+                render();
+                showToast('ЯЗЫК: ' + (trainerLang.value === 'ru' ? 'РУС' : 'ENG'));
+            });
+
+            // ==================== INIT ====================
+            render();
+            setStatus(true, 'READY');
+
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', (e) => {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) e.preventDefault();
+                lastTouchEnd = now;
+            }, { passive: false });
+
+        })();
+    </script>
+
+</body>
+</html>

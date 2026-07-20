@@ -1,0 +1,1522 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Morse Translator · Свет, Звук и Тренажёр</title>
+    <style>
+        :root {
+            --bg: #f8f6f2;
+            --card-bg: #ffffff;
+            --text: #1a1814;
+            --text-secondary: #5c5347;
+            --text-muted: #8b7e65;
+            --border: #e0d8c8;
+            --border-light: #ebe3d5;
+            --accent: #b8860b;
+            --accent-hover: #9a6f0a;
+            --accent-light: #fef3c7;
+            --input-bg: #fdfbf7;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+            --radius-lg: 24px;
+            --radius: 16px;
+            --radius-sm: 12px;
+            --radius-xs: 8px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --font-sans: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            --flash-color: #fbbf24;
+            --key-bg: linear-gradient(145deg, #4a3f2f, #2c2416);
+            --key-active: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(160deg, #f0ebe0 0%, #e8e0d3 30%, #f6f3ed 100%);
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-sans);
+            padding: 16px;
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 780px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+            max-height: 90dvh;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f3efe8;
+            border-bottom: 1px solid var(--border);
+            padding: 8px 12px 0;
+            gap: 6px;
+            flex-shrink: 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-radius: 12px 12px 0 0;
+            transition: all var(--transition);
+            letter-spacing: 0.02em;
+            font-family: var(--font-sans);
+            white-space: nowrap;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .tab-btn.active {
+            background: #ffffff;
+            color: #3d2e14;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 8px;
+            right: 8px;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 2px 2px 0 0;
+        }
+
+        .tab-btn:hover:not(.active) {
+            color: #4a3f2f;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            padding: 24px;
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            gap: 16px;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #3d2e14;
+            line-height: 1.3;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 400;
+            margin-top: -8px;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .segment-control {
+            display: flex;
+            background: #f3efe8;
+            border-radius: 30px;
+            padding: 4px;
+            border: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .segment-btn {
+            padding: 10px 16px;
+            border-radius: 26px;
+            border: none;
+            background: transparent;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all var(--transition);
+            color: var(--text-secondary);
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            flex: 1;
+            text-align: center;
+        }
+
+        .segment-btn.active {
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            color: #3d2e14;
+            font-weight: 600;
+        }
+
+        .segment-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.5);
+            color: #5c4a2e;
+        }
+
+        select {
+            padding: 10px 32px 10px 14px;
+            border-radius: 30px;
+            border: 1.5px solid var(--border);
+            background: #fdfbf7;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+            outline: none;
+            font-family: var(--font-sans);
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235c5347' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            min-width: 120px;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+
+        select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.08);
+        }
+
+        textarea {
+            width: 100%;
+            border-radius: var(--radius);
+            border: 1.5px solid var(--border);
+            padding: 14px 16px;
+            font-size: 0.95rem;
+            font-family: var(--font-mono);
+            background: var(--input-bg);
+            resize: vertical;
+            min-height: 100px;
+            max-height: 200px;
+            transition: all var(--transition);
+            line-height: 1.6;
+            color: var(--text);
+            letter-spacing: 0.02em;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.06);
+            background: #fffef9;
+        }
+
+        textarea::placeholder {
+            color: #b9af9b;
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+        }
+
+        textarea[readonly] {
+            background: #f9f7f3;
+            cursor: default;
+        }
+
+        .output-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            letter-spacing: 0.02em;
+            transition: all var(--transition);
+            font-family: var(--font-sans);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            justify-content: center;
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(184, 134, 11, 0.25);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 6px 18px rgba(184, 134, 11, 0.35);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #f3efe8;
+            color: #4a3f2f;
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: #e8e1d5;
+            border-color: #c4b89e;
+        }
+
+        .btn-flash {
+            background: #f59e0b;
+            color: #1c1917;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+            font-weight: 700;
+        }
+
+        .btn-flash:hover:not(:disabled) {
+            background: #d97706;
+            box-shadow: 0 6px 18px rgba(245, 158, 11, 0.5);
+        }
+
+        .btn-flash:disabled {
+            background: #e5d5b0;
+            color: #8b7e65;
+            box-shadow: none;
+        }
+
+        .btn-sound {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+            font-weight: 700;
+        }
+
+        .btn-sound:hover:not(:disabled) {
+            background: #2563eb;
+            box-shadow: 0 6px 18px rgba(59, 130, 246, 0.5);
+        }
+
+        .btn-sound:disabled {
+            background: #93bbf0;
+            color: #e0e7ff;
+            box-shadow: none;
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .flash-panel {
+            padding: 16px;
+            background: #fefbf2;
+            border-radius: var(--radius);
+            border: 1px solid #f0e4c0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-top: 4px;
+        }
+
+        .flash-indicator {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #e5e0d5;
+            transition: background 0.06s, box-shadow 0.06s;
+            flex-shrink: 0;
+            cursor: pointer;
+            border: 2px solid #d9ceb5;
+        }
+
+        .flash-indicator.active {
+            background: var(--flash-color);
+            box-shadow: 0 0 28px 8px rgba(251, 191, 36, 0.8);
+            border-color: #f59e0b;
+        }
+
+        .flash-status {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #5c4a2e;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .speed-select-compact {
+            padding: 6px 28px 6px 10px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+            outline: none;
+            font-family: var(--font-sans);
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%235c5347' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+        }
+
+        .reference {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            text-align: center;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px 14px;
+            padding-top: 4px;
+        }
+
+        .reference span {
+            white-space: nowrap;
+        }
+
+        /* Trainer */
+        .trainer-task {
+            background: #fef9e7;
+            border: 1px solid #f0d58c;
+            border-radius: var(--radius-sm);
+            padding: 14px 18px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: #4a3a0e;
+            letter-spacing: 0.03em;
+            word-break: break-word;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 54px;
+        }
+
+        .trainer-task-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #8b6914;
+            background: #fef3c7;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .trainer-key {
+            background: var(--key-bg);
+            border-radius: 100px;
+            width: 120px;
+            height: 120px;
+            margin: 8px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.06s ease-out;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.12);
+            border: 2px solid #5c4a2e;
+            touch-action: manipulation;
+        }
+
+        .trainer-key:active,
+        .trainer-key.pressed {
+            transform: scale(0.93);
+            background: var(--key-active);
+            box-shadow: 0 0 36px var(--flash-color), 0 0 60px rgba(245, 158, 11, 0.5), inset 0 4px 8px rgba(0, 0, 0, 0.4);
+            border-color: #d97706;
+        }
+
+        .trainer-key span {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #f5e7c8;
+            pointer-events: none;
+            letter-spacing: 0.04em;
+            transition: color 0.06s;
+        }
+
+        .trainer-key:active span,
+        .trainer-key.pressed span {
+            color: #1c1917;
+        }
+
+        .trainer-display {
+            background: #1e1b17;
+            color: #fbbf24;
+            border-radius: var(--radius-xs);
+            padding: 12px 14px;
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            min-height: 44px;
+            letter-spacing: 0.08em;
+            word-break: break-all;
+            border: 1px solid #4a3f2f;
+            flex: 1;
+        }
+
+        .trainer-text-display {
+            background: #fdfbf7;
+            color: #2c2416;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xs);
+            padding: 12px 14px;
+            font-size: 1.1rem;
+            min-height: 44px;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .trainer-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .trainer-row-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            min-width: 40px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .trainer-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .trainer-btn {
+            padding: 10px 18px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: #f3efe8;
+            color: #3d2e14;
+            transition: all var(--transition);
+            font-family: var(--font-sans);
+            touch-action: manipulation;
+            min-height: 44px;
+        }
+
+        .trainer-btn:active {
+            transform: scale(0.97);
+            background: #e0d8c8;
+        }
+
+        .trainer-hint {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%) translateY(120px);
+            background: #1c1917;
+            color: #fdfbf7;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 8px;
+                align-items: flex-start;
+                padding-top: 12px;
+            }
+            .app {
+                border-radius: var(--radius);
+                max-height: none;
+                min-height: 100vh;
+                min-height: 100dvh;
+            }
+            .tab-content {
+                padding: 16px;
+                gap: 12px;
+            }
+            h2 {
+                font-size: 1.4rem;
+            }
+            .subtitle {
+                font-size: 0.82rem;
+            }
+            textarea {
+                min-height: 80px;
+                font-size: 0.9rem;
+                padding: 12px 14px;
+            }
+            .btn {
+                padding: 10px 16px;
+                font-size: 0.85rem;
+                min-height: 44px;
+            }
+            .segment-btn {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+            .trainer-key {
+                width: 100px;
+                height: 100px;
+            }
+            .trainer-key span {
+                font-size: 1.8rem;
+            }
+            .flash-panel {
+                padding: 12px;
+                gap: 8px;
+            }
+            .flash-indicator {
+                width: 36px;
+                height: 36px;
+            }
+            select {
+                font-size: 0.82rem;
+                padding: 8px 28px 8px 12px;
+                min-width: auto;
+            }
+            .reference {
+                font-size: 0.72rem;
+                gap: 2px 10px;
+            }
+            .trainer-task {
+                font-size: 1rem;
+                padding: 10px 14px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .tab-btn {
+                padding: 10px 14px;
+                font-size: 0.85rem;
+            }
+            .segment-btn {
+                padding: 8px 10px;
+                font-size: 0.75rem;
+            }
+            .btn {
+                padding: 8px 14px;
+                font-size: 0.8rem;
+                min-height: 40px;
+            }
+            .trainer-key {
+                width: 90px;
+                height: 90px;
+            }
+            .trainer-key span {
+                font-size: 1.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="translator">🌐 Перевод</button>
+            <button class="tab-btn" data-tab="trainer">⌨️ Тренажёр</button>
+        </div>
+
+        <!-- Translator Tab -->
+        <div class="tab-content active" id="tab-translator">
+            <h2>⚡ Morse Translator</h2>
+            <p class="subtitle">Русский · English · Азбука Морзе + свет и звук</p>
+
+            <div class="controls-row">
+                <div class="segment-control" id="directionToggle">
+                    <button class="segment-btn active" data-direction="textToMorse">Текст → Морзе</button>
+                    <button class="segment-btn" data-direction="morseToText">Морзе → Текст</button>
+                </div>
+                <select id="langSelect" style="display:none;">
+                    <option value="ru">🇷🇺 Русский</option>
+                    <option value="en">🇬🇧 English</option>
+                </select>
+            </div>
+
+            <textarea id="inputArea" placeholder="Введите текст или код Морзе..." aria-label="Ввод"></textarea>
+
+            <div class="btn-row">
+                <button class="btn btn-primary" id="translateBtn">→ Перевести</button>
+                <button class="btn btn-secondary" id="copyBtn">📋 Копировать</button>
+            </div>
+
+            <span class="output-label">📋 Результат</span>
+            <textarea id="outputArea" readonly placeholder="Результат перевода..." aria-label="Результат"></textarea>
+
+            <div class="flash-panel">
+                <div class="flash-indicator" id="flashIndicator" title="Двойной клик — остановить"></div>
+                <select class="speed-select-compact" id="speedSelect" aria-label="Скорость">
+                    <option value="300">Медленно</option>
+                    <option value="200" selected>Нормально</option>
+                    <option value="120">Быстро</option>
+                </select>
+                <span class="flash-status" id="flashStatus">Готов к передаче</span>
+                <button class="btn btn-flash" id="flashBtn" disabled>⚡ Свет</button>
+                <button class="btn btn-sound" id="soundBtn" disabled>🔊 Звук</button>
+            </div>
+
+            <div class="reference">
+                <span><strong>·</strong> точка</span>
+                <span><strong>−</strong> тире</span>
+                <span><strong>/</strong> разделитель</span>
+                <span><strong>?</strong> неизвестный</span>
+            </div>
+        </div>
+
+        <!-- Trainer Tab -->
+        <div class="tab-content" id="tab-trainer">
+            <h2>⌨️ Тренажёр ручного ввода</h2>
+            <p class="subtitle">Зажмите кнопку для тире, коротко — точка. Пауза разделяет буквы и слова.</p>
+
+            <div class="trainer-task" id="trainerTaskDisplay">
+                <span class="trainer-task-label">Задание</span>
+                <span id="trainerTaskText">—</span>
+            </div>
+
+            <div class="trainer-key" id="morseKey" aria-label="Клавиша Морзе">
+                <span>●</span>
+            </div>
+
+            <div style="text-align:center;">
+                <select class="speed-select-compact" id="trainerSpeed" aria-label="Темп">
+                    <option value="300">Темп: медленный</option>
+                    <option value="200" selected>Темп: средний</option>
+                    <option value="140">Темп: быстрый</option>
+                </select>
+            </div>
+
+            <div class="trainer-row">
+                <span class="trainer-row-label">Код</span>
+                <div class="trainer-display" id="trainerMorseDisplay" aria-live="polite"></div>
+            </div>
+
+            <div class="trainer-row">
+                <span class="trainer-row-label">Текст</span>
+                <div class="trainer-text-display" id="trainerTextDisplay" aria-live="polite"></div>
+            </div>
+
+            <div class="trainer-actions">
+                <select id="trainerLang" style="min-width:auto; padding-right:28px;" aria-label="Язык">
+                    <option value="ru">🇷🇺 Русский</option>
+                    <option value="en">🇬🇧 English</option>
+                </select>
+                <button class="trainer-btn" id="trainerBackspaceBtn" title="Удалить последний символ">⌫ Стереть</button>
+                <button class="trainer-btn" id="trainerSpaceBtn">⏸ Пробел (слово)</button>
+                <button class="trainer-btn" id="trainerClearBtn">🗑 Очистить</button>
+            </div>
+
+            <div class="trainer-hint">
+                Удерживайте кнопку дольше <strong id="trainerThresholdDisplay">200 мс</strong> — тире, короче — точка.
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" aria-live="assertive"></div>
+
+    <script>
+        (() => {
+            // ==================== MORSE DICTIONARIES (без буквы Ё) ====================
+            const morseMap = {
+                'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.', 'G': '--.',
+                'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.',
+                'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.', 'S': '...', 'T': '-', 'U': '..-',
+                'V': '...-', 'W': '.--', 'X': '-..-', 'Y': '-.--', 'Z': '--..',
+                'А': '.-', 'Б': '-...', 'В': '.--', 'Г': '--.', 'Д': '-..', 'Е': '.',
+                'Ж': '...-', 'З': '--..', 'И': '..', 'Й': '.---', 'К': '-.-', 'Л': '.-..',
+                'М': '--', 'Н': '-.', 'О': '---', 'П': '.--.', 'Р': '.-.', 'С': '...', 'Т': '-',
+                'У': '..-', 'Ф': '..-.', 'Х': '....', 'Ц': '-.-.', 'Ч': '---.', 'Ш': '----',
+                'Щ': '--.-', 'Ъ': '--.--', 'Ы': '-.--', 'Ь': '-..-', 'Э': '..-..', 'Ю': '..--',
+                'Я': '.-.-', '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
+                '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
+                '.': '.-.-.-', ',': '--..--', '?': '..--..', '!': '-.-.--', ':': '---...',
+                ';': '-.-.-.', '-': '-....-', '/': '-..-.', '(': '-.--.', ')': '-.--.-',
+                '"': '.-..-.', '@': '.--.-.', '&': '.-...', '=': '-...-', '+': '.-.-.',
+                '_': '..--.-', '$': '...-..-', "'": '.----.', ' ': '/'
+            };
+
+            const reverseRu = {}, reverseEn = {};
+            for (const [c, code] of Object.entries(morseMap)) {
+                if (c === ' ') continue;
+                if (/^[A-Z0-9.,?!:;\-\/()"@&=+_$']$/.test(c)) reverseEn[code] = c;
+                if (/^[А-Я0-9.,?!:;\-\/()"@&=+_$']$/.test(c)) reverseRu[code] = c;
+            }
+            reverseEn['/'] = ' ';
+            reverseRu['/'] = ' ';
+
+            function showToast(msg) {
+                const toast = document.getElementById('toast');
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(toast._timeout);
+                toast._timeout = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2000);
+            }
+
+            // ==================== TAB SWITCHING ====================
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.dataset.tab;
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    document.getElementById(`tab-${tab}`).classList.add('active');
+                    if (tab === 'translator') {
+                        setTimeout(() => document.getElementById('inputArea').focus(), 100);
+                    }
+                });
+            });
+
+            // ==================== TRANSLATOR MODULE ====================
+            const directionToggle = document.getElementById('directionToggle');
+            const langSelect = document.getElementById('langSelect');
+            const inputArea = document.getElementById('inputArea');
+            const outputArea = document.getElementById('outputArea');
+            const translateBtn = document.getElementById('translateBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const flashBtn = document.getElementById('flashBtn');
+            const soundBtn = document.getElementById('soundBtn');
+            const flashIndicator = document.getElementById('flashIndicator');
+            const flashStatus = document.getElementById('flashStatus');
+            const speedSelect = document.getElementById('speedSelect');
+
+            let currentDirection = 'textToMorse';
+            let currentLang = 'ru';
+            let flasherActive = false;
+            let sounderActive = false;
+            let flasherAbort = null;
+            let soundAbort = null;
+            let mediaStream = null;
+            let videoTrack = null;
+            let audioCtx = null;
+
+            directionToggle.addEventListener('click', e => {
+                const btn = e.target.closest('.segment-btn');
+                if (!btn || btn.dataset.direction === currentDirection) return;
+                currentDirection = btn.dataset.direction;
+                directionToggle.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                langSelect.style.display = currentDirection === 'morseToText' ? '' : 'none';
+                updateTranslatorPlaceholders();
+                outputArea.value = '';
+                updateTranslatorButtons();
+                inputArea.focus();
+            });
+
+            langSelect.addEventListener('change', () => {
+                currentLang = langSelect.value;
+                if (outputArea.value && currentDirection === 'morseToText') performTranslation();
+            });
+
+            function updateTranslatorPlaceholders() {
+                inputArea.placeholder = currentDirection === 'textToMorse'
+                    ? 'Введите текст на русском или английском...'
+                    : 'Введите код Морзе (. - /) ...';
+            }
+
+            function getActiveMorse() {
+                return (currentDirection === 'textToMorse' ? outputArea.value : inputArea.value).trim();
+            }
+
+            function updateTranslatorButtons() {
+                const morse = getActiveMorse();
+                const busy = flasherActive || sounderActive;
+                flashBtn.disabled = !morse || busy;
+                soundBtn.disabled = !morse || busy;
+                if (!busy) {
+                    flashBtn.textContent = '⚡ Свет';
+                    soundBtn.textContent = '🔊 Звук';
+                }
+            }
+
+            function textToMorse(text) {
+                // Заменяем Ё/ё на Е/е, чтобы буква ё не использовалась
+                const cleaned = text.replace(/Ё/g, 'Е').replace(/ё/g, 'е').toUpperCase();
+                const res = [];
+                for (const ch of cleaned) {
+                    if (ch === ' ') {
+                        if (res.length && res[res.length - 1] !== '/') res.push('/');
+                        continue;
+                    }
+                    res.push(morseMap[ch] || '?');
+                }
+                while (res.length && res[res.length - 1] === '/') res.pop();
+                return res.join(' ').replace(/ \/ /g, ' / ');
+            }
+
+            function morseToText(morse) {
+                const map = currentLang === 'ru' ? reverseRu : reverseEn;
+                const cleaned = morse.trim().replace(/\s*\/\s*/g, ' / ').replace(/\s{2,}/g, ' ');
+                return cleaned.split(' / ').map(w => w.split(' ').filter(s => s).map(code => map[code] || '?').join('')).join(' ');
+            }
+
+            function performTranslation() {
+                if (!inputArea.value.trim()) {
+                    outputArea.value = '';
+                    updateTranslatorButtons();
+                    return;
+                }
+                outputArea.value = currentDirection === 'textToMorse' ? textToMorse(inputArea.value) : morseToText(inputArea.value);
+                updateTranslatorButtons();
+            }
+
+            translateBtn.addEventListener('click', performTranslation);
+            inputArea.addEventListener('keydown', e => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    performTranslation();
+                }
+            });
+
+            copyBtn.addEventListener('click', async () => {
+                if (!outputArea.value) return;
+                try {
+                    await navigator.clipboard.writeText(outputArea.value);
+                    showToast('✅ Скопировано');
+                } catch {
+                    outputArea.select();
+                    document.execCommand('copy');
+                    showToast('✅ Скопировано');
+                }
+            });
+
+            function parseSequence(morse) {
+                const words = morse.trim().split(/\s*\/\s*/);
+                const seq = [];
+                words.forEach((w, wi) => {
+                    const letters = w.split(/\s+/).filter(l => l);
+                    letters.forEach((l, li) => {
+                        for (const s of l) seq.push(s === '.' ? 'dot' : 'dash');
+                        if (li < letters.length - 1) seq.push('letterSpace');
+                    });
+                    if (wi < words.length - 1) seq.push('wordSpace');
+                });
+                return seq;
+            }
+
+            function sleep(ms, signal) {
+                return new Promise((res, rej) => {
+                    const t = setTimeout(res, ms);
+                    if (signal) {
+                        signal.addEventListener('abort', () => {
+                            clearTimeout(t);
+                            rej(new DOMException('Aborted', 'AbortError'));
+                        }, { once: true });
+                    }
+                });
+            }
+
+            async function enableTorch() {
+                if (!navigator.mediaDevices?.getUserMedia) return false;
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    videoTrack = mediaStream.getVideoTracks()[0];
+                    if (videoTrack) {
+                        await videoTrack.applyConstraints({ advanced: [{ torch: true }] });
+                        return true;
+                    }
+                    return false;
+                } catch {
+                    releaseCamera();
+                    return false;
+                }
+            }
+
+            function setTorch(on) {
+                if (videoTrack) videoTrack.applyConstraints({ advanced: [{ torch: on }] }).catch(() => {});
+            }
+
+            function releaseCamera() {
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(t => t.stop());
+                    mediaStream = null;
+                    videoTrack = null;
+                }
+            }
+
+            function setIndicator(on) {
+                flashIndicator.classList.toggle('active', on);
+            }
+
+            async function startFlashing() {
+                if (flasherActive) return;
+                const morse = getActiveMorse();
+                if (!morse) return;
+                flasherActive = true;
+                flasherAbort = new AbortController();
+                const sig = flasherAbort.signal;
+                flashBtn.textContent = '⏹ Стоп';
+                flashBtn.disabled = false;
+                soundBtn.disabled = true;
+                flashStatus.textContent = 'Передача светом...';
+                const dot = +speedSelect.value;
+                const dash = dot * 3;
+                const intra = dot;
+                const letter = dot * 3;
+                const word = dot * 7;
+                const useTorch = await enableTorch();
+                if (!useTorch) flashStatus.textContent = 'Фонарик недоступен (индикатор)';
+                const seq = parseSequence(morse);
+                try {
+                    for (const item of seq) {
+                        if (sig.aborted) break;
+                        if (item === 'dot') {
+                            setIndicator(true);
+                            if (useTorch) setTorch(true);
+                            await sleep(dot, sig);
+                            setIndicator(false);
+                            if (useTorch) setTorch(false);
+                            await sleep(intra, sig);
+                        } else if (item === 'dash') {
+                            setIndicator(true);
+                            if (useTorch) setTorch(true);
+                            await sleep(dash, sig);
+                            setIndicator(false);
+                            if (useTorch) setTorch(false);
+                            await sleep(intra, sig);
+                        } else if (item === 'letterSpace') {
+                            await sleep(letter - intra, sig);
+                        } else if (item === 'wordSpace') {
+                            await sleep(word - intra, sig);
+                        }
+                    }
+                } catch (e) {
+                    if (e.name !== 'AbortError') console.error(e);
+                } finally {
+                    setIndicator(false);
+                    if (useTorch) setTorch(false);
+                    releaseCamera();
+                    flasherActive = false;
+                    flasherAbort = null;
+                    flashStatus.textContent = 'Готов к передаче';
+                    updateTranslatorButtons();
+                }
+            }
+
+            function stopFlashing() { flasherAbort?.abort(); }
+
+            async function startSound() {
+                if (sounderActive) return;
+                const morse = getActiveMorse();
+                if (!morse) return;
+                sounderActive = true;
+                soundAbort = new AbortController();
+                const sig = soundAbort.signal;
+                soundBtn.textContent = '⏹ Стоп';
+                soundBtn.disabled = false;
+                flashBtn.disabled = true;
+                flashStatus.textContent = 'Передача звуком...';
+                const dot = +speedSelect.value;
+                const dash = dot * 3;
+                const intra = dot;
+                const letter = dot * 3;
+                const word = dot * 7;
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const seq = parseSequence(morse);
+                const playTone = (ms) => {
+                    return new Promise((res, rej) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = 700;
+                        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                        gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.005);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + ms / 1000);
+                        const t = setTimeout(res, ms);
+                        if (sig) {
+                            sig.addEventListener('abort', () => {
+                                clearTimeout(t);
+                                try { osc.stop(); } catch (e) {}
+                                rej(new DOMException('Aborted', 'AbortError'));
+                            }, { once: true });
+                        }
+                    });
+                };
+                try {
+                    for (const item of seq) {
+                        if (sig.aborted) break;
+                        if (item === 'dot') { await playTone(dot); await sleep(intra, sig); }
+                        else if (item === 'dash') { await playTone(dash); await sleep(intra, sig); }
+                        else if (item === 'letterSpace') { await sleep(letter - intra, sig); }
+                        else if (item === 'wordSpace') { await sleep(word - intra, sig); }
+                    }
+                } catch (e) {
+                    if (e.name !== 'AbortError') console.error(e);
+                } finally {
+                    audioCtx.close();
+                    audioCtx = null;
+                    sounderActive = false;
+                    soundAbort = null;
+                    flashStatus.textContent = 'Готов к передаче';
+                    updateTranslatorButtons();
+                }
+            }
+
+            function stopSound() { soundAbort?.abort(); }
+
+            flashBtn.addEventListener('click', () => flasherActive ? stopFlashing() : startFlashing());
+            soundBtn.addEventListener('click', () => sounderActive ? stopSound() : startSound());
+            flashIndicator.addEventListener('dblclick', () => { stopFlashing(); stopSound(); });
+
+            // ==================== TRAINER MODULE ====================
+            const morseKey = document.getElementById('morseKey');
+            const trainerMorseDisplay = document.getElementById('trainerMorseDisplay');
+            const trainerTextDisplay = document.getElementById('trainerTextDisplay');
+            const trainerSpeed = document.getElementById('trainerSpeed');
+            const trainerLang = document.getElementById('trainerLang');
+            const trainerSpaceBtn = document.getElementById('trainerSpaceBtn');
+            const trainerClearBtn = document.getElementById('trainerClearBtn');
+            const trainerBackspaceBtn = document.getElementById('trainerBackspaceBtn');
+            const trainerThresholdDisplay = document.getElementById('trainerThresholdDisplay');
+            const trainerTaskDisplay = document.getElementById('trainerTaskText');
+
+            let keyDownTime = null;
+            let trainerAudioCtx = null;
+            let currentMorse = '';
+            let currentWord = '';
+            let decodedWords = [];
+            let letterTimeout = null;
+            let wordTimeout = null;
+            const LETTER_GAP = 400;
+            const WORD_GAP = 900;
+
+            // ---- НОВЫЙ БАНК ЗАДАНИЙ (без буквы ё) ----
+            const WORD_BANK = {
+                words: [
+                    'КОТ', 'ДОМ', 'ЛЕС', 'НОС', 'РОТ', 'СОН', 'МАК', 'РАК', 'БЫК', 'ВОЛ',
+                    'ВОДА', 'РУКА', 'НОГА', 'ЗИМА', 'ЛЕТО', 'ВЕСНА', 'ОСЕНЬ', 'ДЕНЬ', 'НОЧЬ',
+                    'МОРЕ', 'РЕКА', 'ОЗЕРО', 'ГОРА', 'ЛЕС', 'ПОЛЕ', 'САД', 'ДОРОГА', 'ГОРОД',
+                    'ДОМ', 'КВАРТИРА', 'КОМНАТА', 'ОКНО', 'ДВЕРЬ', 'СТОЛ', 'СТУЛ', 'КРОВАТЬ',
+                    'МАШИНА', 'ПОЕЗД', 'САМОЛЕТ', 'КОРАБЛЬ', 'ВЕЛОСИПЕД', 'МОТОЦИКЛ',
+                    'РАБОТА', 'УЧЕБА', 'ШКОЛА', 'УНИВЕРСИТЕТ', 'БИБЛИОТЕКА', 'МУЗЕЙ',
+                    'МУЗЫКА', 'ПЕСНЯ', 'ТАНЕЦ', 'КИНО', 'ТЕАТР', 'КНИГА', 'ЖУРНАЛ',
+                    'ДРУГ', 'СЕМЬЯ', 'МАТЬ', 'ОТЕЦ', 'БРАТ', 'СЕСТРА', 'БАБУШКА', 'ДЕДУШКА',
+                    'СЧАСТЬЕ', 'РАДОСТЬ', 'ЛЮБОВЬ', 'НАДЕЖДА', 'ВЕРА', 'ДОБРО', 'МИР',
+                    'СОЛНЦЕ', 'ЛУНА', 'ЗВЕЗДА', 'НЕБО', 'ОБЛАКО', 'ДОЖДЬ', 'СНЕГ', 'ВЕТЕР',
+                    'ГОРЯЧО', 'ХОЛОДНО', 'ТЕПЛО', 'СВЕТЛО', 'ТЕМНО', 'КРАСИВО', 'БЫСТРО',
+                    'МЕДЛЕННО', 'ГРОМКО', 'ТИХО', 'ВЕСЕЛО', 'ГРУСТНО', 'ИНТЕРЕСНО',
+                    'ЭЛЕКТРИЧЕСТВО', 'КОМПЬЮТЕР', 'ИНТЕРНЕТ', 'ТЕЛЕФОН', 'ЭКРАН', 'КНОПКА',
+                    'ЧЕЛОВЕК', 'ЖИВОТНОЕ', 'ПТИЦА', 'РЫБА', 'ЦВЕТОК', 'ДЕРЕВО', 'ТРАВА',
+                    'МОЛОКО', 'ХЛЕБ', 'МЯСО', 'РЫБА', 'ОВОЩИ', 'ФРУКТЫ', 'ВОДА', 'СОК',
+                    'ЧАЙ', 'КОФЕ', 'САХАР', 'СОЛЬ', 'МАСЛО', 'СЫР', 'ЯЙЦО', 'КАША', 'СУП'
+                ],
+                phrases: [
+                    'ДОБРОЕ УТРО', 'СПОКОЙНОЙ НОЧИ', 'КАК ДЕЛА', 'ХОРОШО', 'ОТЛИЧНО',
+                    'БОЛЬШОЕ СПАСИБО', 'ПОЖАЛУЙСТА', 'ИЗВИНИТЕ', 'ПРОСТИТЕ',
+                    'СКОРО ВСТРЕЧА', 'ДО СВИДАНИЯ', 'ВСЕГО ХОРОШЕГО',
+                    'УДАЧНОГО ДНЯ', 'ХОРОШЕГО НАСТРОЕНИЯ', 'БУДЬ ЗДОРОВ',
+                    'ПРИЯТНОГО АППЕТИТА', 'ВКУСНОЙ ЕДЫ', 'ТЕПЛОГО ЧАЯ',
+                    'СВЕЖЕГО ВОЗДУХА', 'ЯСНОГО НЕБА', 'ТИХОЙ НОЧИ',
+                    'СПОКОЙНОГО МОРЯ', 'ЗОЛОТОЙ ОСЕНИ', 'БЕЛОЙ ЗИМЫ',
+                    'ВЕСЕННЕЙ КАПЕЛИ', 'ЖАРКОГО ЛЕТА', 'ПЕРВОГО СНЕГА',
+                    'ПОСЛЕДНЕГО ЗВОНКА', 'НОВОГО ГОДА', 'СВЕТЛОГО ПРАЗДНИКА',
+                    'ДОБРОГО ПУТИ', 'СЧАСТЛИВОГО ПУТИ', 'БЕЗОПАСНОЙ ДОРОГИ',
+                    'КРАСИВОГО ВИДА', 'ЧИСТОЙ ВОДЫ', 'ЗДОРОВОГО СНА',
+                    'БЫСТРОГО РЕШЕНИЯ', 'ВЕРНОГО ДРУГА', 'КРЕПКОЙ СЕМЬИ',
+                    'УСПЕШНОЙ РАБОТЫ', 'ИНТЕРЕСНОЙ КНИГИ', 'ХОРОШЕГО ФИЛЬМА'
+                ],
+                proverbs: [
+                    'БЕЗ ТРУДА НЕ ВЫТАЩИШЬ И РЫБКУ ИЗ ПРУДА',
+                    'ДЕЛО МАСТЕРА БОИТСЯ',
+                    'ГЛАЗА БОЯТСЯ А РУКИ ДЕЛАЮТ',
+                    'ПОВТОРЕНИЕ МАТЬ УЧЕНИЯ',
+                    'ВЕК ЖИВИ ВЕК УЧИСЬ',
+                    'СЕМЬ РАЗ ОТМЕРЬ ОДИН РАЗ ОТРЕЖЬ',
+                    'ЛУЧШЕ ПОЗДНО ЧЕМ НИКОГДА',
+                    'ТИШЕ ЕДЕШЬ ДАЛЬШЕ БУДЕШЬ',
+                    'БОЛЬШОМУ КОРАБЛЮ БОЛЬШОЕ ПЛАВАНИЕ',
+                    'ЗА ДВУМЯ ЗАЙЦАМИ ПОГОНИШЬСЯ НИ ОДНОГО НЕ ПОЙМАЕШЬ',
+                    'В ТИХОМ ОМУТЕ ЧЕРТИ ВОДЯТСЯ',
+                    'НА ВСЯКОГО МУДРЕЦА ДОВОЛЬНО ПРОСТОТЫ',
+                    'ЯБЛОКО ОТ ЯБЛОНИ НЕДАЛЕКО ПАДАЕТ',
+                    'СЛОВО НЕ ВОРОБЕЙ ВЫЛЕТИТ НЕ ПОЙМАЕШЬ',
+                    'ВСЁ ХОРОШО ЧТО ХОРОШО КОНЧАЕТСЯ',
+                    'БЕЗ ВОДЫ ЗЕМЛЯ ПУСТЫНЯ БЕЗ ТРУДА ЖИЗНЬ ПУСТА',
+                    'ЗЕМЛЯ КРАСНА СОЛНЦЕМ А ЧЕЛОВЕК ТРУДОМ',
+                    'МАЛЕНЬКОЕ ДЕЛО ЛУЧШЕ БОЛЬШОГО БЕЗДЕЛЬЯ',
+                    'СЧАСТЬЕ ТАМ ГДЕ ВЕРНОСТЬ И ЛЮБОВЬ',
+                    'НАДЕЖДА УМИРАЕТ ПОСЛЕДНЕЙ'
+                ],
+                sentences: [
+                    'ПРИВЕТ КАК ТВОИ ДЕЛА',
+                    'СЕГОДНЯ ПРЕКРАСНАЯ ПОГОДА',
+                    'ЗАВТРА ПОЕДЕМ В ДЕРЕВНЮ',
+                    'НУЖНО КУПИТЬ ХЛЕБ МОЛОКО И ЯЙЦА',
+                    'ГДЕ МОЯ КНИГА',
+                    'Я ЛЮБЛЮ ЧИТАТЬ ПО ВЕЧЕРАМ',
+                    'КОТОРЫЙ ЧАС',
+                    'МЫ ВСТРЕТИМСЯ В ЦЕНТРЕ',
+                    'СПАСИБО ЗА ТВОЮ ПОМОЩЬ',
+                    'БОЛЬШОЕ ПРИКЛЮЧЕНИЕ НАЧИНАЕТСЯ',
+                    'НИКОГДА НЕ СДАВАЙСЯ',
+                    'У МЕНЯ ЕСТЬ МЕЧТА',
+                    'Я ХОЧУ СТАТЬ ПИЛОТОМ',
+                    'МИР БОЛЬШЕ ЧЕМ МЫ ДУМАЕМ',
+                    'ТИШИНА И СПОКОЙСТВИЕ',
+                    'ВЕСНА ПРИШЛА НЕЗАМЕТНО',
+                    'СНЕГ ТАЕТ НА ГЛАЗАХ',
+                    'ПТИЦЫ ВОЗВРАЩАЮТСЯ ДОМОЙ',
+                    'ДОРОГА К СЧАСТЬЮ ОТКРЫТА',
+                    'ВСЁ БУДЕТ ХОРОШО',
+                    'Я ВЕРЮ В ЧУДЕСА',
+                    'МЫ ВМЕСТЕ И ЭТО ГЛАВНОЕ',
+                    'НЕТ ПРЕГРАД ДЛЯ ТЕХ КТО СТРЕМИТСЯ',
+                    'КАЖДЫЙ ДЕНЬ НОВЫЙ ШАНС',
+                    'УЛЫБНИСЬ МИРУ И МИР УЛЫБНЕТСЯ ТЕБЕ',
+                    'ТЕРПЕНИЕ И ТРУД ВСЁ ПЕРЕТРУТ',
+                    'ЛУЧШИЙ ДРУГ ЭТО СЕМЬЯ',
+                    'ПУТЬ В ТЫСЯЧУ МИЛЬ НАЧИНАЕТСЯ С ПЕРВОГО ШАГА',
+                    'ЗНАНИЕ СИЛА',
+                    'УЧИТЬСЯ НИКОГДА НЕ ПОЗДНО'
+                ]
+            };
+
+            // Приводим все строки к верхнему регистру и заменяем Ё на Е
+            const ruTasks = [
+                ...WORD_BANK.words,
+                ...WORD_BANK.phrases,
+                ...WORD_BANK.proverbs,
+                ...WORD_BANK.sentences
+            ].map(s => s.replace(/Ё/g, 'Е').replace(/ё/g, 'е').toUpperCase());
+
+            const trainerTasksEn = [
+                'HELLO', 'HOW ARE YOU', 'SUN', 'SEA', 'FRIEND',
+                'HAPPINESS', 'JOY', 'LOVE', 'PEACE', 'HOME',
+                'PRACTICE MAKES PERFECT',
+                'ACTIONS SPEAK LOUDER THAN WORDS',
+                'BETTER LATE THAN NEVER',
+                'EVERY CLOUD HAS A SILVER LINING',
+                'NO PAIN NO GAIN',
+                'WHERE THERE IS A WILL THERE IS A WAY'
+            ];
+
+            let currentTasks = [];
+            let taskIndex = 0;
+
+            function getCurrentTask() {
+                if (!currentTasks.length) return '';
+                return currentTasks[Math.min(taskIndex, currentTasks.length - 1)];
+            }
+
+            function updateTaskDisplay() {
+                trainerTaskDisplay.textContent = getCurrentTask() || '🎉 Все задания пройдены!';
+            }
+
+            function loadTasks() {
+                currentTasks = trainerLang.value === 'ru' ? [...ruTasks] : [...trainerTasksEn];
+                taskIndex = 0;
+                clearTrainerInput();
+                updateTaskDisplay();
+            }
+
+            function advanceTask() {
+                if (taskIndex < currentTasks.length - 1) {
+                    taskIndex++;
+                    clearTrainerInput();
+                    updateTaskDisplay();
+                    showToast('✅ Верно! Следующее задание.');
+                } else if (taskIndex === currentTasks.length - 1) {
+                    showToast('🏁 Все задания пройдены!');
+                    taskIndex++;
+                    updateTaskDisplay();
+                    clearTrainerInput();
+                }
+            }
+
+            function clearTrainerInput() {
+                currentMorse = '';
+                currentWord = '';
+                decodedWords = [];
+                clearTimeout(letterTimeout);
+                clearTimeout(wordTimeout);
+            }
+
+            function updateTrainerThreshold() {
+                trainerThresholdDisplay.textContent = trainerSpeed.value + ' мс';
+            }
+
+            trainerSpeed.addEventListener('change', updateTrainerThreshold);
+            updateTrainerThreshold();
+
+            function decodeMorseSequence(morseStr) {
+                const map = trainerLang.value === 'ru' ? reverseRu : reverseEn;
+                if (!morseStr.trim()) return '';
+                const words = morseStr.trim().split(/\s*\/\s*/);
+                return words
+                    .map(w => w.split(/\s+/)
+                        .filter(s => s)
+                        .map(code => map[code] || '?')
+                        .join('')
+                    )
+                    .join(' ');
+            }
+
+            function buildFullMorse() {
+                let displayMorse = '';
+                if (decodedWords.length) displayMorse += decodedWords.join(' / ');
+                if (currentWord) {
+                    if (displayMorse) displayMorse += ' / ';
+                    displayMorse += currentWord;
+                }
+                if (currentMorse) {
+                    if (displayMorse) displayMorse += ' ';
+                    displayMorse += currentMorse;
+                }
+                return displayMorse;
+            }
+
+            function checkTaskCompletion() {
+                const fullMorse = buildFullMorse();
+                const decoded = decodeMorseSequence(fullMorse).trim();
+                const task = getCurrentTask().trim();
+                if (task && decoded.toUpperCase() === task.toUpperCase()) {
+                    advanceTask();
+                }
+            }
+
+            function updateTrainerDisplays() {
+                const fullMorse = buildFullMorse();
+                trainerMorseDisplay.textContent = fullMorse || '⏳';
+                trainerTextDisplay.textContent = decodeMorseSequence(fullMorse) || '⏳';
+                checkTaskCompletion();
+            }
+
+            function startTone() {
+                if (!trainerAudioCtx) {
+                    trainerAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const osc = trainerAudioCtx.createOscillator();
+                const gain = trainerAudioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = 700;
+                gain.gain.setValueAtTime(0.3, trainerAudioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(trainerAudioCtx.destination);
+                osc.start();
+                return { osc, gain };
+            }
+
+            function stopTone(tone) {
+                if (!tone) return;
+                tone.gain.gain.linearRampToValueAtTime(0, trainerAudioCtx.currentTime + 0.01);
+                tone.osc.stop(trainerAudioCtx.currentTime + 0.02);
+            }
+
+            function handleKeyDown(e) {
+                e.preventDefault();
+                if (keyDownTime !== null) return;
+                keyDownTime = Date.now();
+                morseKey.classList.add('pressed');
+                morseKey._tone = startTone();
+                clearTimeout(letterTimeout);
+                clearTimeout(wordTimeout);
+            }
+
+            function handleKeyUp(e) {
+                e.preventDefault();
+                if (keyDownTime === null) return;
+                const pressDuration = Date.now() - keyDownTime;
+                keyDownTime = null;
+                morseKey.classList.remove('pressed');
+                if (morseKey._tone) {
+                    stopTone(morseKey._tone);
+                    morseKey._tone = null;
+                }
+                const threshold = parseInt(trainerSpeed.value, 10);
+                const symbol = pressDuration >= threshold ? '-' : '.';
+                currentMorse += symbol;
+                updateTrainerDisplays();
+
+                clearTimeout(letterTimeout);
+                letterTimeout = setTimeout(() => {
+                    if (currentMorse) {
+                        if (currentWord) currentWord += ' ';
+                        currentWord += currentMorse;
+                        currentMorse = '';
+                        updateTrainerDisplays();
+                    }
+                    clearTimeout(wordTimeout);
+                    wordTimeout = setTimeout(() => {
+                        if (currentWord && !currentMorse) {
+                            decodedWords.push(currentWord);
+                            currentWord = '';
+                            updateTrainerDisplays();
+                        }
+                    }, WORD_GAP);
+                }, LETTER_GAP);
+            }
+
+            // Удаление последнего введённого символа (точки/тире)
+            function handleBackspace() {
+                clearTimeout(letterTimeout);
+                clearTimeout(wordTimeout);
+
+                if (currentMorse.length > 0) {
+                    currentMorse = currentMorse.slice(0, -1);
+                } else if (currentWord.length > 0) {
+                    const letters = currentWord.trim().split(/\s+/);
+                    if (letters.length > 0) {
+                        const lastLetter = letters[letters.length - 1];
+                        if (lastLetter.length > 1) {
+                            letters[letters.length - 1] = lastLetter.slice(0, -1);
+                            currentWord = letters.join(' ');
+                            currentMorse = letters.pop();
+                            currentWord = letters.join(' ');
+                        } else {
+                            letters.pop();
+                            currentWord = letters.join(' ');
+                        }
+                    }
+                    if (!currentWord.trim()) currentWord = '';
+                } else if (decodedWords.length > 0) {
+                    const lastWord = decodedWords.pop();
+                    currentWord = lastWord;
+                    const letters = currentWord.trim().split(/\s+/);
+                    if (letters.length > 0) {
+                        const lastLetter = letters[letters.length - 1];
+                        if (lastLetter.length > 1) {
+                            letters[letters.length - 1] = lastLetter.slice(0, -1);
+                            currentWord = letters.join(' ');
+                            currentMorse = letters.pop();
+                            currentWord = letters.join(' ');
+                        } else {
+                            letters.pop();
+                            currentWord = letters.join(' ');
+                        }
+                    }
+                    if (!currentWord.trim()) currentWord = '';
+                }
+                updateTrainerDisplays();
+            }
+
+            // Привязка событий
+            morseKey.addEventListener('mousedown', handleKeyDown);
+            morseKey.addEventListener('mouseup', handleKeyUp);
+            morseKey.addEventListener('mouseleave', (e) => {
+                if (keyDownTime !== null) handleKeyUp(e);
+            });
+            morseKey.addEventListener('touchstart', handleKeyDown, { passive: false });
+            morseKey.addEventListener('touchend', handleKeyUp);
+            morseKey.addEventListener('touchcancel', (e) => {
+                if (keyDownTime !== null) handleKeyUp(e);
+            });
+            morseKey.addEventListener('contextmenu', e => e.preventDefault());
+
+            trainerBackspaceBtn.addEventListener('click', handleBackspace);
+
+            trainerSpaceBtn.addEventListener('click', () => {
+                if (currentMorse) {
+                    if (currentWord) currentWord += ' ';
+                    currentWord += currentMorse;
+                    currentMorse = '';
+                }
+                if (currentWord) {
+                    decodedWords.push(currentWord);
+                    currentWord = '';
+                }
+                clearTimeout(letterTimeout);
+                clearTimeout(wordTimeout);
+                updateTrainerDisplays();
+            });
+
+            trainerClearBtn.addEventListener('click', () => {
+                clearTrainerInput();
+                updateTrainerDisplays();
+            });
+
+            trainerLang.addEventListener('change', () => {
+                loadTasks();
+                updateTrainerDisplays();
+            });
+
+            // ==================== INITIALIZATION ====================
+            updateTranslatorPlaceholders();
+            updateTranslatorButtons();
+            loadTasks();
+            updateTrainerDisplays();
+            inputArea.focus();
+        })();
+    </script>
+</body>
+</html>

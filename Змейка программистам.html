@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Snake</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        html {
+            margin: 0;
+            min-height: 100%;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #050805;
+            color: #7af098;
+            font-family: "VT323", ui-monospace, monospace;
+            font-size: 18px;
+            padding: 8px;
+            touch-action: pan-y;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse 100% 80% at 50% 120%, rgba(25, 90, 45, 0.22), transparent 55%),
+                radial-gradient(ellipse 50% 40% at 10% -10%, rgba(0, 55, 35, 0.18), transparent 50%),
+                radial-gradient(ellipse 45% 35% at 95% 15%, rgba(30, 120, 60, 0.12), transparent 45%);
+            animation: retro-bg-drift 14s ease-in-out infinite alternate;
+        }
+        @keyframes retro-bg-drift {
+            from {
+                opacity: 0.75;
+                transform: scale(1) translate(0, 0);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1.03) translate(-1%, 0.5%);
+            }
+        }
+        #app {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 6px 4px 4px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .panel {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+            background: linear-gradient(180deg, #0c160c 0%, #081008 100%);
+            border: 3px solid #1d4a28;
+            border-radius: 4px;
+            padding: 12px 12px 14px;
+            box-shadow: 0 0 0 1px #0a1f0e, 0 0 24px rgba(40, 180, 80, 0.12), inset 0 1px 0 rgba(120, 220, 140, 0.06);
+            animation: panel-beam 3.2s ease-in-out infinite;
+        }
+        @keyframes panel-beam {
+            0%,
+            100% {
+                border-color: #1d4a28;
+                box-shadow: 0 0 0 1px #0a1f0e, 0 0 24px rgba(40, 180, 80, 0.14), inset 0 1px 0 rgba(120, 220, 140, 0.06);
+            }
+            50% {
+                border-color: #2d7a42;
+                box-shadow: 0 0 0 1px #0e2814, 0 0 48px rgba(50, 220, 100, 0.28), 0 0 80px rgba(30, 140, 60, 0.12), inset 0 1px 0 rgba(160, 255, 180, 0.1);
+            }
+        }
+        h1 {
+            font-family: "VT323", ui-monospace, monospace;
+            font-size: clamp(1.8rem, 5vw, 2.8rem);
+            font-weight: 400;
+            margin: 0 0 0.3rem;
+            letter-spacing: 0.06em;
+            color: #9fffb0;
+            text-align: center;
+            align-self: center;
+            width: 100%;
+            text-shadow: 0 0 12px rgba(80, 255, 120, 0.45), 2px 2px 0 #0a3014;
+            animation: h1-chromatic 2.8s ease-in-out infinite alternate, h1-crt-buzz 4.5s step-end infinite;
+        }
+        @keyframes h1-chromatic {
+            0% {
+                text-shadow: 0 0 12px rgba(80, 255, 120, 0.5), 2px 2px 0 #0a3014, -2px 0 0 rgba(0, 255, 200, 0.22), 2px 0 0 rgba(255, 60, 120, 0.14);
+            }
+            100% {
+                text-shadow: 0 0 18px rgba(120, 255, 160, 0.55), 2px 2px 0 #0a3014, 2px 0 0 rgba(0, 220, 255, 0.18), -2px 0 0 rgba(255, 100, 180, 0.16);
+            }
+        }
+        @keyframes h1-crt-buzz {
+            0%,
+            92%,
+            100% {
+                transform: translate(0, 0);
+                filter: brightness(1);
+            }
+            93% {
+                transform: translate(0.8px, -0.4px);
+                filter: brightness(1.12);
+            }
+            94% {
+                transform: translate(-0.6px, 0.3px);
+                filter: brightness(0.94);
+            }
+            95% {
+                transform: translate(0, 0);
+                filter: brightness(1);
+            }
+        }
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.4rem 1.2rem;
+            margin-bottom: 0.5rem;
+            width: 100%;
+            font-family: "VT323", ui-monospace, monospace;
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: #4a9c5c;
+        }
+        .stats>span {
+            display: inline-block;
+            animation: stat-terminal 2.6s ease-in-out infinite;
+        }
+        .stats>span:nth-child(1) {
+            animation-delay: 0s;
+        }
+        .stats>span:nth-child(2) {
+            animation-delay: 0.35s;
+        }
+        @keyframes stat-terminal {
+            0%,
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+                filter: brightness(1);
+            }
+            40% {
+                opacity: 0.88;
+                filter: brightness(1.15);
+            }
+            55% {
+                opacity: 1;
+                transform: translateY(-1px);
+                filter: brightness(1);
+            }
+        }
+        .stats strong {
+            display: inline-block;
+            color: #d4ff5c;
+            font-weight: 400;
+            text-shadow: 0 0 8px rgba(200, 255, 80, 0.35);
+            animation: stat-glow-pulse 1.4s ease-in-out infinite alternate;
+        }
+        @keyframes stat-glow-pulse {
+            from {
+                text-shadow: 0 0 6px rgba(200, 255, 80, 0.3);
+            }
+            to {
+                text-shadow: 0 0 14px rgba(220, 255, 100, 0.65), 0 0 24px rgba(180, 255, 60, 0.25);
+            }
+        }
+        .stage-outer {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 896 / 672;
+            overflow: hidden;
+            border-radius: 2px;
+            border: 3px solid #1a4a24;
+            box-shadow: inset 0 0 60px rgba(0, 40, 10, 0.5), 0 0 20px rgba(20, 80, 30, 0.25);
+            animation: bezel-hum 2.8s ease-in-out infinite alternate;
+            touch-action: none;
+        }
+        @keyframes bezel-hum {
+            0% {
+                border-color: #163a20;
+                box-shadow: inset 0 0 60px rgba(0, 40, 10, 0.5), 0 0 20px rgba(20, 80, 30, 0.25);
+            }
+            100% {
+                border-color: #2a8a48;
+                box-shadow: inset 0 0 70px rgba(10, 60, 25, 0.55), 0 0 32px rgba(40, 200, 90, 0.35), 0 0 2px rgba(120, 255, 140, 0.4);
+            }
+        }
+        .stage-outer::after {
+            content: "";
+            pointer-events: none;
+            position: absolute;
+            inset: 0;
+            z-index: 30;
+            border-radius: inherit;
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0, 0, 0, 0.06) 1px, rgba(0, 0, 0, 0.06) 2px),
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.14) 2px, rgba(0, 0, 0, 0.14) 3px);
+            background-size: 100% 2px, 100% 3px;
+            animation: scan-drift-dual 1.4s linear infinite;
+            mix-blend-mode: multiply;
+        }
+        @keyframes scan-drift-dual {
+            to {
+                background-position: 0 2px, 0 3px;
+            }
+        }
+        .stage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 896px;
+            height: 672px;
+            transform-origin: top left;
+            background: radial-gradient(ellipse 100% 70% at 50% 0%, #0f2414 0%, #030806 55%, #020403 100%);
+            overflow: hidden;
+            touch-action: none;
+        }
+        .stage::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse 90% 55% at 50% 8%, rgba(55, 200, 90, 0.18), transparent 62%),
+                repeating-linear-gradient(90deg, transparent 0, transparent 31px, rgba(20, 80, 40, 0.04) 31px, rgba(20, 80, 40, 0.04) 32px),
+                repeating-linear-gradient(0deg, transparent 0, transparent 47px, rgba(15, 50, 30, 0.035) 47px, rgba(15, 50, 30, 0.035) 48px);
+            background-size: 100% 100%, 64px 100%, 100% 48px;
+            animation: arena-glow 2.4s ease-in-out infinite alternate, retro-grid-slide 18s linear infinite;
+        }
+        @keyframes arena-glow {
+            from {
+                opacity: 0.55;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes retro-grid-slide {
+            from {
+                background-position: 0 0, 0 0, 0 0;
+            }
+            to {
+                background-position: 0 0, 64px 32px, -24px 48px;
+            }
+        }
+        .stage::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 25;
+            pointer-events: none;
+            border-radius: inherit;
+            background:
+                radial-gradient(ellipse 72% 65% at 50% 48%, transparent 42%, rgba(0, 0, 0, 0.45) 100%),
+                linear-gradient(180deg, transparent 0%, transparent 47%, rgba(180, 255, 200, 0.04) 49.2%, rgba(220, 255, 230, 0.07) 50%, rgba(180, 255, 200, 0.04) 50.8%, transparent 53%, transparent 100%);
+            background-size: 100% 100%, 100% 220%;
+            animation: crt-phosphor-sweep 2.8s linear infinite;
+        }
+        @keyframes crt-phosphor-sweep {
+            from {
+                background-position: 0 0, 0 0;
+            }
+            to {
+                background-position: 0 0, 0 100%;
+            }
+        }
+        .stage:focus {
+            outline: none;
+        }
+        .stage:focus-visible {
+            outline: 3px solid #3ecf5c;
+            outline-offset: 3px;
+        }
+        .stage.stage--pickup {
+            animation: pickup-screen-flash 0.38s ease-out;
+        }
+        @keyframes pickup-screen-flash {
+            0% {
+                filter: brightness(1) saturate(1);
+            }
+            15% {
+                filter: brightness(1.5) saturate(1.4) contrast(1.06);
+            }
+            40% {
+                filter: brightness(1.15) saturate(1.12);
+            }
+            100% {
+                filter: brightness(1) saturate(1);
+            }
+        }
+        .stage-outer.stage-outer--pickup {
+            animation: pickup-bezel-burst 0.42s ease-out;
+        }
+        @keyframes pickup-bezel-burst {
+            0%,
+            100% {
+                border-color: #163a20;
+                box-shadow: inset 0 0 60px rgba(0, 40, 10, 0.5), 0 0 20px rgba(20, 80, 30, 0.25);
+            }
+            30% {
+                border-color: #7aff9e;
+                box-shadow: inset 0 0 55px rgba(30, 140, 60, 0.55), 0 0 48px rgba(90, 255, 140, 0.75), 0 0 90px rgba(50, 200, 100, 0.4), 0 0 3px rgba(200, 255, 220, 0.9);
+            }
+        }
+        .stats.stats--pickup {
+            animation: stats-hud-pop 0.4s ease-out;
+        }
+        .stats.stats--pickup strong {
+            animation: pickup-score-kick 0.38s ease-out !important;
+        }
+        @keyframes stats-hud-pop {
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+            }
+            22% {
+                transform: translateY(-3px) scale(1.05);
+            }
+        }
+        @keyframes pickup-score-kick {
+            0% {
+                transform: scale(1);
+                color: #d4ff5c;
+            }
+            35% {
+                transform: scale(1.4);
+                color: #f8fff0;
+                text-shadow: 0 0 16px rgba(200, 255, 150, 0.95), 0 0 28px rgba(100, 255, 200, 0.55), -2px 0 0 rgba(255, 100, 180, 0.35);
+            }
+            100% {
+                transform: scale(1);
+                color: #d4ff5c;
+                text-shadow: 0 0 8px rgba(200, 255, 80, 0.35);
+            }
+        }
+        .stage--dead .text-layer {
+            opacity: 0.45;
+        }
+        .stage--dead .obstacle-layer .snake-segment--body {
+            opacity: 0.55;
+            filter: saturate(0.35);
+        }
+        .text-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            animation: text-layer-breathe 5s ease-in-out infinite;
+        }
+        @keyframes text-layer-breathe {
+            0%,
+            100% {
+                filter: brightness(0.9) saturate(0.95);
+            }
+            50% {
+                filter: brightness(1.06) saturate(1.08);
+            }
+        }
+        .pretext-line {
+            position: absolute;
+            white-space: pre;
+            font: 20px/1 "Courier New", Courier, ui-monospace, monospace;
+            color: rgba(90, 200, 120, 0.55);
+            text-shadow: 0 0 1px rgba(60, 180, 90, 0.25);
+        }
+        .pretext-line--justified {
+            text-align: justify;
+            text-align-last: justify;
+            text-justify: inter-word;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        .pretext-line--composite {
+            overflow: visible;
+            line-height: 28px;
+        }
+        .pretext-line--composite .pretext-frag,
+        .pretext-line--composite .apple-token {
+            position: absolute;
+            top: 0;
+            white-space: pre;
+            line-height: 28px;
+        }
+        .pretext-line--composite .pretext-frag {
+            z-index: 1;
+            color: inherit;
+            text-shadow: inherit;
+            box-sizing: border-box;
+            text-align: justify;
+            text-align-last: justify;
+            text-justify: inter-word;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        .pretext-line--composite .apple-token {
+            z-index: 2;
+            box-sizing: border-box;
+            text-align: center;
+            font-weight: 700;
+            color: #ff4a4a;
+            text-shadow: 2px 0 0 #6a1010, 0 2px 0 #6a1010, 0 0 8px rgba(255, 60, 60, 0.55);
+            animation: apple-pulse 0.55s ease-in-out infinite alternate;
+        }
+        @keyframes apple-pulse {
+            from {
+                color: #ff5a5a;
+                text-shadow: 2px 0 0 #6a1010, 0 2px 0 #6a1010, 0 0 10px rgba(255, 80, 80, 0.45);
+            }
+            to {
+                color: #ff3030;
+                text-shadow: 2px 0 0 #4a0808, 0 2px 0 #4a0808, 0 0 22px rgba(255, 100, 80, 0.85);
+            }
+        }
+        .obstacle-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            pointer-events: none;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+        }
+        .snake-segment {
+            position: absolute;
+            border-radius: 0;
+            transform: translate(-50%, -50%);
+            will-change: left, top;
+            box-sizing: border-box;
+            border-style: solid;
+        }
+        .snake-segment--head {
+            z-index: 10;
+            background: #9bbc0f;
+            border-width: 2px;
+            border-color: #0f380f;
+            box-shadow: inset 3px 3px 0 #c4f058, inset -3px -3px 0 #306230, 2px 2px 0 rgba(0, 0, 0, 0.35);
+        }
+        .snake-segment--head:not(.snake-segment--dead)::after {
+            content: "";
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            left: 9px;
+            top: 11px;
+            background: #0f380f;
+            box-shadow: 14px 0 0 #0f380f;
+            pointer-events: none;
+        }
+        .snake-segment--head:not(.snake-segment--dead) {
+            animation: head-pulse 0.65s ease-in-out infinite alternate;
+        }
+        @keyframes head-pulse {
+            from {
+                filter: brightness(1);
+                box-shadow: inset 3px 3px 0 #c4f058, inset -3px -3px 0 #306230, 2px 2px 0 rgba(0, 0, 0, 0.35);
+            }
+            to {
+                filter: brightness(1.12);
+                box-shadow: inset 3px 3px 0 #d8ff6a, inset -3px -3px 0 #285420, 2px 2px 0 rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(155, 188, 15, 0.45);
+            }
+        }
+        .snake-segment--body {
+            z-index: 6;
+            background: #306230;
+            border-width: 2px;
+            border-color: #0f380f;
+            box-shadow: inset 2px 2px 0 #4a8c4a, inset -2px -2px 0 #183018;
+            animation: body-segment-pulse 0.85s ease-in-out infinite alternate;
+        }
+        .snake-segment--body-alt {
+            background: #3f7d2a;
+            border-color: #0f380f;
+            box-shadow: inset 2px 2px 0 #5aa64a, inset -2px -2px 0 #204020;
+            animation: body-segment-pulse-alt 0.85s ease-in-out infinite alternate;
+            animation-delay: 0.28s;
+        }
+        @keyframes body-segment-pulse {
+            from {
+                filter: brightness(1);
+                box-shadow: inset 2px 2px 0 #4a8c4a, inset -2px -2px 0 #183018;
+            }
+            to {
+                filter: brightness(1.08);
+                box-shadow: inset 2px 2px 0 #5aaf5a, inset -2px -2px 0 #142814;
+            }
+        }
+        @keyframes body-segment-pulse-alt {
+            from {
+                filter: brightness(1);
+                box-shadow: inset 2px 2px 0 #5aa64a, inset -2px -2px 0 #204020;
+            }
+            to {
+                filter: brightness(1.1);
+                box-shadow: inset 2px 2px 0 #6ec45c, inset -2px -2px 0 #183018;
+            }
+        }
+        .snake-segment--dead {
+            background: #6b2828 !important;
+            border-color: #1a0808 !important;
+            box-shadow: inset 2px 2px 0 rgba(255, 140, 140, 0.35), inset -2px -2px 0 rgba(40, 10, 10, 0.6) !important;
+        }
+        .game-over-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 28;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2rem;
+            padding: 1rem;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s;
+            background: rgba(2, 6, 4, 0.78);
+            font-family: "VT323", ui-monospace, monospace;
+            text-align: center;
+        }
+        .game-over-layer.is-visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+        .game-over-title {
+            margin: 0;
+            font-size: clamp(2rem, 5vw, 2.75rem);
+            color: #ff6b5c;
+            text-shadow: 0 0 20px rgba(255, 80, 60, 0.6), 3px 3px 0 #4a1510;
+            letter-spacing: 0.06em;
+            animation: gameover-throb 0.9s ease-in-out infinite alternate;
+        }
+        @keyframes gameover-throb {
+            from {
+                transform: scale(1);
+                filter: brightness(1);
+                text-shadow: 0 0 16px rgba(255, 80, 60, 0.5), 3px 3px 0 #4a1510, -2px 0 0 rgba(255, 0, 80, 0.25);
+            }
+            to {
+                transform: scale(1.02);
+                filter: brightness(1.08);
+                text-shadow: 0 0 28px rgba(255, 120, 80, 0.75), 3px 3px 0 #4a1510, 2px 0 0 rgba(0, 255, 200, 0.2);
+            }
+        }
+        .game-over-hint {
+            margin: 0.5rem 0 0;
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+            color: #5a8a66;
+            animation: hint-blink 1.1s step-end infinite;
+        }
+        @keyframes hint-blink {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.45;
+            }
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px 0 4px;
+            gap: 6px;
+            touch-action: none;
+            -webkit-touch-callout: none;
+        }
+        .dpad {
+            display: grid;
+            grid-template-columns: 64px 64px 64px;
+            grid-template-rows: 64px 64px 64px;
+            gap: 4px;
+            touch-action: none;
+        }
+        .dpad-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1a2a1e;
+            border: 2px solid #2d5a3a;
+            border-radius: 6px;
+            color: #6af08a;
+            font-size: 28px;
+            font-family: "VT323", monospace;
+            cursor: pointer;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            transition: background 0.06s, transform 0.06s, border-color 0.1s, box-shadow 0.1s;
+            box-shadow: inset 0 -3px 0 #0a1a0e, 0 2px 6px rgba(0, 0, 0, 0.6);
+            text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+            user-select: none;
+            -webkit-user-select: none;
+            min-width: 0;
+            min-height: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .dpad-btn:active,
+        .dpad-btn.active {
+            background: #2d5a3a;
+            border-color: #4aaf6a;
+            transform: scale(0.93);
+            box-shadow: inset 0 -1px 0 #0a1a0e, 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        .dpad-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+            display: block;
+            pointer-events: none;
+        }
+        .dpad-up {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        .dpad-left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        .dpad-right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        .dpad-down {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        .dpad-center {
+            grid-column: 2;
+            grid-row: 2;
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+            pointer-events: none;
+        }
+        @media (max-width: 520px) {
+            .panel {
+                padding: 8px 6px 10px;
+                border-width: 2px;
+            }
+            .stats {
+                font-size: 0.9rem;
+                gap: 0.2rem 0.8rem;
+                margin-bottom: 0.3rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 0.15rem;
+            }
+            .dpad {
+                grid-template-columns: 56px 56px 56px;
+                grid-template-rows: 56px 56px 56px;
+                gap: 3px;
+            }
+            .dpad-btn svg {
+                width: 22px;
+                height: 22px;
+            }
+            .controls {
+                padding: 8px 0 2px;
+            }
+            .stage-outer {
+                border-width: 2px;
+            }
+            .game-over-title {
+                font-size: 1.6rem;
+            }
+        }
+        @media (max-width: 400px) {
+            .dpad {
+                grid-template-columns: 48px 48px 48px;
+                grid-template-rows: 48px 48px 48px;
+                gap: 2px;
+            }
+            .dpad-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+            .dpad-btn {
+                border-width: 1.5px;
+                font-size: 20px;
+            }
+            .stats {
+                font-size: 0.75rem;
+                gap: 0.1rem 0.5rem;
+            }
+            h1 {
+                font-size: 1.2rem;
+            }
+            .panel {
+                padding: 4px 4px 6px;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            body::before,
+            .panel,
+            h1,
+            .stats>span,
+            .stats strong,
+            .stage-outer,
+            .stage-outer::after,
+            .stage::before,
+            .stage::after,
+            .text-layer,
+            .pretext-line--composite .apple-token,
+            .snake-segment--head:not(.snake-segment--dead),
+            .snake-segment--body,
+            .snake-segment--body-alt,
+            .game-over-title,
+            .game-over-hint,
+            .stage.stage--pickup,
+            .stage-outer.stage-outer--pickup,
+            .stats.stats--pickup,
+            .stats.stats--pickup strong {
+                animation: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <div class="panel">
+            <h1>Snake</h1>
+            <div class="stats">
+                <span>🍎 <strong id="score">0</strong></span>
+                <span>Длина <strong id="len">4</strong></span>
+            </div>
+
+            <div class="stage-outer" id="stageOuter">
+                <div class="stage" id="stage" tabindex="0" role="application" aria-label="Snake"></div>
+            </div>
+
+            <!-- D-Pad -->
+            <div class="controls" id="controls">
+                <div class="dpad" id="dpad">
+                    <button class="dpad-btn dpad-up" data-dir="up" aria-label="Вверх">
+                        <svg viewBox="0 0 24 24"><polygon points="12,4 4,16 20,16"/></svg>
+                    </button>
+                    <button class="dpad-btn dpad-left" data-dir="left" aria-label="Влево">
+                        <svg viewBox="0 0 24 24"><polygon points="4,12 16,4 16,20"/></svg>
+                    </button>
+                    <button class="dpad-btn dpad-right" data-dir="right" aria-label="Вправо">
+                        <svg viewBox="0 0 24 24"><polygon points="20,12 8,4 8,20"/></svg>
+                    </button>
+                    <button class="dpad-btn dpad-down" data-dir="down" aria-label="Вниз">
+                        <svg viewBox="0 0 24 24"><polygon points="12,20 4,8 20,8"/></svg>
+                    </button>
+                    <div class="dpad-btn dpad-center"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "@chenglou/pretext": "https://esm.sh/@chenglou/pretext@0.0.3"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { layoutNextLine, prepareWithSegments } from "@chenglou/pretext";
+
+        // ------------------------------------------------------------------
+        //  CONSTANTS
+        // ------------------------------------------------------------------
+        const FONT = '400 20px "Courier New", Courier, ui-monospace, monospace';
+        const LINE_HEIGHT = 28;
+        const STAGE_W = 896;
+        const STAGE_H = 672;
+        const REGION = { x: 14, y: 14, w: STAGE_W - 28, h: STAGE_H - 28 };
+        const STEP = 28;
+        const TICK_MS_BASE = 54;
+        const TICK_MS_MIN = 30;
+        const TICK_MS_PER_APPLE = 0.75;
+        const DEATH_SCREEN_MS = 1650;
+        const COLLIDE_EPS = 1.25;
+        const R_HEAD = 18;
+        const R_BODY = 12;
+        const R_APPLE = 28;
+        const APPLE_LABEL = "apple";
+        const APPLE_FONT = '700 20px "Courier New", Courier, ui-monospace, monospace';
+        const CIRCLE_H_PAD = 32;
+        const CIRCLE_V_PAD = 22;
+        const START_SEGMENTS = 4;
+        const MIN_SLOT_WIDTH = 28;
+        const APPLE_H_PAD_PX = 2;
+
+        const CORPUS_PARA = `
+        The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
+        How vexingly quick daft zebras jump. Sphinx of black quartz judge my vow.
+        Bright vixens jump dozy fowl quacking. Waltz bad nymph for quick jigs vex.
+        Cozy lummox gives smart squid who asks for job pen. The five boxing wizards jump quickly.
+        Jaded zombies acted quaintly but kept driving their oxen forward. Grumpy wizards make toxic brew.
+      `.replace(/\s+/g, " ").trim();
+
+        const CORPUS = Array.from({ length: 6 }, () => CORPUS_PARA).join(" ");
+
+        // ------------------------------------------------------------------
+        //  DOM REFS
+        // ------------------------------------------------------------------
+        const app = document.getElementById("app");
+        const stage = document.getElementById("stage");
+        const stageOuter = document.getElementById("stageOuter");
+        const scoreEl = document.getElementById("score");
+        const lenEl = document.getElementById("len");
+        const statsEl = app.querySelector(".stats");
+
+        // Layers inside stage
+        const textLayer = document.createElement("div");
+        textLayer.className = "text-layer";
+        const obstacleLayer = document.createElement("div");
+        obstacleLayer.className = "obstacle-layer";
+        const gameOverLayer = document.createElement("div");
+        gameOverLayer.className = "game-over-layer";
+        gameOverLayer.setAttribute("aria-hidden", "true");
+        gameOverLayer.innerHTML = `
+        <p class="game-over-title">Game over</p>
+        <p class="game-over-hint">Space или Enter</p>
+      `;
+        const headEl = document.createElement("div");
+        headEl.className = "snake-segment snake-segment--head";
+        obstacleLayer.appendChild(headEl);
+        stage.append(textLayer, obstacleLayer, gameOverLayer);
+
+        // Pools
+        const linePool = [];
+        const bodyPool = [];
+
+        // ------------------------------------------------------------------
+        //  HELPERS
+        // ------------------------------------------------------------------
+        function escapeHtml(s) {
+            return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        function dist(a, b) {
+            return Math.hypot(a.x - b.x, a.y - b.y);
+        }
+
+        function clamp(v, lo, hi) {
+            return Math.max(lo, Math.min(hi, v));
+        }
+
+        function tickMsForScore(s) {
+            return Math.max(TICK_MS_MIN, Math.round(TICK_MS_BASE - s * TICK_MS_PER_APPLE));
+        }
+
+        function opposite(a, b) {
+            return a.x === -b.x && a.y === -b.y && (a.x !== 0 || a.y !== 0);
+        }
+
+        function appleRectCenter(r) {
+            return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+        }
+
+        function createLayoutFontMetrics(mainFont, appleFont) {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            return {
+                lineWidth(text) {
+                    ctx.font = mainFont;
+                    return ctx.measureText(text).width;
+                },
+                appleWidth() {
+                    ctx.font = appleFont;
+                    return ctx.measureText(APPLE_LABEL).width;
+                }
+            };
+        }
+
+        function carveTextLineSlots(base, blocked) {
+            let slots = [base];
+            for (let bi = 0; bi < blocked.length; bi++) {
+                const iv = blocked[bi];
+                const next = [];
+                for (let si = 0; si < slots.length; si++) {
+                    const s = slots[si];
+                    if (iv.right <= s.left || iv.left >= s.right) {
+                        next.push(s);
+                        continue;
+                    }
+                    if (iv.left > s.left) next.push({ left: s.left, right: iv.left });
+                    if (iv.right < s.right) next.push({ left: iv.right, right: s.right });
+                }
+                slots = next;
+            }
+            return slots.filter(s => s.right - s.left >= MIN_SLOT_WIDTH);
+        }
+
+        function circleIntervalForBand(cx, cy, r, bandTop, bandBottom, hPad, vPad) {
+            const top = bandTop - vPad;
+            const bottom = bandBottom + vPad;
+            if (top >= cy + r || bottom <= cy - r) return null;
+            const minDy = cy >= top && cy <= bottom ? 0 : cy < top ? top - cy : cy - bottom;
+            if (minDy >= r) return null;
+            const maxDx = Math.sqrt(r * r - minDy * minDy);
+            return { left: cx - maxDx - hPad, right: cx + maxDx + hPad };
+        }
+
+        function getRectIntervalsForBand(rects, bandTop, bandBottom) {
+            const out = [];
+            for (let ri = 0; ri < rects.length; ri++) {
+                const r = rects[ri];
+                if (bandBottom <= r.y || bandTop >= r.y + r.h) continue;
+                out.push({ left: r.x, right: r.x + r.w });
+            }
+            return out;
+        }
+
+        function layoutColumn(prepared, startCursor, regionX, regionY, regionW, regionH, lineHeight, circleObs,
+            rectObstacles) {
+            let cursor = startCursor;
+            let lineTop = regionY;
+            const lines = [];
+
+            while (lineTop + lineHeight <= regionY + regionH) {
+                const bandTop = lineTop;
+                const bandBottom = lineTop + lineHeight;
+                const blocked = [];
+
+                for (let oi = 0; oi < circleObs.length; oi++) {
+                    const c = circleObs[oi];
+                    const iv = circleIntervalForBand(c.cx, c.cy, c.r, bandTop, bandBottom, c.hPad, c.vPad);
+                    if (iv !== null) blocked.push(iv);
+                }
+                blocked.push(...getRectIntervalsForBand(rectObstacles, bandTop, bandBottom));
+
+                const slots = carveTextLineSlots({ left: regionX, right: regionX + regionW }, blocked);
+                if (slots.length === 0) {
+                    lineTop += lineHeight;
+                    continue;
+                }
+
+                slots.sort((a, b) => a.left - b.left);
+                for (let si = 0; si < slots.length; si++) {
+                    const slot = slots[si];
+                    const slotWidth = slot.right - slot.left;
+                    let line = layoutNextLine(prepared, cursor, slotWidth);
+                    if (line === null) {
+                        cursor = { segmentIndex: 0, graphemeIndex: 0 };
+                        line = layoutNextLine(prepared, cursor, slotWidth);
+                        if (line === null) {
+                            return { lines, cursor };
+                        }
+                    }
+                    lines.push({
+                        x: Math.round(slot.left),
+                        y: Math.round(lineTop),
+                        text: line.text,
+                        slotW: Math.round(slotWidth)
+                    });
+                    cursor = line.end;
+                }
+                lineTop += lineHeight;
+            }
+            return { lines, cursor };
+        }
+
+        function appleCarveWidth(m) {
+            return Math.ceil(m.appleWidth()) + APPLE_H_PAD_PX * 2;
+        }
+
+        function appleLayoutRectFromGame(apple, m) {
+            const maxRow = Math.max(0, Math.floor(REGION.h / LINE_HEIGHT) - 1);
+            const row = clamp(Math.floor((apple.y - REGION.y) / LINE_HEIGHT), 0, maxRow);
+            const lineY = REGION.y + row * LINE_HEIGHT;
+            const w = appleCarveWidth(m);
+            let x = Math.round(apple.x - w / 2);
+            const leftBound = Math.round(REGION.x);
+            const rightBound = Math.round(REGION.x + REGION.w - w);
+            x = clamp(x, leftBound, Math.max(leftBound, rightBound));
+            return { x, y: lineY, w, h: LINE_HEIGHT };
+        }
+
+        function snapAppleRectToTextGap(lines, lineY, gap, carveW, lw) {
+            const gapL = gap.x;
+            const gapR = gap.x + gap.w;
+            const row = lines.filter(L => L.y === lineY).sort((a, b) => a.x - b.x);
+
+            let maxLeft = REGION.x;
+            let anyLeft = false;
+            let minRight = REGION.x + REGION.w;
+            let anyRight = false;
+
+            for (const L of row) {
+                const re = L.x + lw(L.text);
+                if (re <= gapL + 1) {
+                    maxLeft = Math.max(maxLeft, re);
+                    anyLeft = true;
+                }
+                if (L.x >= gapR - 1) {
+                    minRight = Math.min(minRight, L.x);
+                    anyRight = true;
+                }
+            }
+
+            if (!anyLeft) maxLeft = gapL;
+            if (!anyRight) minRight = gapR;
+
+            const avail = minRight - maxLeft;
+            if (avail < carveW) return gap;
+
+            const cx = (maxLeft + minRight) / 2;
+            let x = Math.round(cx - carveW / 2);
+            x = clamp(x, REGION.x, REGION.x + REGION.w - carveW);
+            return { x, y: lineY, w: carveW, h: LINE_HEIGHT };
+        }
+
+        function placeApple(snake, margin) {
+            const m = margin + R_APPLE + 8;
+            for (let attempt = 0; attempt < 80; attempt++) {
+                const p = {
+                    x: REGION.x + m + Math.random() * (REGION.w - 2 * m),
+                    y: REGION.y + m + Math.random() * (REGION.h - 2 * m)
+                };
+                let ok = true;
+                for (let i = 0; i < snake.length; i++) {
+                    if (dist(p, snake[i]) < R_HEAD + R_APPLE + 18) { ok = false; break; }
+                }
+                if (ok) return p;
+            }
+            return { x: REGION.x + REGION.w * 0.72, y: REGION.y + REGION.h * 0.35 };
+        }
+
+        function syncLinePool(pool, count, parent) {
+            while (pool.length < count) {
+                const el = document.createElement("div");
+                el.className = "pretext-line";
+                parent.appendChild(el);
+                pool.push(el);
+            }
+            for (let i = 0; i < pool.length; i++) {
+                pool[i].style.display = i < count ? "block" : "none";
+            }
+        }
+
+        function syncSnakePool(pool, count, parent) {
+            while (pool.length < count) {
+                const el = document.createElement("div");
+                el.className = "snake-segment snake-segment--body";
+                parent.appendChild(el);
+                pool.push(el);
+            }
+            while (pool.length > count) {
+                const el = pool.pop();
+                el.remove();
+            }
+        }
+
+        function buildCompositeParts(sorted, appleRect, lw) {
+            if (sorted.length === 0) return [{ kind: "apple" }];
+            const parts = [];
+            let i = 0;
+            while (i < sorted.length) {
+                const L = sorted[i];
+                if (L.x + lw(L.text) <= appleRect.x + 0.25) {
+                    parts.push({ kind: "frag", line: L });
+                    i++;
+                } else break;
+            }
+            parts.push({ kind: "apple" });
+            while (i < sorted.length) {
+                parts.push({ kind: "frag", line: sorted[i] });
+                i++;
+            }
+            return parts;
+        }
+
+        function buildTextRenderRows(lines, appleRect, m) {
+            const byY = new Map();
+            for (const L of lines) {
+                const arr = byY.get(L.y) || [];
+                arr.push(L);
+                byY.set(L.y, arr);
+            }
+            const ys = [...byY.keys()].sort((a, b) => a - b);
+            const out = [];
+            for (const y of ys) {
+                const row = byY.get(y);
+                row.sort((a, b) => a.x - b.x);
+                if (y !== appleRect.y) {
+                    for (const L of row) out.push({ mode: "simple", line: L });
+                } else {
+                    out.push({
+                        mode: "composite",
+                        appleRect,
+                        parts: buildCompositeParts(row, appleRect, t => m.lineWidth(t))
+                    });
+                }
+            }
+            return out;
+        }
+
+        function compositeLineInnerHtml(parts, appleRect) {
+            const regionRight = REGION.x + REGION.w;
+            const chunks = [];
+            for (let pi = 0; pi < parts.length; pi++) {
+                const p = parts[pi];
+                if (p.kind === "frag") {
+                    const L = p.line;
+                    const left = Math.round(L.x - REGION.x);
+                    let rightBound = regionRight;
+                    for (let j = pi + 1; j < parts.length; j++) {
+                        const q = parts[j];
+                        if (q.kind === "apple") { rightBound = appleRect.x; break; }
+                        if (q.kind === "frag") { rightBound = q.line.x; break; }
+                    }
+                    const width = Math.max(1, Math.round(rightBound - L.x));
+                    chunks.push(
+                        `<span class="pretext-frag" style="left:${left}px;width:${width}px">${escapeHtml(L.text)}</span>`
+                        );
+                } else {
+                    const left = Math.round(appleRect.x - REGION.x);
+                    const w = Math.round(appleRect.w);
+                    chunks.push(
+                        `<span class="apple-token" data-pretext-apple="true" style="left:${left}px;width:${w}px">${escapeHtml(APPLE_LABEL)}</span>`
+                        );
+                }
+            }
+            return chunks.join("");
+        }
+
+        // ------------------------------------------------------------------
+        //  GAME STATE
+        // ------------------------------------------------------------------
+        const prepared = prepareWithSegments(CORPUS, FONT);
+        const fontMetrics = createLayoutFontMetrics(FONT, APPLE_FONT);
+
+        let dir = { x: 1, y: 0 };
+        let pendingDir = null;
+        let head = { x: REGION.x + 88, y: REGION.y + REGION.h * 0.45 };
+        let trail = [];
+        let segmentCount = START_SEGMENTS;
+        let apple = placeApple([head], 0);
+        let score = 0;
+        let lastAppleHitRect = appleLayoutRectFromGame(apple, fontMetrics);
+        let respawnAt = 0;
+        let pickupFxTimer = undefined;
+
+        // ------------------------------------------------------------------
+        //  GAME FUNCTIONS
+        // ------------------------------------------------------------------
+        function playPickupFx() {
+            if (pickupFxTimer !== undefined) clearTimeout(pickupFxTimer);
+            stage.classList.remove("stage--pickup");
+            stageOuter.classList.remove("stage-outer--pickup");
+            statsEl.classList.remove("stats--pickup");
+            void stage.offsetWidth;
+            stage.classList.add("stage--pickup");
+            stageOuter.classList.add("stage-outer--pickup");
+            statsEl.classList.add("stats--pickup");
+            pickupFxTimer = window.setTimeout(() => {
+                stage.classList.remove("stage--pickup");
+                stageOuter.classList.remove("stage-outer--pickup");
+                statsEl.classList.remove("stats--pickup");
+                pickupFxTimer = undefined;
+            }, 420);
+        }
+
+        function resetGame() {
+            trail = [];
+            segmentCount = START_SEGMENTS;
+            score = 0;
+            head = { x: REGION.x + 88, y: REGION.y + REGION.h * 0.45 };
+            apple = placeApple([head], 0);
+            lastAppleHitRect = appleLayoutRectFromGame(apple, fontMetrics);
+            dir = { x: 1, y: 0 };
+            pendingDir = null;
+            respawnAt = 0;
+            scoreEl.textContent = "0";
+            lenEl.textContent = String(segmentCount);
+            stage.classList.remove("stage--dead");
+            gameOverLayer.classList.remove("is-visible");
+            gameOverLayer.setAttribute("aria-hidden", "true");
+            headEl.classList.remove("snake-segment--dead");
+            if (pickupFxTimer !== undefined) {
+                clearTimeout(pickupFxTimer);
+                pickupFxTimer = undefined;
+            }
+            stage.classList.remove("stage--pickup");
+            stageOuter.classList.remove("stage-outer--pickup");
+            statsEl.classList.remove("stats--pickup");
+        }
+
+        function die() {
+            const now = performance.now();
+            if (respawnAt > now) return;
+            respawnAt = performance.now() + DEATH_SCREEN_MS;
+            stage.classList.add("stage--dead");
+            gameOverLayer.classList.add("is-visible");
+            gameOverLayer.setAttribute("aria-hidden", "false");
+            headEl.classList.add("snake-segment--dead");
+        }
+
+        function snakeChain() {
+            const chain = [head];
+            for (let i = 0; i < segmentCount - 1 && i < trail.length; i++) {
+                chain.push(trail[i]);
+            }
+            return chain;
+        }
+
+        function buildCircleObs(chain) {
+            const obs = [];
+            for (let i = 0; i < chain.length; i++) {
+                const p = chain[i];
+                obs.push({
+                    cx: p.x,
+                    cy: p.y,
+                    r: i === 0 ? R_HEAD : R_BODY,
+                    hPad: CIRCLE_H_PAD,
+                    vPad: CIRCLE_V_PAD
+                });
+            }
+            return obs;
+        }
+
+        function renderFrame() {
+            const chain = snakeChain();
+            const circleObs = buildCircleObs(chain);
+            let appleRect = appleLayoutRectFromGame(apple, fontMetrics);
+            const carveW = appleCarveWidth(fontMetrics);
+            const lw = t => fontMetrics.lineWidth(t);
+
+            let { lines } = layoutColumn(
+                prepared,
+                { segmentIndex: 0, graphemeIndex: 0 },
+                REGION.x,
+                REGION.y,
+                REGION.w,
+                REGION.h,
+                LINE_HEIGHT,
+                circleObs,
+                [appleRect]
+            );
+
+            const snapped = snapAppleRectToTextGap(lines, appleRect.y, appleRect, carveW, lw);
+            if (Math.abs(snapped.x - appleRect.x) >= 1) {
+                appleRect = snapped;
+                ({ lines } = layoutColumn(
+                    prepared,
+                    { segmentIndex: 0, graphemeIndex: 0 },
+                    REGION.x,
+                    REGION.y,
+                    REGION.w,
+                    REGION.h,
+                    LINE_HEIGHT,
+                    circleObs,
+                    [appleRect]
+                ));
+            }
+
+            lastAppleHitRect = appleRect;
+
+            const textRows = buildTextRenderRows(lines, appleRect, fontMetrics);
+            syncLinePool(linePool, textRows.length, textLayer);
+            for (let i = 0; i < textRows.length; i++) {
+                const el = linePool[i];
+                const row = textRows[i];
+                if (row.mode === "simple") {
+                    const L = row.line;
+                    el.className = "pretext-line pretext-line--justified";
+                    el.style.width = `${L.slotW}px`;
+                    el.style.height = "";
+                    el.textContent = L.text;
+                    el.style.left = `${L.x}px`;
+                    el.style.top = `${L.y}px`;
+                    el.style.font = FONT;
+                } else {
+                    el.className = "pretext-line pretext-line--composite";
+                    el.style.left = `${REGION.x}px`;
+                    el.style.top = `${row.appleRect.y}px`;
+                    el.style.width = `${REGION.w}px`;
+                    el.style.height = `${LINE_HEIGHT}px`;
+                    el.style.font = FONT;
+                    el.innerHTML = compositeLineInnerHtml(row.parts, row.appleRect);
+                }
+            }
+
+            headEl.style.left = `${head.x}px`;
+            headEl.style.top = `${head.y}px`;
+            headEl.style.width = `${R_HEAD * 2}px`;
+            headEl.style.height = `${R_HEAD * 2}px`;
+
+            const bodyCount = Math.max(0, chain.length - 1);
+            syncSnakePool(bodyPool, bodyCount, obstacleLayer);
+            for (let b = 0; b < bodyCount; b++) {
+                const p = chain[b + 1];
+                const el = bodyPool[b];
+                el.className = b % 2 === 0 ?
+                    "snake-segment snake-segment--body" :
+                    "snake-segment snake-segment--body snake-segment--body-alt";
+                el.style.left = `${p.x}px`;
+                el.style.top = `${p.y}px`;
+                el.style.width = `${R_BODY * 2}px`;
+                el.style.height = `${R_BODY * 2}px`;
+            }
+        }
+
+        function snakeTick() {
+            if (respawnAt !== 0) return;
+
+            if (pendingDir !== null && !opposite(pendingDir, dir)) dir = pendingDir;
+            pendingDir = null;
+
+            const nx = head.x + dir.x * STEP;
+            const ny = head.y + dir.y * STEP;
+            const minX = REGION.x + R_HEAD;
+            const maxX = REGION.x + REGION.w - R_HEAD;
+            const minY = REGION.y + R_HEAD;
+            const maxY = REGION.y + REGION.h - R_HEAD;
+
+            if (nx < minX || nx > maxX || ny < minY || ny > maxY) {
+                die();
+                return;
+            }
+
+            const next = { x: nx, y: ny };
+            const chainBefore = snakeChain();
+            const tailIdx = chainBefore.length - 1;
+            for (let i = 1; i < chainBefore.length; i++) {
+                if (i === tailIdx) continue;
+                const seg = chainBefore[i];
+                if (Math.abs(next.x - seg.x) < COLLIDE_EPS && Math.abs(next.y - seg.y) < COLLIDE_EPS) {
+                    die();
+                    return;
+                }
+            }
+
+            trail.unshift({ ...head });
+            trail = trail.slice(0, segmentCount * 8);
+            head = next;
+
+            if (dist(head, appleRectCenter(lastAppleHitRect)) < R_HEAD + R_APPLE) {
+                score++;
+                segmentCount++;
+                apple = placeApple(snakeChain(), 0);
+                scoreEl.textContent = String(score);
+                lenEl.textContent = String(segmentCount);
+                playPickupFx();
+            }
+        }
+
+        // ------------------------------------------------------------------
+        //  STAGE SCALING (mobile)
+        // ------------------------------------------------------------------
+        function scaleStage() {
+            const rect = stageOuter.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            const scaleX = w / STAGE_W;
+            const scaleY = h / STAGE_H;
+            const s = Math.min(scaleX, scaleY);
+            stage.style.transform = `scale(${s})`;
+        }
+
+        // ------------------------------------------------------------------
+        //  KEYBOARD
+        // ------------------------------------------------------------------
+        function onKeyDown(e) {
+            let d = null;
+            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") d = { x: 0, y: -1 };
+            else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") d = { x: 0, y: 1 };
+            else if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") d = { x: -1, y: 0 };
+            else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") d = { x: 1, y: 0 };
+            if (d) {
+                e.preventDefault();
+                if (respawnAt === 0) pendingDir = d;
+            }
+            if (e.key === " " || e.key === "Enter") {
+                if (respawnAt > performance.now()) {
+                    e.preventDefault();
+                    resetGame();
+                }
+            }
+        }
+        window.addEventListener("keydown", onKeyDown);
+
+        // ------------------------------------------------------------------
+        //  TOUCH SWIPE on stage
+        // ------------------------------------------------------------------
+        let touchStartX = 0,
+            touchStartY = 0;
+        let isSwiping = false;
+
+        stage.addEventListener("touchstart", (e) => {
+            const t = e.touches[0];
+            if (!t) return;
+            touchStartX = t.clientX;
+            touchStartY = t.clientY;
+            isSwiping = true;
+            e.preventDefault();
+        }, { passive: false });
+
+        stage.addEventListener("touchmove", (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
+        stage.addEventListener("touchend", (e) => {
+            if (!isSwiping) return;
+            isSwiping = false;
+            const ct = e.changedTouches[0];
+            if (!ct) return;
+            const dx = ct.clientX - touchStartX;
+            const dy = ct.clientY - touchStartY;
+            if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (respawnAt === 0) pendingDir = dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+            } else {
+                if (respawnAt === 0) pendingDir = dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+            }
+        }, { passive: false });
+
+        stage.addEventListener("touchcancel", () => {
+            isSwiping = false;
+        }, { passive: true });
+
+        // Also pointer events for swipe (mouse drag on desktop)
+        let pointerStartX = 0,
+            pointerStartY = 0;
+        let isPointerSwiping = false;
+
+        stage.addEventListener("pointerdown", (e) => {
+            pointerStartX = e.clientX;
+            pointerStartY = e.clientY;
+            isPointerSwiping = true;
+            e.preventDefault();
+        });
+
+        stage.addEventListener("pointermove", (e) => {
+            if (!isPointerSwiping) return;
+            e.preventDefault();
+        });
+
+        stage.addEventListener("pointerup", (e) => {
+            if (!isPointerSwiping) return;
+            isPointerSwiping = false;
+            const dx = e.clientX - pointerStartX;
+            const dy = e.clientY - pointerStartY;
+            if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (respawnAt === 0) pendingDir = dx > 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+            } else {
+                if (respawnAt === 0) pendingDir = dy > 0 ? { x: 0, y: 1 } : { x: 0, y: -1 };
+            }
+        });
+
+        // ------------------------------------------------------------------
+        //  D-PAD BUTTONS
+        // ------------------------------------------------------------------
+        const dirMap = {
+            up: { x: 0, y: -1 },
+            down: { x: 0, y: 1 },
+            left: { x: -1, y: 0 },
+            right: { x: 1, y: 0 }
+        };
+
+        const dpadBtns = document.querySelectorAll(".dpad-btn[data-dir]");
+        for (const btn of dpadBtns) {
+            const dirKey = btn.dataset.dir;
+            const d = dirMap[dirKey];
+            if (!d) continue;
+
+            const start = (e) => {
+                e.preventDefault();
+                if (respawnAt === 0) pendingDir = d;
+                btn.classList.add("active");
+                if (navigator.vibrate) navigator.vibrate(8);
+            };
+            const end = (e) => {
+                e.preventDefault();
+                btn.classList.remove("active");
+            };
+
+            btn.addEventListener("pointerdown", start);
+            btn.addEventListener("pointerup", end);
+            btn.addEventListener("pointercancel", end);
+            btn.addEventListener("pointerleave", (e) => {
+                if (e.buttons === 0) btn.classList.remove("active");
+            });
+            btn.addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                if (respawnAt === 0) pendingDir = d;
+                btn.classList.add("active");
+                if (navigator.vibrate) navigator.vibrate(8);
+            }, { passive: false });
+            btn.addEventListener("touchend", (e) => {
+                e.preventDefault();
+                btn.classList.remove("active");
+            }, { passive: false });
+            btn.addEventListener("touchcancel", () => {
+                btn.classList.remove("active");
+            }, { passive: true });
+        }
+
+        // ------------------------------------------------------------------
+        //  FOCUS stage on pointer down
+        // ------------------------------------------------------------------
+        stage.addEventListener("pointerdown", () => {
+            stage.focus({ preventScroll: true });
+        });
+
+        // ------------------------------------------------------------------
+        //  RESIZE
+        // ------------------------------------------------------------------
+        const resizeObserver = new ResizeObserver(() => scaleStage());
+        resizeObserver.observe(stageOuter);
+        window.addEventListener("resize", scaleStage);
+        requestAnimationFrame(() => scaleStage());
+
+        // ------------------------------------------------------------------
+        //  GAME LOOP
+        // ------------------------------------------------------------------
+        let tickAccum = 0;
+        let last = performance.now();
+        let rafId = 0;
+        let rafRunning = true;
+
+        function frame(now) {
+            if (!rafRunning) return;
+            const t = performance.now();
+            if (respawnAt > 0 && t >= respawnAt) resetGame();
+
+            const dt = Math.min((now - last) / 1000, 0.05);
+            last = now;
+            tickAccum += dt * 1000;
+            while (tickAccum >= tickMsForScore(score)) {
+                tickAccum -= tickMsForScore(score);
+                if (respawnAt === 0) snakeTick();
+            }
+            renderFrame();
+            if (rafRunning) rafId = requestAnimationFrame(frame);
+        }
+
+        rafId = requestAnimationFrame(frame);
+
+        window.addEventListener("beforeunload", () => {
+            rafRunning = false;
+            if (rafId) cancelAnimationFrame(rafId);
+            resizeObserver.disconnect();
+        });
+    </script>
+</body>
+</html>

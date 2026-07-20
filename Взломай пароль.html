@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подключение</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a1a;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #e0e0ff;
+        }
+
+        .game-container {
+            background: #0a0a1a;
+            width: 500px;
+            max-width: 100%;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
+            border: 1px solid #00ffff33;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Легенда */
+        .legend {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid #00ffff;
+        }
+        .legend-dot.yellow { background: #ffcc00; }
+        .legend-dot.red { background: #ff0000; }
+        .legend-dot.green { background: #00cc00; }
+
+        .legend-text {
+            font-size: 14px;
+            color: #e0e0ff;
+        }
+
+        /* Логотип */
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff77;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            cursor: default;
+            user-select: none;
+        }
+
+        /* История */
+        .history-section {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .history-label {
+            font-size: 12px;
+            color: #e0e0ff;
+            text-align: left;
+            padding-left: 5px;
+            margin-bottom: 5px;
+        }
+
+        .history-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-height: 60px;
+        }
+
+        .history-row {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .history-digit {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ffff;
+            border: 1px solid #00ffff;
+            border-radius: 4px;
+            background: #121230;
+        }
+        .history-digit.green { background: #005500; }
+        .history-digit.yellow { background: #555500; }
+        .history-digit.red { background: #550000; }
+
+        /* Счетчик попыток */
+        .attempts {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ffff;
+            margin-bottom: 20px;
+        }
+
+        /* Поля ввода */
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .input-label {
+            font-size: 14px;
+            color: #e0e0ff;
+            margin-bottom: 10px;
+        }
+
+        .digit-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .digit-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .digit-group button {
+            background: transparent;
+            border: 1px solid #00ffff;
+            color: #00ffff;
+            font-size: 14px;
+            font-weight: bold;
+            width: 40px;
+            height: 28px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+            background: #0a0a1a;
+        }
+        .digit-group button:hover:not(:disabled) {
+            background: #121230;
+            box-shadow: 0 0 12px #00ffff55;
+        }
+        .digit-group button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .digit-group button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .digit-display {
+            width: 48px;
+            height: 48px;
+            background: #121230;
+            border: 2px solid #00ffff;
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ffff;
+            margin: 2px 0;
+            transition: border-color 0.3s;
+        }
+        .digit-display.locked {
+            border-color: #00cc00;
+            background: #003300;
+            color: #66ff66;
+        }
+
+        /* Кнопки */
+        .submit-btn, .restart-btn {
+            background: #0a0a1a;
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            width: 100%;
+            max-width: 280px;
+        }
+        .submit-btn:hover:not(:disabled), .restart-btn:hover {
+            background: #121230;
+            box-shadow: 0 0 20px #00ffff66;
+        }
+        .submit-btn:active:not(:disabled), .restart-btn:active {
+            transform: scale(0.96);
+        }
+        .submit-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .restart-btn {
+            border-color: #ff66aa;
+            color: #ff66aa;
+            margin-top: 6px;
+        }
+        .restart-btn:hover {
+            background: #121230;
+            box-shadow: 0 0 20px #ff66aa66;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            gap: 6px;
+        }
+
+        /* Сообщение */
+        .message {
+            margin-top: 15px;
+            font-size: 16px;
+            min-height: 24px;
+            color: #ffaa00;
+            text-align: center;
+        }
+
+        /* Адаптив */
+        @media (max-width: 520px) {
+            .game-container { padding: 15px; }
+            .digit-group button { width: 34px; height: 24px; font-size: 12px; }
+            .digit-display { width: 40px; height: 40px; font-size: 20px; }
+            .history-digit { width: 30px; height: 30px; font-size: 14px; }
+            .legend-dot { width: 20px; height: 20px; }
+            .submit-btn, .restart-btn { font-size: 16px; padding: 8px 20px; max-width: 220px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="app">
+        <!-- Легенда -->
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-dot yellow"></div>
+                <span class="legend-text">Неправильное расположение</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot red"></div>
+                <span class="legend-text">Неправильная цифра</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot green"></div>
+                <span class="legend-text">Правильная цифра</span>
+            </div>
+        </div>
+
+        <!-- Логотип (двойной клик — рестарт) -->
+        <div class="logo" id="logo">ПОДКЛЮЧЕНИЕ</div>
+
+        <!-- История -->
+        <div class="history-section">
+            <div class="history-label">Предыдущий ввод:</div>
+            <div class="history-container" id="historyContainer">
+                <!-- сюда динамически вставляются строки истории -->
+            </div>
+        </div>
+
+        <!-- Счетчик попыток -->
+        <div class="attempts" id="attemptsDisplay">Осталось попыток: 5</div>
+
+        <!-- Поля ввода -->
+        <div class="input-section">
+            <div class="input-label">Введите 4 уникальные цифры:</div>
+            <div class="digit-controls" id="digitControls">
+                <!-- 4 группы будут созданы JS -->
+            </div>
+
+            <!-- Группа кнопок -->
+            <div class="button-group">
+                <button class="submit-btn" id="submitBtn">Ввод</button>
+                <button class="restart-btn" id="restartBtn">Новая игра</button>
+            </div>
+        </div>
+
+        <!-- Сообщение -->
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ------ Глобальные переменные ------
+            let password = [];
+            let attemptsLeft = 5;
+            let locked = [false, false, false, false];
+            let currentGuess = [1, 1, 1, 1];
+            let allGuesses = [];
+            let previousGuesses = [];
+            let gameOver = false;
+
+            // DOM элементы
+            const historyContainer = document.getElementById('historyContainer');
+            const attemptsDisplay = document.getElementById('attemptsDisplay');
+            const submitBtn = document.getElementById('submitBtn');
+            const restartBtn = document.getElementById('restartBtn');
+            const messageEl = document.getElementById('message');
+            const digitControls = document.getElementById('digitControls');
+            const logo = document.getElementById('logo');
+
+            // ------ Функции ------
+            function generatePassword() {
+                const digits = [1,2,3,4,5,6,7,8,9];
+                const shuffled = digits.sort(() => Math.random() - 0.5);
+                return shuffled.slice(0, 4);
+            }
+
+            function updateAttempts() {
+                attemptsDisplay.textContent = `Осталось попыток: ${attemptsLeft}`;
+                if (attemptsLeft <= 0) {
+                    submitBtn.disabled = true;
+                } else {
+                    submitBtn.disabled = false;
+                }
+            }
+
+            function renderDigits() {
+                const groups = digitControls.querySelectorAll('.digit-group');
+                groups.forEach((group, i) => {
+                    const display = group.querySelector('.digit-display');
+                    display.textContent = currentGuess[i];
+                    if (locked[i]) {
+                        display.classList.add('locked');
+                    } else {
+                        display.classList.remove('locked');
+                    }
+                    const upBtn = group.querySelector('.up-btn');
+                    const downBtn = group.querySelector('.down-btn');
+                    if (locked[i] || gameOver) {
+                        upBtn.disabled = true;
+                        downBtn.disabled = true;
+                    } else {
+                        upBtn.disabled = false;
+                        downBtn.disabled = false;
+                    }
+                });
+            }
+
+            function changeDigit(index, delta) {
+                if (gameOver) return;
+                if (locked[index]) return;
+                let val = currentGuess[index] + delta;
+                if (val > 9) val = 1;
+                if (val < 1) val = 9;
+                currentGuess[index] = val;
+                renderDigits();
+            }
+
+            function checkGuess(guess) {
+                const result = [];
+                for (let i = 0; i < 4; i++) {
+                    if (guess[i] === password[i]) {
+                        result.push('green');
+                    } else if (password.includes(guess[i])) {
+                        result.push('yellow');
+                    } else {
+                        result.push('red');
+                    }
+                }
+                return result;
+            }
+
+            function updateHistory() {
+                historyContainer.innerHTML = '';
+                const start = Math.max(0, previousGuesses.length - 2);
+                const items = previousGuesses.slice(start);
+                items.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'history-row';
+                    item.guess.forEach((digit, idx) => {
+                        const span = document.createElement('span');
+                        span.className = `history-digit ${item.result[idx]}`;
+                        span.textContent = digit;
+                        row.appendChild(span);
+                    });
+                    historyContainer.appendChild(row);
+                });
+            }
+
+            function endGame(win, secret) {
+                gameOver = true;
+                submitBtn.disabled = true;
+                document.querySelectorAll('.digit-group button').forEach(btn => btn.disabled = true);
+                if (win) {
+                    messageEl.textContent = '🎉 Вы успешно подключились! 🎉';
+                    messageEl.style.color = '#66ff66';
+                } else {
+                    messageEl.textContent = `Игра окончена. Пароль: ${secret.join('')}`;
+                    messageEl.style.color = '#ff6666';
+                }
+            }
+
+            function handleSubmit() {
+                if (gameOver) return;
+                if (attemptsLeft <= 0) {
+                    endGame(false, password);
+                    return;
+                }
+
+                const guess = [...currentGuess];
+                const unique = new Set(guess);
+                if (unique.size !== 4) {
+                    messageEl.textContent = 'Ошибка: цифры должны быть уникальными!';
+                    messageEl.style.color = '#ff00ff';
+                    return;
+                }
+
+                const already = allGuesses.some(g => g.every((v, i) => v === guess[i]));
+                if (already) {
+                    messageEl.textContent = 'Ошибка: такой пароль вы уже вводили!';
+                    messageEl.style.color = '#ff00ff';
+                    return;
+                }
+
+                attemptsLeft--;
+                updateAttempts();
+
+                const result = checkGuess(guess);
+
+                for (let i = 0; i < 4; i++) {
+                    if (result[i] === 'green') {
+                        locked[i] = true;
+                    }
+                }
+
+                allGuesses.push(guess);
+                previousGuesses.push({ guess, result });
+                if (previousGuesses.length > 10) previousGuesses.shift();
+                updateHistory();
+
+                if (result.every(c => c === 'green')) {
+                    endGame(true, password);
+                    return;
+                }
+
+                if (attemptsLeft <= 0) {
+                    endGame(false, password);
+                    return;
+                }
+
+                messageEl.textContent = '';
+                messageEl.style.color = '#ffaa00';
+                renderDigits();
+            }
+
+            function createDigitControls() {
+                digitControls.innerHTML = '';
+                for (let i = 0; i < 4; i++) {
+                    const group = document.createElement('div');
+                    group.className = 'digit-group';
+
+                    const upBtn = document.createElement('button');
+                    upBtn.className = 'up-btn';
+                    upBtn.textContent = '↑';
+                    upBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        changeDigit(i, 1);
+                    });
+
+                    const display = document.createElement('div');
+                    display.className = 'digit-display';
+                    display.textContent = '1';
+
+                    const downBtn = document.createElement('button');
+                    downBtn.className = 'down-btn';
+                    downBtn.textContent = '↓';
+                    downBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        changeDigit(i, -1);
+                    });
+
+                    group.appendChild(upBtn);
+                    group.appendChild(display);
+                    group.appendChild(downBtn);
+                    digitControls.appendChild(group);
+                }
+                currentGuess = [1,1,1,1];
+                renderDigits();
+            }
+
+            function initGame() {
+                password = generatePassword();
+                attemptsLeft = 5;
+                locked = [false, false, false, false];
+                currentGuess = [1,1,1,1];
+                allGuesses = [];
+                previousGuesses = [];
+                gameOver = false;
+                messageEl.textContent = '';
+                messageEl.style.color = '#ffaa00';
+                submitBtn.disabled = false;
+                createDigitControls();
+                updateAttempts();
+                updateHistory();
+                renderDigits();
+                console.log('Пароль:', password.join('')); // для отладки
+            }
+
+            // ------ События ------
+            submitBtn.addEventListener('click', handleSubmit);
+            restartBtn.addEventListener('click', initGame);
+            logo.addEventListener('dblclick', initGame);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !submitBtn.disabled) {
+                    handleSubmit();
+                }
+            });
+
+            // Запуск
+            initGame();
+        })();
+    </script>
+</body>
+</html>

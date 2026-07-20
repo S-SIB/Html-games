@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Тренажёр азбуки Морзе</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --surface: #16213e;
+            --primary: #0f3460;
+            --accent: #e94560;
+            --text: #eee;
+            --text-secondary: #aaa;
+            --button-bg: #2a2a4a;
+            --button-active: #3a3a6a;
+            --green: #2ecc71;
+            --danger: #e74c3c;
+            --border-radius: 12px;
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 420px;
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 24px 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 600px;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+            flex: 1;
+        }
+        .screen.active {
+            display: flex;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(135deg, #e94560, #c23152);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+        h2 {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .menu-btn {
+            background: var(--button-bg);
+            border: 2px solid transparent;
+            color: var(--text);
+            padding: 18px 12px;
+            border-radius: var(--border-radius);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            letter-spacing: 1px;
+        }
+        .menu-btn:active {
+            background: var(--button-active);
+            transform: scale(0.96);
+            border-color: var(--accent);
+        }
+        .menu-btn.full-width {
+            grid-column: span 2;
+        }
+
+        .settings-icon {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--button-bg);
+            border: none;
+            color: var(--text);
+            font-size: 1.4rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+            z-index: 10;
+        }
+        .settings-icon:active {
+            background: var(--accent);
+            transform: rotate(60deg);
+        }
+
+        .back-btn {
+            align-self: flex-start;
+            background: transparent;
+            border: 1px solid var(--text-secondary);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+            letter-spacing: 1px;
+        }
+        .back-btn:active {
+            background: var(--button-active);
+            color: #fff;
+            border-color: #fff;
+        }
+
+        .difficulty-selector {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        .diff-btn {
+            flex: 1;
+            background: var(--button-bg);
+            border: 2px solid transparent;
+            color: var(--text);
+            padding: 14px;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+        }
+        .diff-btn.selected {
+            border-color: var(--accent);
+            background: var(--primary);
+            box-shadow: 0 0 12px rgba(233, 68, 96, 0.3);
+        }
+
+        .lang-selector {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        .lang-btn {
+            flex: 1;
+            background: var(--button-bg);
+            border: 2px solid transparent;
+            color: var(--text);
+            padding: 10px;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .lang-btn.selected {
+            border-color: #3498db;
+            background: #1a3a5c;
+        }
+
+        .target-display {
+            background: #0d1b2a;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #1b2838;
+        }
+        .target-char {
+            font-size: 4rem;
+            font-weight: 900;
+            letter-spacing: 6px;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(233, 68, 96, 0.5);
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-all;
+        }
+        .target-word {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+        }
+        .current-letter {
+            color: #f1c40f;
+            text-decoration: underline;
+            text-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+        }
+        .transcription-hint {
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            color: #f1c40f;
+            margin-top: 8px;
+            letter-spacing: 3px;
+            min-height: 28px;
+        }
+
+        .input-area {
+            background: #0d1b2a;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            border: 1px solid #1b2838;
+        }
+        .input-label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .input-sequence {
+            font-family: var(--font-mono);
+            font-size: 1.6rem;
+            letter-spacing: 4px;
+            color: #fff;
+            min-width: 60px;
+            text-align: center;
+            background: #00000033;
+            border-radius: 8px;
+            padding: 4px 10px;
+        }
+        .decoder-display {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2ecc71;
+            min-width: 40px;
+            text-align: center;
+        }
+        .decoder-display.error {
+            color: #e74c3c;
+        }
+
+        .telegraph-key-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 8px 0;
+        }
+        .telegraph-key {
+            width: 130px;
+            height: 130px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 40% 40%, #3a3a5a, #1a1a2e);
+            border: 4px solid #4a4a6a;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), inset 0 -4px 8px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+        .telegraph-key::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            transition: 0.15s;
+        }
+        .telegraph-key.pressed {
+            background: radial-gradient(circle at 40% 40%, #5a5a8a, #2a2a4e);
+            border-color: #8a8aaa;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+            transform: scale(0.95);
+        }
+        .telegraph-key.pressed::after {
+            background: rgba(255, 255, 255, 0.2);
+            width: 50px;
+            height: 50px;
+        }
+        .telegraph-key.correct {
+            background: radial-gradient(circle at 40% 40%, #2ecc71, #1a7a3a) !important;
+            border-color: #2ecc71 !important;
+            box-shadow: 0 0 30px rgba(46, 204, 113, 0.7) !important;
+            animation: pulse-green 0.4s ease;
+        }
+        @keyframes pulse-green {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            transition: 0.2s;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .btn-clear { background: #c0392b; color: #fff; }
+        .btn-clear:active { background: #e74c3c; transform: scale(0.95); }
+        .btn-skip { background: #7f8c8d; color: #fff; }
+        .btn-skip:active { background: #95a5a6; transform: scale(0.95); }
+        .btn-play { background: #2ecc71; color: #fff; }
+        .btn-play:active { background: #27ae60; transform: scale(0.95); }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            background: #0d1b2a;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #1b2838;
+        }
+        .slider-container input[type="range"] {
+            -webkit-appearance: none;
+            width: 80%;
+            height: 8px;
+            border-radius: 4px;
+            background: #2a2a4a;
+            outline: none;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(233, 68, 96, 0.5);
+        }
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 80%;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .speed-value { font-weight: 700; color: #f1c40f; font-size: 1.1rem; }
+
+        .progress-info {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+        }
+
+        .free-text-input {
+            width: 100%;
+            background: #0d1b2a;
+            border: 1px solid #1b2838;
+            border-radius: var(--border-radius);
+            color: #fff;
+            padding: 12px;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 60px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .free-text-input:focus { border-color: var(--accent); }
+        .free-text-error {
+            color: #e74c3c;
+            font-size: 0.85rem;
+            margin-top: 4px;
+            display: none;
+        }
+        .free-text-error.visible { display: block; }
+
+        /* Стили для кнопок вариантов (общие для букв и слов) */
+        .audio-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 8px 0;
+        }
+        .option-btn {
+            background: var(--button-bg);
+            border: 3px solid transparent;
+            color: var(--text);
+            padding: 18px 6px;
+            border-radius: var(--border-radius);
+            font-size: 1.6rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.15s ease;
+            text-align: center;
+            letter-spacing: 1px;
+            touch-action: manipulation;
+            word-break: break-word;
+            line-height: 1.2;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .option-btn:active {
+            transform: scale(0.96);
+            background: var(--button-active);
+        }
+        .option-btn.correct-option {
+            background: var(--green);
+            border-color: var(--green);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.5);
+            transform: scale(1.02);
+        }
+        .option-btn.wrong-option {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+        }
+        .option-btn.disabled {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        .option-btn.reveal-correct {
+            background: var(--green);
+            border-color: var(--green);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.5);
+        }
+        /* Для длинных слов уменьшаем шрифт */
+        .option-btn.word-option {
+            font-size: 1.1rem;
+            padding: 14px 6px;
+            min-height: 50px;
+        }
+
+        @media (max-width: 380px) {
+            .app-container { padding: 16px 12px; gap: 12px; }
+            .telegraph-key { width: 110px; height: 110px; }
+            .target-char { font-size: 3rem; min-height: 60px; }
+            .target-word { font-size: 1.6rem; }
+            .option-btn { font-size: 1.3rem; padding: 14px 4px; min-height: 50px; }
+            .option-btn.word-option { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container" id="appContainer">
+        <button class="settings-icon" id="settingsBtn" title="Настройки">⚙️</button>
+
+        <!-- ЭКРАН 1: Главное меню -->
+        <div class="screen active" id="mainMenuScreen">
+            <h1>МОРЗЕ ТРЕНАЖЁР</h1>
+            <p style="text-align:center;color:var(--text-secondary);margin-bottom:10px;">Выберите режим обучения</p>
+            <div class="menu-grid">
+                <button class="menu-btn" data-mode="letters">🔤 Буквы</button>
+                <button class="menu-btn" data-mode="words">📝 Слова</button>
+                <button class="menu-btn" data-mode="digits">🔢 Цифры</button>
+                <button class="menu-btn" data-mode="symbols">© Знаки</button>
+                <button class="menu-btn full-width" data-mode="free">✍️ Свободный режим</button>
+                <button class="menu-btn" data-mode="audioLetter">🔊 Услышь букву</button>
+                <button class="menu-btn" data-mode="audioWord">🔉 Услышь слово</button>
+            </div>
+        </div>
+
+        <!-- ЭКРАН 2: Выбор сложности и языка -->
+        <div class="screen" id="difficultyScreen">
+            <button class="back-btn" id="backToMainBtn">← Назад</button>
+            <h2 id="diffTitle">Выберите сложность</h2>
+            <div class="lang-selector" id="langSelector" style="display:none;">
+                <button class="lang-btn selected" data-lang="rus">🇷🇺 Русский</button>
+                <button class="lang-btn" data-lang="eng">🇬🇧 Английский</button>
+            </div>
+            <div class="difficulty-selector">
+                <button class="diff-btn selected" data-diff="0">Обычный<br><small>с транскрипцией</small></button>
+                <button class="diff-btn" data-diff="1">Сложный +<br><small>без подсказок</small></button>
+            </div>
+            <button class="menu-btn" id="startGameBtn" style="margin-top:10px;background:var(--accent);border-color:var(--accent);">▶ Начать</button>
+        </div>
+
+        <!-- ЭКРАН 3: Ввод текста для свободного режима -->
+        <div class="screen" id="freeTextScreen">
+            <button class="back-btn" id="backFromFreeTextBtn">← В меню</button>
+            <h2>Свободный режим</h2>
+            <textarea class="free-text-input" id="freeTextInput" placeholder="Введите текст (слова через пробел)..." maxlength="200"></textarea>
+            <p class="free-text-error" id="freeTextError"></p>
+            <div class="difficulty-selector" style="margin-top: 4px;">
+                <button class="diff-btn selected" data-diff="0">Обычный<br><small>с подсказками</small></button>
+                <button class="diff-btn" data-diff="1">Сложный +<br><small>без подсказок</small></button>
+            </div>
+            <button class="menu-btn" id="startFreeBtn" style="margin-top:4px;background:var(--accent);border-color:var(--accent);">▶ Начать передачу</button>
+        </div>
+
+        <!-- ЭКРАН 4: Игровой экран (для остальных режимов) -->
+        <div class="screen" id="gameScreen">
+            <button class="back-btn" id="backToMenuBtn">← В меню</button>
+            <h2 id="gameTitle">Буквы</h2>
+            <div class="progress-info" id="progressInfo"></div>
+            <div class="target-display">
+                <div class="target-char" id="targetDisplay">А</div>
+                <div class="transcription-hint" id="transcriptionHint"></div>
+            </div>
+            <div class="input-area">
+                <span class="input-label">Ввод:</span>
+                <span class="input-sequence" id="inputSequence"></span>
+                <span class="input-label">→</span>
+                <span class="decoder-display" id="decoderDisplay">?</span>
+            </div>
+            <div class="telegraph-key-container">
+                <div class="telegraph-key" id="telegraphKey"></div>
+            </div>
+            <div class="action-buttons">
+                <button class="action-btn btn-clear" id="clearBtn">✕ Очистить</button>
+                <button class="action-btn btn-skip" id="skipBtn">⏭ Пропустить</button>
+            </div>
+        </div>
+
+        <!-- ЭКРАН 5: Аудио-игры (буквы и слова) -->
+        <div class="screen" id="audioScreen">
+            <button class="back-btn" id="backFromAudioBtn">← В меню</button>
+            <h2 id="audioGameTitle">Услышь букву</h2>
+            <div class="lang-selector" id="audioLangSelector">
+                <button class="lang-btn selected" data-lang="rus">🇷🇺 Русский</button>
+                <button class="lang-btn" data-lang="eng">🇬🇧 Английский</button>
+            </div>
+            <button class="menu-btn btn-play" id="playSoundBtn">▶ Прослушать</button>
+
+            <!-- Контейнер для вариантов (4 кнопки) -->
+            <div class="audio-options" id="audioOptions">
+                <button class="option-btn" data-index="0">А</button>
+                <button class="option-btn" data-index="1">Б</button>
+                <button class="option-btn" data-index="2">В</button>
+                <button class="option-btn" data-index="3">Г</button>
+            </div>
+        </div>
+
+        <!-- ЭКРАН 6: Настройки -->
+        <div class="screen" id="settingsScreen">
+            <button class="back-btn" id="backFromSettingsBtn">← Назад</button>
+            <h2>Настройки скорости</h2>
+            <div class="slider-container">
+                <p style="color:var(--text-secondary);">Длительность точки: <span class="speed-value" id="speedValue">100 мс</span></p>
+                <input type="range" id="speedSlider" min="0" max="2" step="1" value="1">
+                <div class="slider-labels">
+                    <span>Долго (200 мс)</span>
+                    <span>Нормально (100 мс)</span>
+                    <span>Профи (50 мс)</span>
+                </div>
+                <p style="color:var(--text-secondary);font-size:0.8rem;margin-top:8px;">Тире автоматически = 3 × точка</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ==================== БАЗА ДАННЫХ МОРЗЕ ====================
+            const morseData = {
+                rus: {
+                    'А': '.-', 'Б': '-...', 'В': '.--', 'Г': '--.', 'Д': '-..',
+                    'Е': '.', 'Ж': '...-', 'З': '--..', 'И': '..', 'Й': '.---',
+                    'К': '-.-', 'Л': '.-..', 'М': '--', 'Н': '-.', 'О': '---',
+                    'П': '.--.', 'Р': '.-.', 'С': '...', 'Т': '-', 'У': '..-',
+                    'Ф': '..-.', 'Х': '....', 'Ц': '-.-.', 'Ч': '---.', 'Ш': '----',
+                    'Щ': '--.-', 'Ъ': '--.--', 'Ы': '-.--', 'Ь': '-..-', 'Э': '..-..',
+                    'Ю': '..--', 'Я': '.-.-'
+                },
+                eng: {
+                    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
+                    'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
+                    'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.', 'O': '---',
+                    'P': '.--.', 'Q': '--.-', 'R': '.-.', 'S': '...', 'T': '-',
+                    'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-', 'Y': '-.--',
+                    'Z': '--..'
+                },
+                digits: {
+                    '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-',
+                    '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.'
+                },
+                symbols: {
+                    '.': '.-.-.-', ',': '--..--', '?': '..--..', "'": '.----.',
+                    '!': '-.-.--', '/': '-..-.', '(': '-.--.', ')': '-.--.-',
+                    '&': '.-...', ':': '---...', ';': '-.-.-.', '=': '-...-',
+                    '+': '.-.-.', '-': '-....-', '_': '..--.-', '"': '.-..-.',
+                    '$': '...-..-', '@': '.--.-.'
+                }
+            };
+
+            const wordsData = {
+                rus: [
+                    'КОТ', 'ДОМ', 'ЛЕС', 'НОС', 'РОТ',
+                    'ВОДА', 'РУКА', 'НОГА', 'ЗИМА', 'ЛЕТО',
+                    'ПРИВЕТ', 'СОЛНЦЕ', 'РАБОТА', 'УЛИЦА', 'МОЛОКО',
+                    'ЭЛЕКТРИЧЕСТВО', 'ТРАНСПОРТИР', 'ОБЕЗЬЯНА', 'СОКРОВИЩЕ', 'БЛАГОДАРНОСТЬ'
+                ],
+                eng: [
+                    'CAT', 'DOG', 'SUN', 'CAR', 'HAT',
+                    'WATER', 'HAND', 'FOOT', 'WINTER', 'SUMMER',
+                    'HELLO', 'WORLD', 'MUSIC', 'STREET', 'MILK',
+                    'ELECTRICITY', 'TRANSPORT', 'MONKEY', 'TREASURE', 'GRATITUDE'
+                ]
+            };
+
+            // ==================== СОСТОЯНИЕ ПРИЛОЖЕНИЯ ====================
+            let currentMode = null;
+            let currentLang = 'rus';
+            let currentDifficulty = 0;
+            let dotDuration = 100;
+            let dashDuration = 300;
+
+            let elementIndex = 0;
+            let wordLetterIndex = 0;
+            let inputSequence = '';
+            let expectedCode = '';
+
+            let freeWords = [];
+            let currentWordIndex = 0;
+
+            let isButtonPressed = false;
+            let pressStartTime = 0;
+            let pauseTimer = null;
+            let autoAdvanceTimer = null;
+
+            // Аудио-игра
+            let audioMode = null;         // 'letter' или 'word'
+            let audioLang = 'rus';
+            let audioTarget = '';         // символ или слово
+            let audioCode = '';           // код Морзе
+            let audioPlayer = null;
+
+            // Переменные для режима с кнопками
+            let options = [];              // массив вариантов (4 элемента)
+            let correctAnswer = '';        // правильный вариант
+            let isErrorState = false;
+            let optionsButtons = [];
+            let isWaitingForNext = false;
+
+            // ==================== DOM ЭЛЕМЕНТЫ ====================
+            const screens = {
+                mainMenu: document.getElementById('mainMenuScreen'),
+                difficulty: document.getElementById('difficultyScreen'),
+                freeText: document.getElementById('freeTextScreen'),
+                game: document.getElementById('gameScreen'),
+                audio: document.getElementById('audioScreen'),
+                settings: document.getElementById('settingsScreen'),
+            };
+
+            const settingsBtn = document.getElementById('settingsBtn');
+            const backToMainBtn = document.getElementById('backToMainBtn');
+            const backFromFreeTextBtn = document.getElementById('backFromFreeTextBtn');
+            const backToMenuBtn = document.getElementById('backToMenuBtn');
+            const backFromAudioBtn = document.getElementById('backFromAudioBtn');
+            const backFromSettingsBtn = document.getElementById('backFromSettingsBtn');
+            const startGameBtn = document.getElementById('startGameBtn');
+            const startFreeBtn = document.getElementById('startFreeBtn');
+            const diffTitle = document.getElementById('diffTitle');
+            const langSelector = document.getElementById('langSelector');
+            const langBtns = document.querySelectorAll('.lang-btn');
+            const diffBtns = document.querySelectorAll('.diff-btn');
+            const gameTitle = document.getElementById('gameTitle');
+            const targetDisplay = document.getElementById('targetDisplay');
+            const transcriptionHint = document.getElementById('transcriptionHint');
+            const inputSequenceEl = document.getElementById('inputSequence');
+            const decoderDisplay = document.getElementById('decoderDisplay');
+            const telegraphKey = document.getElementById('telegraphKey');
+            const clearBtn = document.getElementById('clearBtn');
+            const skipBtn = document.getElementById('skipBtn');
+            const progressInfo = document.getElementById('progressInfo');
+            const speedSlider = document.getElementById('speedSlider');
+            const speedValue = document.getElementById('speedValue');
+            const freeTextInput = document.getElementById('freeTextInput');
+            const freeTextError = document.getElementById('freeTextError');
+            const freeDiffBtns = document.querySelectorAll('#freeTextScreen .diff-btn');
+
+            // Аудио-экран
+            const audioGameTitle = document.getElementById('audioGameTitle');
+            const audioLangBtns = document.querySelectorAll('#audioLangSelector .lang-btn');
+            const playSoundBtn = document.getElementById('playSoundBtn');
+            const audioOptions = document.getElementById('audioOptions');
+
+            // ==================== АУДИО ПЛЕЕР ====================
+            class MorseAudioPlayer {
+                constructor() {
+                    this.playing = false;
+                    this.abort = false;
+                    this.audioCtx = null;
+                    this.oscillator = null;
+                    this.gainNode = null;
+                }
+
+                async playSequence(codeString, dotLen) {
+                    if (this.playing) return;
+                    this.playing = true;
+                    this.abort = false;
+                    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const dashLen = dotLen * 3;
+                    const interEl = dotLen;
+                    const interChar = dotLen * 3;
+                    const codes = codeString.split(' ');
+
+                    for (let ci = 0; ci < codes.length; ci++) {
+                        if (this.abort) break;
+                        const code = codes[ci];
+                        for (let i = 0; i < code.length; i++) {
+                            if (this.abort) break;
+                            const symbol = code[i];
+                            const duration = symbol === '.' ? dotLen : dashLen;
+                            this._startTone(duration);
+                            await this._sleep(duration);
+                            this._stopTone();
+                            if (i < code.length - 1) {
+                                await this._sleep(interEl);
+                            }
+                        }
+                        if (ci < codes.length - 1 && !this.abort) {
+                            await this._sleep(interChar);
+                        }
+                    }
+
+                    this._stopTone();
+                    if (this.audioCtx && !this.abort) {
+                        try { await this.audioCtx.close(); } catch(e) {}
+                    }
+                    this.audioCtx = null;
+                    this.playing = false;
+                }
+
+                _startTone(duration) {
+                    if (this.abort) return;
+                    this.oscillator = this.audioCtx.createOscillator();
+                    this.gainNode = this.audioCtx.createGain();
+                    this.oscillator.type = 'sine';
+                    this.oscillator.frequency.value = 700;
+                    this.gainNode.gain.value = 0.3;
+                    this.oscillator.connect(this.gainNode);
+                    this.gainNode.connect(this.audioCtx.destination);
+                    this.oscillator.start();
+                }
+
+                _stopTone() {
+                    if (this.oscillator) {
+                        try { this.oscillator.stop(); } catch(e) {}
+                        this.oscillator.disconnect();
+                        this.oscillator = null;
+                    }
+                    if (this.gainNode) {
+                        this.gainNode.disconnect();
+                        this.gainNode = null;
+                    }
+                }
+
+                _sleep(ms) {
+                    return new Promise(resolve => {
+                        const timer = setTimeout(resolve, ms);
+                        const checkAbort = setInterval(() => {
+                            if (this.abort) {
+                                clearTimeout(timer);
+                                clearInterval(checkAbort);
+                                resolve();
+                            }
+                        }, 10);
+                    });
+                }
+
+                stop() {
+                    this.abort = true;
+                    this._stopTone();
+                    if (this.audioCtx) {
+                        try { this.audioCtx.close(); } catch(e) {}
+                        this.audioCtx = null;
+                    }
+                    this.playing = false;
+                }
+            }
+
+            audioPlayer = new MorseAudioPlayer();
+
+            // ==================== НАВИГАЦИЯ ====================
+            function showScreen(screenName) {
+                Object.values(screens).forEach(s => s.classList.remove('active'));
+                screens[screenName].classList.add('active');
+                settingsBtn.style.display = screenName === 'mainMenu' ? 'flex' : 'none';
+                if (screenName !== 'game' && screenName !== 'audio') {
+                    audioPlayer.stop();
+                }
+                if (screenName !== 'game') {
+                    stopSound();
+                    clearAllTimers();
+                    telegraphKey.classList.remove('pressed', 'correct');
+                    isButtonPressed = false;
+                }
+            }
+
+            function clearAllTimers() {
+                if (pauseTimer) clearTimeout(pauseTimer);
+                if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
+                pauseTimer = null;
+                autoAdvanceTimer = null;
+            }
+
+            // ==================== СКОРОСТЬ ====================
+            function updateSpeed() {
+                const val = parseInt(speedSlider.value);
+                dotDuration = val === 0 ? 200 : val === 2 ? 50 : 100;
+                dashDuration = dotDuration * 3;
+                speedValue.textContent = dotDuration + ' мс';
+            }
+            speedSlider.addEventListener('input', updateSpeed);
+            updateSpeed();
+
+            // ==================== УТИЛИТЫ ====================
+            function isCyrillic(ch) {
+                const code = ch.charCodeAt(0);
+                return (code >= 0x0400 && code <= 0x04FF) || (code >= 0x0500 && code <= 0x052F);
+            }
+
+            function getMorseCodeByChar(ch) {
+                if (!ch) return null;
+                const upper = isCyrillic(ch) ? ch.toUpperCase() : ch.toUpperCase();
+                if (isCyrillic(ch)) return morseData.rus[upper] || null;
+                if (morseData.eng[upper]) return morseData.eng[upper];
+                if (morseData.digits[ch]) return morseData.digits[ch];
+                if (morseData.symbols[ch]) return morseData.symbols[ch];
+                return null;
+            }
+
+            function isCharSupported(ch) {
+                return getMorseCodeByChar(ch) !== null;
+            }
+
+            function getWordMorseCode(word) {
+                return word.split('').map(ch => getMorseCodeByChar(ch)).join(' ');
+            }
+
+            function shuffleArray(arr) {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            // ==================== КНОПКИ ГЛАВНОГО МЕНЮ ====================
+            document.querySelectorAll('.menu-btn[data-mode]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentMode = btn.dataset.mode;
+                    if (currentMode === 'free') openFreeTextScreen();
+                    else if (currentMode === 'audioLetter' || currentMode === 'audioWord') openAudioScreen(currentMode);
+                    else openDifficultyScreen();
+                });
+            });
+
+            function openDifficultyScreen() {
+                if (currentMode === 'letters') {
+                    diffTitle.textContent = 'Буквы — сложность';
+                    langSelector.style.display = 'flex';
+                } else if (currentMode === 'words') {
+                    diffTitle.textContent = 'Слова — сложность';
+                    langSelector.style.display = 'flex';
+                } else {
+                    diffTitle.textContent = currentMode === 'digits' ? 'Цифры — сложность' : 'Знаки — сложность';
+                    langSelector.style.display = 'none';
+                }
+                diffBtns.forEach(b => b.classList.remove('selected'));
+                diffBtns[0].classList.add('selected');
+                currentDifficulty = 0;
+                langBtns.forEach(b => b.classList.remove('selected'));
+                document.querySelector('.lang-btn[data-lang="rus"]').classList.add('selected');
+                currentLang = 'rus';
+                showScreen('difficulty');
+            }
+
+            function openFreeTextScreen() {
+                freeTextInput.value = '';
+                freeTextError.classList.remove('visible');
+                freeDiffBtns.forEach(b => b.classList.remove('selected'));
+                freeDiffBtns[0].classList.add('selected');
+                currentDifficulty = 0;
+                showScreen('freeText');
+            }
+
+            // ==================== АУДИО-ИГРА (общая логика для букв и слов) ====================
+            function openAudioScreen(mode) {
+                audioMode = mode === 'audioLetter' ? 'letter' : 'word';
+                audioLang = 'rus';
+                audioGameTitle.textContent = audioMode === 'letter' ? 'Услышь букву' : 'Услышь слово';
+
+                // Сброс состояния
+                audioPlayer.stop();
+                isErrorState = false;
+                isWaitingForNext = false;
+
+                // Назначить обработчики на кнопки вариантов (если ещё не назначены)
+                setupOptionButtons();
+
+                // Генерировать первое задание
+                generateTask();
+
+                // Установить язык (русский по умолчанию)
+                audioLangBtns.forEach(b => b.classList.remove('selected'));
+                document.querySelector('#audioLangSelector .lang-btn[data-lang="rus"]').classList.add('selected');
+
+                showScreen('audio');
+            }
+
+            function setupOptionButtons() {
+                optionsButtons = audioOptions.querySelectorAll('.option-btn');
+                optionsButtons.forEach(btn => {
+                    // Удаляем старые обработчики, чтобы не дублировать
+                    btn.removeEventListener('click', onOptionClick);
+                    btn.addEventListener('click', onOptionClick);
+                });
+            }
+
+            function generateTask() {
+                // Очистить состояние
+                resetOptionsState();
+
+                if (audioMode === 'letter') {
+                    generateLetterTask();
+                } else {
+                    generateWordTask();
+                }
+
+                // Обновить кнопки
+                updateOptionButtons();
+
+                // Воспроизвести звук
+                playAudioTask();
+            }
+
+            function generateLetterTask() {
+                const dict = audioLang === 'rus' ? morseData.rus : morseData.eng;
+                const letters = Object.keys(dict);
+                if (letters.length === 0) return;
+
+                const correct = letters[Math.floor(Math.random() * letters.length)];
+                correctAnswer = correct;
+                audioTarget = correct;
+                audioCode = dict[correct];
+
+                // Выбрать 3 случайные другие буквы
+                let others = letters.filter(l => l !== correct);
+                shuffleArray(others);
+                const selectedOthers = others.slice(0, 3);
+                // Если не хватает (маловероятно), добавляем из всех
+                while (selectedOthers.length < 3) {
+                    const extra = letters[Math.floor(Math.random() * letters.length)];
+                    if (!selectedOthers.includes(extra) && extra !== correct) {
+                        selectedOthers.push(extra);
+                    }
+                }
+                const opts = [correct, ...selectedOthers];
+                shuffleArray(opts);
+                options = opts;
+            }
+
+            function generateWordTask() {
+                const words = wordsData[audioLang];
+                if (words.length === 0) return;
+
+                const correct = words[Math.floor(Math.random() * words.length)];
+                correctAnswer = correct;
+                audioTarget = correct;
+                audioCode = getWordMorseCode(correct);
+
+                // Выбрать 3 случайные другие слова
+                let others = words.filter(w => w !== correct);
+                shuffleArray(others);
+                const selectedOthers = others.slice(0, 3);
+                while (selectedOthers.length < 3) {
+                    const extra = words[Math.floor(Math.random() * words.length)];
+                    if (!selectedOthers.includes(extra) && extra !== correct) {
+                        selectedOthers.push(extra);
+                    }
+                }
+                const opts = [correct, ...selectedOthers];
+                shuffleArray(opts);
+                options = opts;
+            }
+
+            function updateOptionButtons() {
+                optionsButtons.forEach((btn, idx) => {
+                    if (idx < options.length) {
+                        btn.textContent = options[idx];
+                        btn.dataset.value = options[idx];
+                        // Для слов добавляем класс для уменьшения шрифта
+                        if (audioMode === 'word') {
+                            btn.classList.add('word-option');
+                        } else {
+                            btn.classList.remove('word-option');
+                        }
+                    }
+                });
+            }
+
+            function resetOptionsState() {
+                optionsButtons.forEach(btn => {
+                    btn.classList.remove('correct-option', 'wrong-option', 'reveal-correct', 'disabled');
+                    btn.disabled = false;
+                });
+                isErrorState = false;
+                isWaitingForNext = false;
+            }
+
+            function onOptionClick(e) {
+                const btn = e.currentTarget;
+                // Если уже в состоянии ошибки, то разрешаем нажатие только на правильную кнопку
+                if (isErrorState) {
+                    if (btn.dataset.value === correctAnswer) {
+                        // Переход к следующему заданию
+                        resetOptionsState();
+                        generateTask();
+                    }
+                    return;
+                }
+
+                // Обычный режим
+                const selected = btn.dataset.value;
+                if (selected === correctAnswer) {
+                    // Правильно!
+                    btn.classList.add('correct-option');
+                    // Блокируем все кнопки на время
+                    optionsButtons.forEach(b => b.disabled = true);
+                    // Через задержку генерируем новое задание
+                    setTimeout(() => {
+                        resetOptionsState();
+                        generateTask();
+                    }, 400);
+                } else {
+                    // Неправильно
+                    isErrorState = true;
+                    // Находим правильную кнопку
+                    let correctBtn = null;
+                    optionsButtons.forEach(b => {
+                        if (b.dataset.value === correctAnswer) {
+                            correctBtn = b;
+                        }
+                    });
+                    btn.classList.add('wrong-option');
+                    if (correctBtn) {
+                        correctBtn.classList.add('reveal-correct');
+                    }
+                    // Блокируем все кнопки, кроме правильной
+                    optionsButtons.forEach(b => b.disabled = true);
+                    if (correctBtn) {
+                        correctBtn.disabled = false;
+                    }
+                    optionsButtons.forEach(b => b.classList.add('disabled'));
+                    if (correctBtn) {
+                        correctBtn.classList.remove('disabled');
+                    }
+                }
+            }
+
+            function playAudioTask() {
+                if (audioPlayer.playing) {
+                    audioPlayer.stop();
+                    setTimeout(() => {
+                        audioPlayer = new MorseAudioPlayer();
+                        audioPlayer.playSequence(audioCode, dotDuration);
+                    }, 100);
+                } else {
+                    audioPlayer = new MorseAudioPlayer();
+                    audioPlayer.playSequence(audioCode, dotDuration);
+                }
+            }
+
+            // ==================== ОБРАБОТЧИКИ ДЛЯ АУДИО-ЭКРАНА ====================
+            playSoundBtn.addEventListener('click', playAudioTask);
+
+            backFromAudioBtn.addEventListener('click', () => {
+                audioPlayer.stop();
+                showScreen('mainMenu');
+            });
+
+            // Выбор языка в аудио-игре
+            audioLangBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    audioLangBtns.forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    audioLang = btn.dataset.lang;
+                    // Перегенерировать задание
+                    resetOptionsState();
+                    generateTask();
+                });
+            });
+
+            // ==================== ОСТАЛЬНЫЕ ОБРАБОТЧИКИ (без изменений) ====================
+            backToMainBtn.addEventListener('click', () => showScreen('mainMenu'));
+            backFromFreeTextBtn.addEventListener('click', () => showScreen('mainMenu'));
+
+            langBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    langBtns.forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    currentLang = btn.dataset.lang;
+                });
+            });
+
+            diffBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    diffBtns.forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    currentDifficulty = parseInt(btn.dataset.diff);
+                });
+            });
+
+            freeDiffBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    freeDiffBtns.forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    currentDifficulty = parseInt(btn.dataset.diff);
+                });
+            });
+
+            startGameBtn.addEventListener('click', startGame);
+            startFreeBtn.addEventListener('click', startFreeMode);
+
+            function startGame() {
+                elementIndex = 0;
+                wordLetterIndex = 0;
+                inputSequence = '';
+                updateInputDisplay();
+                updateDecoder();
+                telegraphKey.classList.remove('pressed', 'correct');
+                clearAllTimers();
+                loadCurrentElement();
+                showScreen('game');
+                updateGameTitle();
+            }
+
+            function startFreeMode() {
+                const rawText = freeTextInput.value.trim();
+                if (!rawText) {
+                    freeTextError.textContent = 'Введите текст.';
+                    freeTextError.classList.add('visible');
+                    return;
+                }
+                const words = rawText.split(/\s+/).filter(w => w.length > 0);
+                for (const word of words) {
+                    for (const ch of word) {
+                        if (!isCharSupported(ch)) {
+                            freeTextError.textContent = `Неподдерживаемый символ: "${ch}" в слове "${word}".`;
+                            freeTextError.classList.add('visible');
+                            return;
+                        }
+                    }
+                }
+                freeTextError.classList.remove('visible');
+                freeWords = words;
+                currentWordIndex = 0;
+                wordLetterIndex = 0;
+                currentMode = 'free';
+                inputSequence = '';
+                updateInputDisplay();
+                updateDecoder();
+                telegraphKey.classList.remove('pressed', 'correct');
+                clearAllTimers();
+                loadCurrentElement();
+                showScreen('game');
+                updateGameTitle();
+            }
+
+            function updateGameTitle() {
+                const modeNames = {
+                    letters: 'Буквы', words: 'Слова', digits: 'Цифры',
+                    symbols: 'Знаки', free: 'Свободный режим'
+                };
+                const diffSuffix = currentDifficulty === 1 ? '+' : '';
+                const langStr = (currentMode === 'letters' || currentMode === 'words') ?
+                    (currentLang === 'rus' ? ' (РУС)' : ' (ENG)') : '';
+                gameTitle.textContent = (modeNames[currentMode] || '') + diffSuffix + langStr;
+            }
+
+            // ==================== ИГРОВОЙ ЭКРАН (без изменений) ====================
+            function getCurrentWord() {
+                if (currentMode === 'free') return freeWords[currentWordIndex];
+                if (currentMode === 'words') return wordsData[currentLang][elementIndex];
+                return '';
+            }
+
+            function getMorseCode(char) {
+                if (currentMode === 'free') return getMorseCodeByChar(char) || '';
+                if (currentMode === 'letters' || currentMode === 'words') {
+                    const dict = currentLang === 'rus' ? morseData.rus : morseData.eng;
+                    return dict[char] || '';
+                }
+                if (currentMode === 'digits') return morseData.digits[char] || '';
+                if (currentMode === 'symbols') return morseData.symbols[char] || '';
+                return '';
+            }
+
+            function getCharFromMorse(sequence) {
+                if (currentMode === 'free') {
+                    const rus = Object.entries(morseData.rus).find(([k, v]) => v === sequence);
+                    if (rus) return rus[0];
+                    const eng = Object.entries(morseData.eng).find(([k, v]) => v === sequence);
+                    if (eng) return eng[0];
+                    const dig = Object.entries(morseData.digits).find(([k, v]) => v === sequence);
+                    if (dig) return dig[0];
+                    const sym = Object.entries(morseData.symbols).find(([k, v]) => v === sequence);
+                    return sym ? sym[0] : null;
+                }
+                let dict;
+                if (currentMode === 'letters' || currentMode === 'words') {
+                    dict = currentLang === 'rus' ? morseData.rus : morseData.eng;
+                } else if (currentMode === 'digits') {
+                    dict = morseData.digits;
+                } else if (currentMode === 'symbols') {
+                    dict = morseData.symbols;
+                }
+                if (!dict) return null;
+                for (const [char, code] of Object.entries(dict)) {
+                    if (code === sequence) return char;
+                }
+                return null;
+            }
+
+            function renderWordDisplay(word, highlightIndex) {
+                return word.split('').map((ch, idx) =>
+                    `<span class="${idx === highlightIndex ? 'current-letter' : ''}">${ch}</span>`
+                ).join('');
+            }
+
+            function loadCurrentElement() {
+                if (currentMode === 'words' || currentMode === 'free') {
+                    const word = getCurrentWord();
+                    if (!word) { finishFreeMode(); return; }
+                    targetDisplay.innerHTML = renderWordDisplay(word, wordLetterIndex);
+                    targetDisplay.classList.add('target-word');
+                    targetDisplay.classList.remove('target-char');
+                    expectedCode = getMorseCode(word[wordLetterIndex]);
+                    updateTranscriptionForWord(word);
+                } else {
+                    const list = getCurrentElementList();
+                    if (list.length === 0) return;
+                    if (elementIndex >= list.length) elementIndex = 0;
+                    const char = list[elementIndex];
+                    targetDisplay.textContent = char;
+                    targetDisplay.classList.remove('target-word');
+                    targetDisplay.classList.add('target-char');
+                    expectedCode = getMorseCode(char);
+                    updateTranscription();
+                }
+                inputSequence = '';
+                updateInputDisplay();
+                updateDecoder();
+                updateProgress();
+                telegraphKey.classList.remove('correct');
+                clearAllTimers();
+            }
+
+            function getCurrentElementList() {
+                if (currentMode === 'letters') return Object.keys(currentLang === 'rus' ? morseData.rus : morseData.eng);
+                if (currentMode === 'words') return wordsData[currentLang];
+                if (currentMode === 'digits') return Object.keys(morseData.digits);
+                if (currentMode === 'symbols') return Object.keys(morseData.symbols);
+                return [];
+            }
+
+            function updateTranscription() {
+                if (currentDifficulty === 1) transcriptionHint.textContent = '';
+                else transcriptionHint.textContent = expectedCode.split('').join(' / ');
+            }
+
+            function updateTranscriptionForWord(word) {
+                if (currentDifficulty === 1) transcriptionHint.textContent = '';
+                else {
+                    const codes = word.split('').map(ch => getMorseCode(ch));
+                    transcriptionHint.textContent = codes.join('  ');
+                }
+            }
+
+            function updateProgress() {
+                if (currentMode === 'words') {
+                    const list = wordsData[currentLang];
+                    const word = list[elementIndex] || '';
+                    progressInfo.textContent = `Слово ${elementIndex + 1} из ${list.length} | Буква ${wordLetterIndex + 1} из ${word.length}`;
+                } else if (currentMode === 'free') {
+                    const word = freeWords[currentWordIndex] || '';
+                    progressInfo.textContent = `Слово ${currentWordIndex + 1} из ${freeWords.length} | Буква ${wordLetterIndex + 1} из ${word.length}`;
+                } else {
+                    const list = getCurrentElementList();
+                    progressInfo.textContent = `Элемент ${elementIndex + 1} из ${list.length}`;
+                }
+            }
+
+            function finishFreeMode() {
+                stopSound();
+                clearAllTimers();
+                telegraphKey.classList.remove('pressed', 'correct');
+                isButtonPressed = false;
+                alert('✅ Текст пройден!');
+                showScreen('freeText');
+                freeTextInput.value = freeWords.join(' ');
+            }
+
+            // ==================== ВВОД И ДЕКОДИРОВАНИЕ (без изменений) ====================
+            function addSymbol(symbol) {
+                inputSequence += symbol;
+                updateInputDisplay();
+                updateDecoder();
+                checkMatch();
+                if (pauseTimer) { clearTimeout(pauseTimer); pauseTimer = null; }
+            }
+
+            function updateInputDisplay() { inputSequenceEl.textContent = inputSequence || '—'; }
+
+            function updateDecoder() {
+                if (inputSequence === '') {
+                    decoderDisplay.textContent = '?';
+                    decoderDisplay.classList.add('error');
+                    return;
+                }
+                if (inputSequence === expectedCode && targetDisplay.textContent) {
+                    decoderDisplay.textContent = targetDisplay.textContent;
+                    decoderDisplay.classList.remove('error');
+                    return;
+                }
+                const decoded = getCharFromMorse(inputSequence);
+                if (decoded) {
+                    decoderDisplay.textContent = decoded;
+                    decoderDisplay.classList.remove('error');
+                } else {
+                    decoderDisplay.textContent = '?';
+                    decoderDisplay.classList.add('error');
+                }
+            }
+
+            function checkMatch() {
+                if (inputSequence === expectedCode && inputSequence !== '') {
+                    telegraphKey.classList.add('correct');
+                    stopSound();
+                    clearAllTimers();
+                    if (currentMode !== 'words' && currentMode !== 'free') {
+                        autoAdvanceTimer = setTimeout(() => {
+                            telegraphKey.classList.remove('correct');
+                            advanceElement();
+                        }, 700);
+                    }
+                }
+            }
+
+            function advanceElement() {
+                clearAllTimers();
+                if (currentMode === 'words') {
+                    const word = getCurrentWord();
+                    wordLetterIndex >= word.length - 1 ? (elementIndex++, wordLetterIndex = 0) : wordLetterIndex++;
+                } else if (currentMode === 'free') {
+                    const word = freeWords[currentWordIndex];
+                    wordLetterIndex >= word.length - 1 ? (currentWordIndex++, wordLetterIndex = 0) : wordLetterIndex++;
+                } else {
+                    elementIndex++;
+                }
+                inputSequence = '';
+                updateInputDisplay();
+                updateDecoder();
+                telegraphKey.classList.remove('correct');
+                loadCurrentElement();
+                updateGameTitle();
+            }
+
+            function endOfLetter() {
+                pauseTimer = null;
+                if (currentMode === 'words' || currentMode === 'free') {
+                    const word = getCurrentWord();
+                    if (inputSequence === expectedCode && inputSequence !== '') {
+                        telegraphKey.classList.remove('correct');
+                        if (wordLetterIndex >= word.length - 1) {
+                            currentMode === 'words' ? (elementIndex++, wordLetterIndex = 0) : (currentWordIndex++, wordLetterIndex = 0);
+                        } else wordLetterIndex++;
+                        inputSequence = '';
+                        updateInputDisplay();
+                        updateDecoder();
+                        loadCurrentElement();
+                        updateGameTitle();
+                    } else if (inputSequence !== '') {
+                        inputSequence = '';
+                        updateInputDisplay();
+                        updateDecoder();
+                        updateProgress();
+                    }
+                } else {
+                    if (inputSequence !== '' && inputSequence !== expectedCode) {
+                        inputSequence = '';
+                        updateInputDisplay();
+                        updateDecoder();
+                    }
+                }
+            }
+
+            function clearInput() {
+                clearAllTimers();
+                inputSequence = '';
+                updateInputDisplay();
+                updateDecoder();
+                telegraphKey.classList.remove('correct');
+                if (currentMode === 'words' || currentMode === 'free') {
+                    const word = getCurrentWord();
+                    expectedCode = getMorseCode(word[wordLetterIndex] || '');
+                }
+                updateProgress();
+            }
+
+            function skipElement() {
+                clearAllTimers();
+                stopSound();
+                telegraphKey.classList.remove('pressed', 'correct');
+                isButtonPressed = false;
+                if (currentMode === 'words') { elementIndex++; wordLetterIndex = 0; }
+                else if (currentMode === 'free') { currentWordIndex++; wordLetterIndex = 0; }
+                else elementIndex++;
+                inputSequence = '';
+                updateInputDisplay();
+                updateDecoder();
+                loadCurrentElement();
+                updateGameTitle();
+            }
+
+            // ==================== ТЕЛЕГРАФНЫЙ КЛЮЧ (без изменений) ====================
+            function onKeyDown(e) {
+                e.preventDefault();
+                if (autoAdvanceTimer && currentMode !== 'words' && currentMode !== 'free') return;
+                if (isButtonPressed) return;
+                initAudio();
+                isButtonPressed = true;
+                pressStartTime = Date.now();
+                telegraphKey.classList.add('pressed');
+                telegraphKey.classList.remove('correct');
+                playSound();
+                if (pauseTimer) { clearTimeout(pauseTimer); pauseTimer = null; }
+            }
+
+            function onKeyUp(e) {
+                e.preventDefault();
+                if (!isButtonPressed) return;
+                isButtonPressed = false;
+                const duration = Date.now() - pressStartTime;
+                stopSound();
+                telegraphKey.classList.remove('pressed');
+                const threshold = dotDuration * 2;
+                addSymbol(duration < threshold ? '.' : '-');
+                if (pauseTimer) clearTimeout(pauseTimer);
+                pauseTimer = setTimeout(endOfLetter, dotDuration * 3);
+            }
+
+            telegraphKey.addEventListener('mousedown', onKeyDown);
+            telegraphKey.addEventListener('mouseup', onKeyUp);
+            telegraphKey.addEventListener('mouseleave', (e) => { if (isButtonPressed) onKeyUp(e); });
+            telegraphKey.addEventListener('touchstart', onKeyDown, { passive: false });
+            telegraphKey.addEventListener('touchend', onKeyUp, { passive: false });
+            telegraphKey.addEventListener('touchcancel', (e) => { if (isButtonPressed) onKeyUp(e); });
+            telegraphKey.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            clearBtn.addEventListener('click', clearInput);
+            skipBtn.addEventListener('click', skipElement);
+
+            backToMenuBtn.addEventListener('click', () => {
+                stopSound();
+                clearAllTimers();
+                telegraphKey.classList.remove('pressed', 'correct');
+                isButtonPressed = false;
+                showScreen('mainMenu');
+            });
+
+            settingsBtn.addEventListener('click', () => showScreen('settings'));
+            backFromSettingsBtn.addEventListener('click', () => showScreen('mainMenu'));
+
+            let audioCtx, oscillator, gainNode;
+            function initAudio() {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            }
+            function playSound() {
+                initAudio();
+                if (oscillator) return;
+                oscillator = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 700;
+                gainNode.gain.value = 0.3;
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+            }
+            function stopSound() {
+                if (oscillator) { try { oscillator.stop(); } catch(e) {} oscillator.disconnect(); oscillator = null; }
+                if (gainNode) { gainNode.disconnect(); gainNode = null; }
+            }
+
+            showScreen('mainMenu');
+            updateSpeed();
+        })();
+    </script>
+</body>
+</html>

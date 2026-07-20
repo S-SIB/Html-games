@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>CSS Персонаж – собери сам</title>
+  <style>
+    /* ===== ВСЕ СТИЛИ (без изменений) ===== */
+    @import url("https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap");
+
+    @media screen and (min-height: 1024px) { html { font-size: 20px; } }
+    @media screen and (max-height: 650px) { html { font-size: 14px; } }
+    @media screen and (max-width: 650px), screen and (max-height: 550px) { html { font-size: 12px; } }
+    @media screen and (max-width: 450px), screen and (max-height: 450px) { html { font-size: 10px; } }
+
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      height: 100vh;
+      color: #fff;
+      background: linear-gradient(var(--background, #419197), #000038 200%);
+      font-family: "Archivo Black", sans-serif;
+      text-transform: uppercase;
+      overflow: hidden;
+      transition: background 0.3s;
+    }
+
+    .characters-choose {
+      position: absolute;
+      top: 0;
+      left: 0;
+      padding: 0.5rem 1.2rem 0.5rem 0.5rem;
+      height: 100%;
+      background-color: rgba(0,0,56,0.5);
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-color: #fff transparent;
+      scrollbar-width: thin;
+      z-index: 10;
+    }
+    .characters-choose::-webkit-scrollbar { width: 0.5rem; }
+    .characters-choose::-webkit-scrollbar-thumb { border-radius: 0.5rem; background-color: #fff; }
+
+    .characters-choose__selector {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 9rem;
+      text-align: center;
+    }
+    .characters-choose__selector:last-child { margin-bottom: 1rem; }
+
+    .characters-choose__arrow {
+      margin: 0.8rem 0.2rem;
+      border-top: 0.5rem solid transparent;
+      border-bottom: 0.5rem solid transparent;
+      cursor: pointer;
+      transition: border-color 0.1s;
+    }
+    .characters-choose__arrow--right { border-left: 0.94rem solid #fff; }
+    .characters-choose__arrow--left  { border-right: 0.94rem solid #fff; }
+    .characters-choose__arrow:hover {
+      border-left-color: #eb80b1;
+      border-right-color: #eb80b1;
+    }
+
+    /* ----- персонаж ----- */
+    .character {
+      position: relative;
+      width: 16rem;
+      height: 26rem;
+    }
+
+    .character__frame {
+      position: absolute;
+      top: -4rem;
+      left: -4rem;
+      width: 22rem;
+      height: 28.5rem;
+      border: 1rem solid #fff;
+      border-bottom-width: 5rem;
+      transition: box-shadow 0.3s ease;
+      pointer-events: none;
+    }
+    .character__frame:hover { box-shadow: 0 0 2rem 1rem rgba(0,0,56,0.3); }
+    .character__frame-text {
+      position: absolute;
+      bottom: -6.5rem;
+      right: -1rem;
+      color: #fff;
+      pointer-events: none;
+    }
+    .character__frame-icon {
+      position: absolute;
+      bottom: -4.5rem;
+      right: -0.5rem;
+      transform: scale(0.2);
+      transform-origin: 100% 100%;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .character__body {
+      position: absolute;
+      top: 17.5rem;
+      left: 0;
+      width: 16rem;
+      height: 8rem;
+      background: linear-gradient(var(--body, #ff7d66), #000038 200%);
+      border-radius: 4rem 4rem 0 0;
+      transition: border-radius 1s ease;
+    }
+
+    .character__neck {
+      position: absolute;
+      top: 16rem;
+      left: 6rem;
+      width: 4rem;
+      height: 4rem;
+      border-radius: 1rem 1rem 2rem 2rem;
+      overflow: hidden;
+    }
+    .character__neck::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -50%;
+      width: 200%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 0, var(--skin, #ffdbac), #000038 200%);
+    }
+
+    /* Шляпы */
+    .character__hat {
+      position: absolute;
+      display: none;
+    }
+    .character__hat--cap {
+      top: 0.5rem; left: 2rem; z-index: 1;
+      width: 12rem; height: 6rem;
+      background: linear-gradient(#ff7d66, #000038 300%);
+      border-radius: 3rem 3rem 0.5rem 0.5rem;
+    }
+    .character__hat--cap::before {
+      content: "ͼ";
+      position: absolute; top: 2rem; left: 7rem;
+      opacity: 0.6; font-size: 3rem; font-weight: 700;
+    }
+    .character__hat--cap::after {
+      content: "";
+      position: absolute; bottom: 0; left: 0;
+      width: 15rem; height: 0.5rem;
+      background: linear-gradient(#ff7d66, #000038 300%);
+    }
+    .character__hat--wool {
+      top: 1rem; left: 2rem; z-index: 1;
+      width: 12rem; height: 6rem;
+      background: linear-gradient(#bdc3c6, #000038 300%);
+      border-radius: 4rem 4rem 0.5rem 0.5rem;
+    }
+    .character__hat--wool::before {
+      content: "";
+      position: absolute; bottom: 0; left: -0.5rem;
+      width: 13rem; height: 2rem;
+      background: linear-gradient(#bdc3c6, #000038 300%);
+    }
+    .character__hat--wool::after {
+      content: "ͼ";
+      position: absolute; bottom: 0.5rem; right: 1rem;
+      padding: 0.2rem 0.3rem;
+      color: #000038; background-color: #fff; font-weight: 700;
+    }
+    .character__hat--top-hat {
+      top: 0; left: 2rem; z-index: 1;
+      width: 12rem; height: 7rem;
+      background: linear-gradient(#fff -300%, #000038);
+      border-radius: 1rem 1rem 0 0;
+    }
+    .character__hat--top-hat::before {
+      content: "";
+      position: absolute; top: 5rem; left: 0;
+      width: 100%; height: 1.5rem;
+      background-color: #fff;
+    }
+    .character__hat--top-hat::after {
+      content: "";
+      position: absolute; bottom: 0; left: -2rem;
+      width: 16rem; height: 0.5rem;
+      background: linear-gradient(#fff -300%, #000038);
+    }
+    .character__hat--party {
+      top: 3rem; left: 1.5rem; z-index: -2;
+      width: 10rem; height: 10rem;
+      background: radial-gradient(circle at 100% 100%,
+        transparent 50%, #000038 50%, #12486b 65%,
+        #f5fccd 65%, #f5fccd 70%, #eb80b1 70%, #eb80b1 75%,
+        #f5fccd 75%, #f5fccd 80%, #eb80b1 80%, #eb80b1 85%,
+        #f5fccd 85%, #f5fccd 90%, #eb80b1 90%, #eb80b1 95%,
+        #f5fccd 95%, #f5fccd);
+      transform: rotate(45deg) skew(25deg,25deg) rotate(-10deg);
+    }
+    .character__hat--cap-backwards {
+      top: 0.5rem; left: 2rem; z-index: 1;
+      width: 12rem; height: 6rem;
+      background: linear-gradient(#80c0a1, #000038 300%);
+      border-radius: 3rem 3rem 0.5rem 0.5rem;
+    }
+    .character__hat--cap-backwards::before {
+      content: "";
+      position: absolute; top: 4.5rem; left: 7rem;
+      width: 2rem; height: 0.5rem;
+      background-color: #12486b;
+    }
+    .character__hat--cap-backwards::after {
+      content: "";
+      position: absolute; bottom: 0; right: 0;
+      width: 15rem; height: 0.5rem;
+      background: linear-gradient(#80c0a1, #000038 300%);
+    }
+    .character__hat--halo {
+      top: 1rem; left: 1rem; z-index: -1;
+      width: 13rem; height: 7rem;
+      border-radius: 50%;
+      border: 0.5rem solid #f5fccd;
+    }
+    .character__hat--horns::before,
+    .character__hat--horns::after {
+      content: "";
+      position: absolute; z-index: -2; top: 5rem;
+      width: 6rem; height: 6rem;
+      background: linear-gradient(135deg, #ff7d66, #000038 200%);
+    }
+    .character__hat--horns::before {
+      left: 3rem;
+      transform: rotate(15deg) skew(30deg,30deg);
+    }
+    .character__hat--horns::after {
+      left: 7rem;
+      transform: rotate(75deg) skew(30deg,30deg);
+    }
+    .character__hat--beret {
+      top: 2rem; left: 3rem; z-index: 1;
+      width: 10rem; height: 5rem;
+      background: linear-gradient(#000038 -100%, #12486b 60%, transparent 60%);
+      border-radius: 50%;
+    }
+    .character__hat--beret::before {
+      content: "";
+      position: absolute; top: -0.8rem; left: 4.5rem;
+      width: 0.3rem; height: 1rem;
+      background: linear-gradient(#12486b, #000038 300%);
+      transform: rotate(-25deg);
+    }
+    .character__hat--beret::after {
+      content: "";
+      position: absolute; bottom: 2rem; left: 0;
+      width: 11rem; height: 0.3rem;
+      background: linear-gradient(#12486b, #000038 300%);
+    }
+    .character__hat--furry::before,
+    .character__hat--furry::after {
+      content: "";
+      position: absolute; z-index: -2; top: 4rem;
+      width: 6rem; height: 6rem;
+      background: linear-gradient(135deg, #eb80b1, #000038 200%);
+      border: 1rem solid #919ea3;
+    }
+    .character__hat--furry::before {
+      left: 1rem;
+      transform: rotate(30deg) skew(25deg,25deg);
+      border-radius: 20% 0 0 50%;
+    }
+    .character__hat--furry::after {
+      left: 7rem;
+      transform: rotate(60deg) skew(25deg,25deg);
+      border-radius: 20% 50% 0 0;
+    }
+    .character__hat--active { display: block; }
+
+    /* Лицо */
+    .character__face {
+      position: absolute;
+      top: 6rem; left: 2rem;
+      width: 12rem; height: 12rem;
+      background: radial-gradient(circle at 70% 20%, var(--skin, #ffdbac), #000038 180%);
+      display: none;
+    }
+    .character__face--round    { border-radius: 40% 40% 50% 50%; }
+    .character__face--ellipse  { top: 6.5rem; height: 11rem; border-radius: 40% 40% 50% 50%; }
+    .character__face--square   { border-radius: 45% 45% 5rem 5rem; }
+    .character__face--pointy   {
+      background: radial-gradient(circle at 80% 50%, var(--skin, #ffdbac), #000038 180%);
+      border-radius: 50% 50% 50% 35%;
+      transform: rotate(-45deg);
+    }
+    .character__face--active { display: block; }
+
+    /* Волосы */
+    .character__hair {
+      position: absolute;
+      top: 6rem; left: 2rem;
+      width: 12rem; height: 12rem;
+      background-color: var(--hair, #000038);
+      display: none;
+    }
+    .character__hair--long {
+      top: 3.5rem; left: 6rem;
+      width: 8rem; height: 5rem;
+      border-radius: 0 5rem 0 50%;
+    }
+    .character__hair--long::before {
+      content: "";
+      position: absolute; top: 0.5rem; left: -4rem; z-index: -1;
+      width: 12rem; height: 10rem;
+      background-color: var(--hair, #000038);
+      border-radius: 50% 50% 1rem 1rem;
+    }
+    .character__hair--long::after {
+      content: "";
+      position: absolute; left: -4rem;
+      width: 4rem; height: 5rem;
+      background: var(--hair, #000038);
+      border-radius: 5rem 0 50% 0;
+    }
+    .character__hair--square {
+      top: 4rem; height: 4rem;
+      border-radius: 1rem 1rem 50% 50%;
+    }
+    .character__hair--square::before {
+      content: "";
+      position: absolute; top: 1rem; left: 0; z-index: -1;
+      width: 12rem; height: 10rem;
+      background: linear-gradient(var(--hair, #000038) 50%, #000038 200%);
+      border-radius: 0 0 1rem 1rem;
+    }
+    .character__hair--afro {
+      top: 2rem; z-index: -1;
+      border-radius: 50%;
+      background: linear-gradient(var(--hair, #000038) 50%, #000038 200%);
+    }
+    .character__hair--short {
+      top: 5rem; left: 3rem;
+      width: 10rem; height: 2.5rem;
+      border-radius: 50%;
+    }
+    .character__hair--short::before {
+      content: "";
+      position: absolute; top: -1.5rem; left: -1rem; z-index: -1;
+      width: 12rem; height: 10rem;
+      background-color: var(--hair, #000038);
+      border-radius: 50% 50% 3rem 3rem;
+    }
+    .character__hair--very-long {
+      top: 3.5rem; left: 6rem;
+      width: 8rem; height: 5rem;
+      border-radius: 0 5rem 0 50%;
+    }
+    .character__hair--very-long::before {
+      content: "";
+      position: absolute; top: 0; left: -5rem; z-index: -1;
+      width: 14rem; height: 12rem;
+      background: linear-gradient(var(--hair, #000038) 50%, #000038 300%);
+      border-radius: 5rem 5rem 2rem 2rem;
+    }
+    .character__hair--very-long::after {
+      content: "";
+      position: absolute; left: -4rem;
+      width: 4rem; height: 5rem;
+      background-color: var(--hair, #000038);
+      border-radius: 5rem 0 50% 0;
+    }
+    .character__hair--mane {
+      top: 3.5rem; left: 6rem;
+      width: 8rem; height: 5rem;
+      border-radius: 0 5rem 0 50%;
+    }
+    .character__hair--mane::before {
+      content: "";
+      position: absolute; top: 0; left: -5rem; z-index: -1;
+      width: 14rem; height: 16rem;
+      background: linear-gradient(var(--hair, #000038) 50%, #000038 300%);
+      border-radius: 5rem 5rem 0.5rem 0.5rem;
+    }
+    .character__hair--mane::after {
+      content: "";
+      position: absolute; left: -4rem;
+      width: 4rem; height: 5rem;
+      background-color: var(--hair, #000038);
+      border-radius: 5rem 0 50% 0;
+    }
+    .character__hair--wavy {
+      top: 3.5rem; left: 6rem;
+      width: 9rem; height: 4.5rem;
+      border-radius: 0 3rem 0 40%;
+    }
+    .character__hair--wavy::before {
+      content: "";
+      position: absolute; top: 3rem; left: -5.5rem; z-index: -1;
+      width: 15rem; height: 16rem;
+      background: linear-gradient(var(--hair, #000038) 50%, #000038 300%);
+      --mask: radial-gradient(17.2px at 24px 50%, #000 99%, #0000 101%) 0 calc(50% - 20px)/51% 40px repeat-y,
+              radial-gradient(17.2px at -14px 50%, #0000 99%, #000 101%) 10px 50%/calc(51% - 10px) 40px repeat-y,
+              radial-gradient(17.2px at calc(100% - 24px) 50%, #000 99%, #0000 101%) 100% calc(50% - 20px)/51% 40px repeat-y,
+              radial-gradient(17.2px at calc(100% + 14px) 50%, #0000 99%, #000 101%) calc(100% - 10px) 50%/calc(51% - 10px) 40px repeat-y;
+      -webkit-mask: var(--mask);
+              mask: var(--mask);
+    }
+    .character__hair--wavy::after {
+      content: "";
+      position: absolute; left: -5rem;
+      width: 5rem; height: 5rem;
+      background-color: var(--hair, #000038);
+      border-radius: 4rem 0 50% 0;
+    }
+    .character__hair--bald    { background-color: transparent; }
+    .character__hair--crest   {
+      top: 4rem; left: 6.5rem;
+      width: 3rem; height: 3rem;
+      background: linear-gradient(var(--hair, #000038) 50%, #000038 300%);
+      border-radius: 1rem 1rem 0.5rem 0.5rem;
+    }
+    .character__hair--emo {
+      top: 3.5rem; left: 6rem;
+      width: 8rem; height: 7.5rem;
+      border-radius: 0 5rem 0 50%;
+      background: linear-gradient(var(--hair, #000038) 50%, #000038 300%);
+    }
+    .character__hair--emo::before {
+      content: "";
+      position: absolute; top: 0.5rem; left: -4rem; z-index: -1;
+      width: 12rem; height: 10rem;
+      background-color: var(--hair, #000038);
+      border-radius: 50%;
+    }
+    .character__hair--emo::after {
+      content: "";
+      position: absolute; left: -4rem;
+      width: 4rem; height: 5rem;
+      background: var(--hair, #000038);
+      border-radius: 5rem 0 50% 0;
+    }
+    .character__hair--metal {
+      top: 4rem; left: 10rem;
+      width: 4rem; height: 15rem;
+      border-radius: 0 50% 3rem 0;
+    }
+    .character__hair--metal::before {
+      content: "";
+      position: absolute; top: -0.5rem; left: -9rem; z-index: -1;
+      width: 14rem; height: 16rem;
+      background: linear-gradient(var(--hair, #000038) 50%, #000038 300%);
+      border-radius: 5rem 5rem 0.5rem 0.5rem;
+    }
+    .character__hair--metal::after {
+      content: "";
+      position: absolute; left: -5rem;
+      width: 5rem; height: 5rem;
+      background-color: var(--hair, #000038);
+      border-radius: 5rem 0 50% 0;
+    }
+    .character__hair--active { display: block; }
+
+    /* Нос */
+    .character__nose {
+      position: absolute;
+      top: 11rem; left: 7rem;
+      width: 2rem; height: 2rem;
+      background: radial-gradient(circle at 70% 20%, var(--skin, #ffdbac), #000038 300%);
+      box-shadow: -0.5rem 0.5rem 0.5rem -0.3rem rgba(0,0,56,0.3);
+      display: none;
+    }
+    .character__nose--round  { border-radius: 50%; }
+    .character__nose--square { border-radius: 0.5rem; }
+    .character__nose--flat   { top: 12rem; height: 1rem; border-radius: 0.5rem; }
+    .character__nose--small  { top: 12rem; left: 7.25rem; width: 1.5rem; height: 1rem; border-radius: 0.5rem; }
+    .character__nose--big    { border-radius: 50% 50% 0.5rem 0.5rem; }
+    .character__nose--none   { background: none; box-shadow: none; }
+    .character__nose--active { display: block; }
+
+    /* Брови */
+    .character__eyebrows {
+      position: absolute;
+      top: 8.5rem; left: 4.25rem;
+      width: 7.5rem;
+      display: none;
+    }
+    .character__eyebrows::before,
+    .character__eyebrows::after {
+      content: "";
+      position: absolute;
+      border-radius: 2rem;
+    }
+    .character__eyebrows::before { left: 0; }
+    .character__eyebrows::after  { right: 0; }
+    .character__eyebrows--thin::before,
+    .character__eyebrows--thin::after {
+      width: 2rem; height: 0.2rem;
+      background-color: var(--hair, #000038);
+    }
+    .character__eyebrows--thick::before,
+    .character__eyebrows--thick::after {
+      top: -0.1rem;
+      width: 2rem; height: 0.4rem;
+      background-color: var(--hair, #000038);
+    }
+    .character__eyebrows--in::before,
+    .character__eyebrows--in::after {
+      width: 2rem; height: 0.3rem;
+      background-color: var(--hair, #000038);
+    }
+    .character__eyebrows--in::before  { transform: rotate(20deg); }
+    .character__eyebrows--in::after   { transform: rotate(-20deg); }
+    .character__eyebrows--out::before,
+    .character__eyebrows--out::after {
+      width: 2rem; height: 0.3rem;
+      background-color: var(--hair, #000038);
+    }
+    .character__eyebrows--out::before { left: -0.2rem; transform: rotate(-20deg); }
+    .character__eyebrows--out::after  { right: -0.2rem; transform: rotate(20deg); }
+    .character__eyebrows--active { display: flex; }
+
+    /* Глаза */
+    .character__eyes {
+      position: absolute;
+      top: 9rem; left: 4rem;
+      justify-content: space-between;
+      width: 8rem; height: 2rem;
+      display: none;
+    }
+    @keyframes blinking {
+      0%,34%,36%,100% { transform: scaleY(1); }
+      35% { transform: scaleY(0.15); }
+    }
+    .character__eyes--round .character__eye {
+      position: relative;
+      width: 2rem; height: 2rem;
+      background-color: #fff;
+      border-radius: 50%;
+      animation: blinking 10s infinite;
+    }
+    .character__eyes--round .character__eye::after {
+      content: "";
+      position: absolute; top: 30%; left: 25%;
+      width: 50%; height: 50%;
+      background-color: #000038;
+      border-radius: 50%;
+    }
+    .character__eyes--suspicious {
+      top: 9.5rem;
+    }
+    .character__eyes--suspicious .character__eye {
+      position: relative;
+      width: 2rem; height: 1.2rem;
+      background-color: #fff;
+      border-radius: 0 0 50% 50%;
+      animation: blinking 10s infinite;
+    }
+    .character__eyes--suspicious .character__eye::after {
+      content: "";
+      position: absolute; top: 0.1rem; left: 0.5rem;
+      width: 1rem; height: 1rem;
+      background-color: #000038;
+      border-radius: 50%;
+    }
+    .character__eyes--black {
+      top: 9.5rem;
+    }
+    .character__eyes--black .character__eye {
+      position: relative;
+      width: 1.5rem; height: 1.5rem;
+      background: radial-gradient(circle at 80% 20%, #fff -200%, #000038 50%);
+      border-radius: 50%;
+      animation: blinking 10s infinite;
+    }
+    .character__eyes--line .character__eye {
+      position: relative;
+      top: 1rem;
+      width: 2rem; height: 0.3rem;
+      background: #000038;
+    }
+    .character__eyes--cartoon .character__eye {
+      width: 2rem; height: 2rem;
+      background: radial-gradient(circle at 70% 30%, #fff, #fff 10%, #000038 10%);
+      border-radius: 50%;
+      animation: blinking 10s infinite;
+    }
+    .character__eyes--vertical .character__eye {
+      position: relative;
+      top: 0.5rem;
+      width: 1rem; height: 1.5rem;
+      margin: 0 0.5rem;
+      background: radial-gradient(circle at 70% 30%, #fff, #fff 10%, #000038 10%);
+      border-radius: 0.5rem;
+      animation: blinking 10s infinite;
+    }
+    .character__eyes--crosses .character__eye {
+      position: relative;
+      width: 2rem; height: 2rem;
+    }
+    .character__eyes--crosses .character__eye::before,
+    .character__eyes--crosses .character__eye::after {
+      content: "";
+      position: absolute; top: 1rem;
+      width: 2rem; height: 0.3rem;
+      background-color: #000038;
+    }
+    .character__eyes--crosses .character__eye::before { transform: rotate(45deg); }
+    .character__eyes--crosses .character__eye::after  { transform: rotate(-45deg); }
+    .character__eyes--active { display: flex; }
+
+    /* Родинки, метки */
+    .character__mole {
+      position: absolute;
+      background-color: color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038);
+      display: none;
+    }
+    .character__mole--left {
+      top: 13rem; left: 5.5rem;
+      width: 0.3rem; height: 0.3rem;
+      border-radius: 50%;
+    }
+    .character__mole--right {
+      top: 13rem; left: 10rem;
+      width: 0.3rem; height: 0.3rem;
+      border-radius: 50%;
+    }
+    .character__mole--harry {
+      top: 8.5rem; left: 7.5rem;
+      width: 1rem; height: 1rem;
+      background: none;
+      border-top: 0.3rem solid color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038);
+      border-right: 0.3rem solid color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038);
+      transform: skewX(-25deg);
+    }
+    .character__mole--harry::before {
+      content: "";
+      position: absolute; top: -1rem;
+      width: 1rem; height: 1rem;
+      border-left: 0.3rem solid color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038);
+    }
+    .character__mole--scar {
+      top: 13rem; left: 10rem;
+      width: 2rem; height: 1rem;
+      background: none;
+      border-top: 0.2rem solid color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038);
+    }
+    .character__mole--scar::before,
+    .character__mole--scar::after {
+      content: "";
+      position: absolute; top: -0.35rem;
+      width: 1rem; height: 0.6rem;
+      border-left: 0.2rem solid color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038);
+    }
+    .character__mole--scar::before { left: 0.66rem; }
+    .character__mole--scar::after  { left: 1.33rem; }
+    .character__mole--freckles::before,
+    .character__mole--freckles::after {
+      content: "";
+      position: absolute; top: 13rem;
+      width: 2rem; height: 1rem;
+      background: none;
+      background-image: radial-gradient(color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038) 0.08rem, transparent 0);
+      background-size: 0.5rem 0.5rem;
+      background-position: -1.5rem -1.5rem;
+    }
+    .character__mole--freckles::before { left: 4rem; }
+    .character__mole--freckles::after  { left: 10rem; }
+    .character__mole--skull::before,
+    .character__mole--skull::after {
+      content: "";
+      position: absolute; top: 13.5rem;
+      width: 1rem; height: 1rem;
+      background: none;
+      border-top: 0.2rem solid color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038);
+    }
+    .character__mole--skull::before {
+      left: 4rem;
+      border-right: 0.2rem solid color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038);
+      border-radius: 0 1rem 0 0;
+    }
+    .character__mole--skull::after {
+      left: 10.8rem;
+      border-left: 0.2rem solid color-mix(in srgb, var(--skin, #ffdbac) 50%, #000038);
+      border-radius: 1rem 0 0 0;
+    }
+    .character__mole--active { display: flex; }
+
+    /* Очки */
+    .character__glasses {
+      position: absolute; z-index: 1;
+      top: 8.5rem; left: 1rem;
+      width: 14rem; height: 4rem;
+      display: none;
+    }
+    .character__glasses--round::before {
+      content: "";
+      position: absolute; top: 2rem; left: 5.7rem;
+      width: 2.6rem; height: 1rem;
+      display: block;
+      border-top: 0.2rem solid #000038;
+      border-bottom: none;
+      border-radius: 50% 50% 0 0;
+    }
+    .character__glasses--round .character__glass {
+      position: absolute;
+      width: 4rem; height: 4rem;
+      border: 0.2rem solid #000038;
+      background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.6));
+      border-radius: 50%;
+    }
+    .character__glasses--round .character__glass--left  { left: 1.5rem; }
+    .character__glasses--round .character__glass--right { right: 1.5rem; }
+
+    .character__glasses--square::before {
+      content: "";
+      position: absolute; top: 1.8rem; left: 6rem;
+      width: 2rem; height: 1rem;
+      display: block;
+      border-top: 0.4rem solid #000038;
+      border-bottom: none;
+    }
+    .character__glasses--square .character__glass {
+      position: absolute; top: 0.5rem;
+      width: 4rem; height: 2rem;
+      border: 0.4rem solid #000038;
+      background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(255,255,255,0.6));
+      border-radius: 20%;
+    }
+    .character__glasses--square .character__glass--left  { left: 1.5rem; }
+    .character__glasses--square .character__glass--right { right: 1.5rem; }
+
+    .character__glasses--black::before {
+      content: "";
+      position: absolute; top: 1.5rem; left: 5.7rem;
+      width: 2.6rem; height: 1rem;
+      display: block;
+      border-top: 0.2rem solid #000038;
+      border-bottom: none;
+      border-radius: 50% 50% 0 0;
+    }
+    .character__glasses--black::after {
+      content: "";
+      position: absolute; top: 1rem; left: 5.6rem;
+      width: 2.7rem; display: block;
+      border-top: 0.2rem solid #000038;
+    }
+    .character__glasses--black .character__glass {
+      position: absolute; top: 1rem;
+      width: 4rem; height: 2rem;
+      border: 0.2rem solid #000038;
+      background: linear-gradient(135deg, rgba(0,0,56,0.3), rgba(0,0,56,0.6) 40%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0.6) 55%, rgba(0,0,56,0.3) 55%, rgba(0,0,56,0.6));
+      border-radius: 0 0 50% 50%;
+    }
+    .character__glasses--black .character__glass--left  { left: 1.5rem; }
+    .character__glasses--black .character__glass--right { right: 1.5rem; }
+
+    .character__glasses--small::before {
+      content: "";
+      position: absolute; top: 2rem; left: 5.7rem;
+      width: 2.6rem; height: 1rem;
+      display: block;
+      border-top: 0.2rem solid #000038;
+      border-bottom: none;
+      border-radius: 50% 50% 0 0;
+    }
+    .character__glasses--small .character__glass {
+      position: absolute; top: 1.5rem;
+      width: 2rem; height: 2rem;
+      border: 0.2rem solid #000038;
+      background: linear-gradient(135deg, rgba(0,0,56,0.3), rgba(0,0,56,0.6) 40%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0.6) 55%, rgba(0,0,56,0.3) 55%, rgba(0,0,56,0.6));
+      border-radius: 50%;
+    }
+    .character__glasses--small .character__glass--left  { left: 3.5rem; }
+    .character__glasses--small .character__glass--right { right: 3.5rem; }
+
+    .character__glasses--hearts::before {
+      content: "";
+      position: absolute; top: 2rem; left: 5.9rem;
+      width: 2.2rem; height: 1rem;
+      display: block;
+      border-top: 0.2rem solid #ff7d66;
+      border-bottom: none;
+      border-radius: 50% 50% 0 0;
+    }
+    .character__glasses--hearts .character__glass {
+      position: absolute; top: 1rem;
+    }
+    .character__glasses--hearts .character__glass::before,
+    .character__glasses--hearts .character__glass::after {
+      content: "";
+      position: absolute;
+    }
+    .character__glasses--hearts .character__glass::before {
+      top: 0;
+      width: 2rem; height: 3rem;
+      border-top: 0.2rem solid #ff7d66;
+      border-left: 0.2rem solid #ff7d66;
+      border-bottom: 0.2rem solid #ff7d66;
+      border-radius: 2rem 2rem 0 0;
+      background: linear-gradient(0deg, rgba(235,128,177,0.5), #eb80b1 40%, rgba(255,255,255,0.6) 40%, #fff 55%, rgba(235,128,177,0.5) 55%, #eb80b1);
+      transform: rotate(-45deg);
+    }
+    .character__glasses--hearts .character__glass::after {
+      top: 0.16rem; left: 1rem;
+      width: 2rem; height: 1rem;
+      border-top: 0.2rem solid #ff7d66;
+      border-left: 0.2rem solid #ff7d66;
+      border-right: 0.2rem solid #ff7d66;
+      border-radius: 2rem 2rem 0 0;
+      background: linear-gradient(-90deg, rgba(235,128,177,0.5) -40%, #eb80b1 59%, rgba(255,255,255,0.6) 59%, #fff 81%, rgba(235,128,177,0.5) 81%, #eb80b1 140%);
+      transform: rotate(45deg);
+      transform-origin: 50% 100%;
+    }
+    .character__glasses--hearts .character__glass--left  { left: 2.7rem; }
+    .character__glasses--hearts .character__glass--right { right: 5.7rem; }
+
+    .character__glasses--spark::before,
+    .character__glasses--spark::after {
+      content: "";
+      position: absolute; top: -0.2rem; left: 11rem;
+      background-color: #fff;
+    }
+    .character__glasses--spark::before {
+      width: 1.2rem; height: 1.2rem;
+      transform: rotate(45deg) skew(32deg,32deg);
+    }
+    .character__glasses--spark::after {
+      width: 1.2rem; height: 1.2rem;
+      transform: rotate(135deg) skew(32deg,32deg);
+    }
+    .character__glasses--censored {
+      left: 3rem;
+      width: 10rem; height: 2.5rem;
+      background-color: #000038;
+    }
+    .character__glasses--active { display: flex; }
+
+    /* Уши */
+    .character__ears {
+      position: absolute;
+      top: 10rem; left: 1rem;
+      width: 14rem; height: 3rem;
+      display: none;
+    }
+    .character__ears::before,
+    .character__ears::after {
+      content: "";
+      background: linear-gradient(var(--skin, #ffdbac) -50%, #000038 300%);
+      width: 1.5rem; height: 3rem;
+    }
+    .character__ears--round::before { border-radius: 2rem 0.5rem 0.5rem 2rem; }
+    .character__ears--round::after  { border-radius: 0.5rem 2rem 2rem 0.5rem; }
+    .character__ears--square::before { border-radius: 1rem 0.5rem 0.5rem 1rem; }
+    .character__ears--square::after  { border-radius: 0.5rem 1rem 1rem 0.5rem; }
+    .character__ears--big {
+      left: 0.5rem; width: 15rem;
+    }
+    .character__ears--big::before,
+    .character__ears--big::after {
+      width: 2rem;
+    }
+    .character__ears--big::before { border-radius: 2rem 0.5rem 0.5rem 2rem; }
+    .character__ears--big::after  { border-radius: 0.5rem 2rem 2rem 0.5rem; }
+    .character__ears--small {
+      top: 10.5rem;
+    }
+    .character__ears--small::before,
+    .character__ears--small::after {
+      height: 2.5rem;
+    }
+    .character__ears--small::before { border-radius: 1rem 0.5rem 0.5rem 1rem; }
+    .character__ears--small::after  { border-radius: 0.5rem 1rem 1rem 0.5rem; }
+    .character__ears--active { display: flex; }
+
+    /* Серьги */
+    .character__ear-rings {
+      position: absolute;
+      top: 12rem; left: 1rem;
+      width: 14rem; height: 1rem;
+      display: none;
+    }
+    .character__ear-rings--left::before {
+      content: "";
+      position: absolute; top: 0; left: 0.4rem;
+      width: 0.5rem; height: 0.5rem;
+      background-color: #f5fccd;
+      border-radius: 50%;
+    }
+    .character__ear-rings--right::after {
+      content: "";
+      position: absolute; top: 0; right: 0.4rem;
+      width: 0.5rem; height: 0.5rem;
+      background-color: #f5fccd;
+      border-radius: 50%;
+    }
+    .character__ear-rings--both::before,
+    .character__ear-rings--both::after {
+      content: "";
+      position: absolute; top: 0;
+      width: 0.5rem; height: 0.5rem;
+      background-color: #f5fccd;
+      border-radius: 50%;
+    }
+    .character__ear-rings--both::before { left: 0.4rem; }
+    .character__ear-rings--both::after  { right: 0.4rem; }
+    .character__ear-rings--round::before,
+    .character__ear-rings--round::after {
+      content: "";
+      position: absolute; top: 0;
+      display: block;
+      width: 1rem; height: 1rem;
+      border: 0.2rem solid #f5fccd;
+      border-radius: 50%;
+    }
+    .character__ear-rings--round::before { left: -0.2rem; }
+    .character__ear-rings--round::after  { right: -0.2rem; }
+    .character__ear-rings--big::before,
+    .character__ear-rings--big::after {
+      content: "";
+      position: absolute; top: 0;
+      display: block;
+      width: 0.3rem; height: 1.8rem;
+      background-color: #f5fccd;
+    }
+    .character__ear-rings--big::before { left: 0.5rem; }
+    .character__ear-rings--big::after  { right: 0.5rem; }
+    .character__ear-rings--active { display: block; }
+
+    /* Румянец */
+    .character__blush {
+      position: absolute;
+      top: 12rem; left: 3rem;
+      width: 10rem; height: 2rem;
+      display: none;
+    }
+    .character__blush--red::before,
+    .character__blush--red::after {
+      content: "";
+      width: 2rem; height: 2rem;
+      background: radial-gradient(#ff7d66 -100%, transparent 80%);
+    }
+    .character__blush--big::before,
+    .character__blush--big::after {
+      content: "";
+      width: 3rem; height: 3rem;
+      background: radial-gradient(#ff7d66 -80%, transparent 80%);
+    }
+    .character__blush--active { display: flex; }
+
+    /* Рот */
+    .character__mouth {
+      position: absolute;
+      top: 14rem; left: 6rem;
+      width: 4rem; height: 2rem;
+      display: none;
+    }
+    .character__mouth--smile {
+      top: 14.5rem; left: 6.3rem;
+      width: 3rem; height: 1rem;
+      border-radius: 0 0 20rem 20rem;
+      border-left: 0.3rem solid #000038;
+      border-right: 0.3rem solid #000038;
+      border-bottom: 0.3rem solid #000038;
+    }
+    .character__mouth--round {
+      left: 7.5rem;
+      width: 1rem; height: 1rem;
+      background-color: #000038;
+      border-radius: 1rem;
+    }
+    .character__mouth--serious {
+      top: 14.5rem;
+      height: 0.25rem;
+      background-color: #000038;
+    }
+    .character__mouth--teeth {
+      height: 1rem;
+      background: linear-gradient(#fff, #fff 60%, #919ea3 60%, #919ea3 70%, #fff 70%, #fff);
+      border-radius: 1rem;
+    }
+    .character__mouth--square {
+      background-color: #000038;
+      border-radius: 1rem;
+    }
+    .character__mouth--square::after {
+      content: "";
+      position: absolute; bottom: 0; left: 1rem;
+      width: 2rem; height: 0.5rem;
+      background-color: #ff7d66;
+      border-radius: 50% 50% 0 0;
+    }
+    .character__mouth--sad {
+      top: 14.5rem; left: 6.3rem;
+      width: 3rem; height: 1rem;
+      border-radius: 20rem 20rem 0 0;
+      border-left: 0.3rem solid #000038;
+      border-right: 0.3rem solid #000038;
+      border-top: 0.3rem solid #000038;
+    }
+    .character__mouth--full-smile {
+      top: 14.5rem; left: 6rem;
+      height: 1.5rem;
+      background-color: #000038;
+      border-radius: 0 0 20rem 20rem;
+    }
+    .character__mouth--full-smile::after {
+      content: "";
+      position: absolute; bottom: 0; left: 1rem;
+      width: 2rem; height: 0.5rem;
+      background-color: #ff7d66;
+      border-radius: 50% 50% 0.5rem 0.5rem;
+    }
+    .character__mouth--full-sad {
+      top: 14.2rem; left: 6rem;
+      height: 1.5rem;
+      background-color: #000038;
+      border-radius: 20rem 20rem 10rem 10rem;
+    }
+    .character__mouth--full-sad::after {
+      content: "";
+      position: absolute; bottom: 0; left: 1rem;
+      width: 2rem; height: 0.3rem;
+      background-color: #ff7d66;
+      border-radius: 50% 50% 0.5rem 0.5rem;
+    }
+    .character__mouth--active { display: block; }
+
+    /* Борода */
+    .character__beard {
+      position: absolute;
+      display: none;
+    }
+    .character__beard--full {
+      top: 13.2rem; left: 5rem;
+      width: 4.5rem; height: 2rem;
+      border-radius: 1rem 1rem 2rem 2rem;
+      border: var(--hair, #000038) solid 0.8rem;
+      border-bottom: var(--hair, #000038) solid 2rem;
+    }
+    .character__beard--hogan {
+      top: 13.2rem; left: 5rem;
+      width: 4.5rem; height: 2rem;
+      border-radius: 1rem;
+      border: var(--hair, #000038) solid 0.8rem;
+      border-bottom: none;
+    }
+    .character__beard--big {
+      top: 13.2rem; left: 3.8rem;
+      width: 4.5rem; height: 2rem;
+      border-radius: 2rem 2rem 3rem 3rem;
+      border: var(--hair, #000038) solid 2rem;
+      border-top: var(--hair, #000038) solid 0.8rem;
+      border-bottom: var(--hair, #000038) solid 5rem;
+    }
+    .character__beard--moustache {
+      top: 13.2rem; left: 5.6rem;
+      width: 5rem; height: 2rem;
+      border-radius: 1rem 1rem 0 0;
+      border-top: var(--hair, #000038) solid 0.8rem;
+    }
+    .character__beard--goatee {
+      top: 16.2rem; left: 7rem;
+      width: 0; height: 0;
+      border-left: transparent solid 1rem;
+      border-right: transparent solid 1rem;
+      border-top: var(--hair, #000038) solid 0.8rem;
+    }
+    .character__beard--active { display: block; }
+
+    /* Группы для анимации положения */
+    .character__eyebrows-wrapper,
+    .character__eyes-wrapper,
+    .character__glasses-wrapper,
+    .character__nose-wrapper,
+    .character__mole-wrapper,
+    .character__mouth-wrapper,
+    .character__blush-wrapper,
+    .character__ears-wrapper,
+    .character__ear-rings-wrapper,
+    .character__hair-wrapper,
+    .character__hat-wrapper,
+    .character__beard-wrapper,
+    .character__neck-wrapper,
+    .character__body-wrapper {
+      position: relative;
+      top: 0; left: 0;
+      transition: top 1s, left 1s, transform 1s, transform-origin 1s;
+    }
+
+    .character__hat-wrapper {
+      top: var(--hat-variation, 0);
+    }
+    .character__hat-wrapper:has(+ .character__hair-wrapper > .character__hair--bald.character__hair--active),
+    .character__hat-wrapper:has(+ .character__hair-wrapper > .character__hair--crest.character__hair--active) {
+      --hat-variation: 0.5rem;
+    }
+    .character__hat-wrapper:has(> .character__hat--wool.character__hat--active):has(+ .character__hair-wrapper > .character__hair--bald.character__hair--active),
+    .character__hat-wrapper:has(> .character__hat--wool.character__hat--active):has(+ .character__hair-wrapper > .character__hair--crest.character__hair--active),
+    .character__hat-wrapper:has(> .character__hat--top-hat.character__hat--active):has(+ .character__hair-wrapper > .character__hair--bald.character__hair--active),
+    .character__hat-wrapper:has(> .character__hat--top-hat.character__hat--active):has(+ .character__hair-wrapper > .character__hair--crest.character__hair--active) {
+      --hat-variation: 1rem;
+    }
+    .character__hat-wrapper:has(> .character__hat--beret.character__hat--active):has(+ .character__hair-wrapper > .character__hair--bald.character__hair--active),
+    .character__hat-wrapper:has(> .character__hat--beret.character__hat--active):has(+ .character__hair-wrapper > .character__hair--crest.character__hair--active) {
+      --hat-variation: 1.5rem;
+    }
+
+    .character--left .character__eyebrows-wrapper,
+    .character--left .character__eyes-wrapper,
+    .character--left .character__glasses-wrapper,
+    .character--left .character__nose-wrapper,
+    .character--left .character__mole-wrapper,
+    .character--left .character__mouth-wrapper,
+    .character--left .character__blush-wrapper,
+    .character--left .character__beard-wrapper {
+      left: -1rem;
+    }
+    .character--left .character__ears-wrapper,
+    .character--left .character__ear-rings-wrapper {
+      transform-origin: 100% 50%;
+      transform: scaleX(0.9);
+    }
+    .character--left .character__hair-wrapper,
+    .character--left .character__hat-wrapper,
+    .character--left .character__neck-wrapper,
+    .character--left .character__body-wrapper {
+      left: 0.5rem;
+    }
+    .character--left .character__body {
+      border-radius: 4rem 6rem 0 0;
+    }
+
+    .character--right .character__eyebrows-wrapper,
+    .character--right .character__eyes-wrapper,
+    .character--right .character__glasses-wrapper,
+    .character--right .character__nose-wrapper,
+    .character--right .character__mole-wrapper,
+    .character--right .character__mouth-wrapper,
+    .character--right .character__blush-wrapper,
+    .character--right .character__beard-wrapper {
+      left: 1rem;
+    }
+    .character--right .character__ears-wrapper,
+    .character--right .character__ear-rings-wrapper {
+      transform-origin: 0 50%;
+      transform: scaleX(0.9);
+    }
+    .character--right .character__hair-wrapper,
+    .character--right .character__hat-wrapper,
+    .character--right .character__neck-wrapper,
+    .character--right .character__body-wrapper {
+      left: -0.5rem;
+    }
+    .character--right .character__body {
+      border-radius: 6rem 4rem 0 0;
+    }
+
+    .character--top .character__eyebrows-wrapper,
+    .character--top .character__eyes-wrapper,
+    .character--top .character__glasses-wrapper,
+    .character--top .character__nose-wrapper,
+    .character--top .character__mole-wrapper,
+    .character--top .character__mouth-wrapper,
+    .character--top .character__blush-wrapper,
+    .character--top .character__beard-wrapper {
+      top: -0.5rem;
+    }
+    .character--top .character__ears-wrapper,
+    .character--top .character__ear-rings-wrapper {
+      top: 0.5rem;
+    }
+    .character--top .character__hair-wrapper {
+      top: 0.5rem;
+    }
+    .character--top .character__hat-wrapper {
+      top: calc(0.5rem + var(--hat-variation, 0));
+    }
+
+    .character--bottom .character__eyebrows-wrapper,
+    .character--bottom .character__eyes-wrapper,
+    .character--bottom .character__glasses-wrapper,
+    .character--bottom .character__nose-wrapper,
+    .character--bottom .character__mole-wrapper,
+    .character--bottom .character__mouth-wrapper,
+    .character--bottom .character__blush-wrapper,
+    .character--bottom .character__beard-wrapper {
+      top: 1rem;
+    }
+    .character--bottom .character__ears-wrapper,
+    .character--bottom .character__ear-rings-wrapper {
+      top: -0.5rem;
+    }
+    .character--bottom .character__hair-wrapper {
+      top: 0.5rem;
+    }
+    .character--bottom .character__hat-wrapper {
+      top: calc(0.5rem + var(--hat-variation, 0));
+    }
+
+    @media screen and (max-width: 1024px) {
+      .character { left: 8%; }
+    }
+    @media screen and (max-width: 767px) {
+      .character { left: 14%; }
+    }
+
+    /* Кнопка скачивания */
+    .download-btn {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 0.5rem;
+      padding: 0.5rem 1rem;
+      background-color: #fff;
+      color: #000038;
+      border: none;
+      border-radius: 0.3rem;
+      font-family: "Archivo Black", sans-serif;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    .download-btn:hover {
+      background-color: #eb80b1;
+      color: #fff;
+    }
+    .download-btn:active {
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== ПЕРСОНАЖ ===== -->
+  <div id="character" class="character">
+    <div class="character__body-wrapper"><div class="character__body"></div></div>
+    <div class="character__neck-wrapper"><div class="character__neck"></div></div>
+
+    <div class="character__ears-wrapper">
+      <div class="character__ears character__ears--round character__ears--active"></div>
+      <div class="character__ears character__ears--square"></div>
+      <div class="character__ears character__ears--big"></div>
+      <div class="character__ears character__ears--small"></div>
+    </div>
+
+    <div class="character__ear-rings-wrapper">
+      <div class="character__ear-rings character__ear-rings--left character__ear-rings--active"></div>
+      <div class="character__ear-rings character__ear-rings--right"></div>
+      <div class="character__ear-rings character__ear-rings--both"></div>
+      <div class="character__ear-rings character__ear-rings--round"></div>
+      <div class="character__ear-rings character__ear-rings--big"></div>
+      <div class="character__ear-rings character__ear-rings--none"></div>
+    </div>
+
+    <div class="character__face-wrapper">
+      <div class="character__face character__face--round character__face--active"></div>
+      <div class="character__face character__face--ellipse"></div>
+      <div class="character__face character__face--square"></div>
+      <div class="character__face character__face--pointy"></div>
+    </div>
+
+    <div class="character__eyebrows-wrapper">
+      <div class="character__eyebrows character__eyebrows--thin character__eyebrows--active"></div>
+      <div class="character__eyebrows character__eyebrows--thick"></div>
+      <div class="character__eyebrows character__eyebrows--in"></div>
+      <div class="character__eyebrows character__eyebrows--out"></div>
+      <div class="character__eyebrows character__eyebrows--none"></div>
+    </div>
+
+    <div class="character__eyes-wrapper">
+      <div class="character__eyes character__eyes--cartoon character__eyes--active">
+        <div class="character__eye character__eye--left"></div>
+        <div class="character__eye character__eye--right"></div>
+      </div>
+      <div class="character__eyes character__eyes--black">
+        <div class="character__eye character__eye--left"></div>
+        <div class="character__eye character__eye--right"></div>
+      </div>
+      <div class="character__eyes character__eyes--line">
+        <div class="character__eye character__eye--left"></div>
+        <div class="character__eye character__eye--right"></div>
+      </div>
+      <div class="character__eyes character__eyes--round">
+        <div class="character__eye character__eye--left"></div>
+        <div class="character__eye character__eye--right"></div>
+      </div>
+      <div class="character__eyes character__eyes--suspicious">
+        <div class="character__eye character__eye--left"></div>
+        <div class="character__eye character__eye--right"></div>
+      </div>
+      <div class="character__eyes character__eyes--vertical">
+        <div class="character__eye character__eye--left"></div>
+        <div class="character__eye character__eye--right"></div>
+      </div>
+      <div class="character__eyes character__eyes--crosses">
+        <div class="character__eye character__eye--left"></div>
+        <div class="character__eye character__eye--right"></div>
+      </div>
+    </div>
+
+    <div class="character__mole-wrapper">
+      <div class="character__mole character__mole--left character__mole--active"></div>
+      <div class="character__mole character__mole--right"></div>
+      <div class="character__mole character__mole--harry"></div>
+      <div class="character__mole character__mole--scar"></div>
+      <div class="character__mole character__mole--freckles"></div>
+      <div class="character__mole character__mole--skull"></div>
+      <div class="character__mole character__mole--none"></div>
+    </div>
+
+    <div class="character__blush-wrapper">
+      <div class="character__blush character__blush--red character__blush--active"></div>
+      <div class="character__blush character__blush--big"></div>
+      <div class="character__blush character__blush--none"></div>
+    </div>
+
+    <div class="character__glasses-wrapper">
+      <div class="character__glasses character__glasses--round character__glasses--active">
+        <div class="character__glass character__glass--left"></div>
+        <div class="character__glass character__glass--right"></div>
+      </div>
+      <div class="character__glasses character__glasses--square">
+        <div class="character__glass character__glass--left"></div>
+        <div class="character__glass character__glass--right"></div>
+      </div>
+      <div class="character__glasses character__glasses--black">
+        <div class="character__glass character__glass--left"></div>
+        <div class="character__glass character__glass--right"></div>
+      </div>
+      <div class="character__glasses character__glasses--small">
+        <div class="character__glass character__glass--left"></div>
+        <div class="character__glass character__glass--right"></div>
+      </div>
+      <div class="character__glasses character__glasses--hearts">
+        <div class="character__glass character__glass--left"></div>
+        <div class="character__glass character__glass--right"></div>
+      </div>
+      <div class="character__glasses character__glasses--spark"></div>
+      <div class="character__glasses character__glasses--censored"></div>
+      <div class="character__glasses character__glasses--none"></div>
+    </div>
+
+    <div class="character__mouth-wrapper">
+      <div class="character__mouth character__mouth--smile character__mouth--active"></div>
+      <div class="character__mouth character__mouth--round"></div>
+      <div class="character__mouth character__mouth--serious"></div>
+      <div class="character__mouth character__mouth--teeth"></div>
+      <div class="character__mouth character__mouth--square"></div>
+      <div class="character__mouth character__mouth--sad"></div>
+      <div class="character__mouth character__mouth--full-smile"></div>
+      <div class="character__mouth character__mouth--full-sad"></div>
+    </div>
+
+    <div class="character__hat-wrapper">
+      <div class="character__hat character__hat--party character__hat--active"></div>
+      <div class="character__hat character__hat--cap"></div>
+      <div class="character__hat character__hat--halo"></div>
+      <div class="character__hat character__hat--horns"></div>
+      <div class="character__hat character__hat--cap-backwards"></div>
+      <div class="character__hat character__hat--beret"></div>
+      <div class="character__hat character__hat--wool"></div>
+      <div class="character__hat character__hat--furry"></div>
+      <div class="character__hat character__hat--top-hat"></div>
+      <div class="character__hat character__hat--none"></div>
+    </div>
+
+    <div class="character__hair-wrapper">
+      <div class="character__hair character__hair--long character__hair--active"></div>
+      <div class="character__hair character__hair--square"></div>
+      <div class="character__hair character__hair--afro"></div>
+      <div class="character__hair character__hair--short"></div>
+      <div class="character__hair character__hair--very-long"></div>
+      <div class="character__hair character__hair--mane"></div>
+      <div class="character__hair character__hair--wavy"></div>
+      <div class="character__hair character__hair--bald"></div>
+      <div class="character__hair character__hair--emo"></div>
+      <div class="character__hair character__hair--crest"></div>
+      <div class="character__hair character__hair--metal"></div>
+    </div>
+
+    <div class="character__nose-wrapper">
+      <div class="character__nose character__nose--round character__nose--active"></div>
+      <div class="character__nose character__nose--square"></div>
+      <div class="character__nose character__nose--flat"></div>
+      <div class="character__nose character__nose--small"></div>
+      <div class="character__nose character__nose--big"></div>
+      <div class="character__nose character__nose--none"></div>
+    </div>
+
+    <div class="character__beard-wrapper">
+      <div class="character__beard character__beard--none character__beard--active"></div>
+      <div class="character__beard character__beard--full"></div>
+      <div class="character__beard character__beard--moustache"></div>
+      <div class="character__beard character__beard--big"></div>
+      <div class="character__beard character__beard--hogan"></div>
+      <div class="character__beard character__beard--goatee"></div>
+    </div>
+
+    <!-- рамка -->
+    <div id="frame" class="character__frame">
+      <span class="character__frame-text">Наведи мышь на рамку, чтобы сменить позу</span>
+      <div class="character__frame-icon">
+        <svg xmlns='http://www.w3.org/2000/svg' width='200px' height='200px' viewBox='-15 0 178 175' style="font-family: 'Archivo Black'; font-size: 90px; font-weight: 600;">
+          <text class="p" x="2" y="75" fill="#000" style="transform: skewX(20deg);">P</text>
+          <text class="o" x="50" y="100" fill="#000" style="transform: skewX(20deg);">O</text>
+          <text class="n" x="38" y="140" fill="#000" style="transform: skewX(-20deg);">N</text>
+          <text class="d" x="101" y="162" fill="#000" style="transform: skewX(-20deg);">D</text>
+          <text class="dot" x="162" y="162" fill="#000" style="transform: skewX(-20deg);">.</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ПАНЕЛЬ УПРАВЛЕНИЯ (на русском) ===== -->
+  <div class="characters-choose">
+    <div class="characters-choose__selector characters-choose__selector--hat">
+      <div id="hat-left"   class="characters-choose__arrow characters-choose__arrow--left"></div>Шляпа
+      <div id="hat-right"  class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--skin">
+      <div id="skin-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Кожа
+      <div id="skin-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--face">
+      <div id="face-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Лицо
+      <div id="face-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--hair">
+      <div id="hair-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Причёска
+      <div id="hair-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--hair-color">
+      <div id="hair-color-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Цвет волос
+      <div id="hair-color-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--eyebrows">
+      <div id="eyebrows-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Брови
+      <div id="eyebrows-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--eyes">
+      <div id="eyes-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Глаза
+      <div id="eyes-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--glasses">
+      <div id="glasses-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Очки
+      <div id="glasses-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--nose">
+      <div id="nose-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Нос
+      <div id="nose-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--mole">
+      <div id="mole-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Метки
+      <div id="mole-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--ears">
+      <div id="ears-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Уши
+      <div id="ears-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--ear-rings">
+      <div id="ear-rings-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Серьги
+      <div id="ear-rings-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--blush">
+      <div id="blush-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Румяна
+      <div id="blush-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--mouth">
+      <div id="mouth-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Рот
+      <div id="mouth-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--beard">
+      <div id="beard-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Борода
+      <div id="beard-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--body">
+      <div id="body-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Тело
+      <div id="body-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+    <div class="characters-choose__selector characters-choose__selector--background">
+      <div id="background-left"  class="characters-choose__arrow characters-choose__arrow--left"></div>Фон
+      <div id="background-right" class="characters-choose__arrow characters-choose__arrow--right"></div>
+    </div>
+
+    <!-- Кнопка скачивания -->
+    <div class="characters-choose__selector" style="justify-content:center; border-top:1px solid rgba(255,255,255,0.3); padding-top:0.8rem; margin-top:0.5rem;">
+      <button id="download-btn" class="download-btn">⬇ Скачать PNG</button>
+    </div>
+  </div>
+
+  <!-- ===== СКРИПТЫ ===== -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script>
+    (function() {
+      // --- Управление элементами персонажа ---
+      const changePrev = (elements, className) => {
+        const selected = document.querySelector(`.${className}`);
+        let idx = Array.from(elements).indexOf(selected);
+        idx = idx - 1 < 0 ? elements.length - 1 : idx - 1;
+        elements.forEach(el => el.classList.remove(className));
+        elements[idx].classList.add(className);
+      };
+      const changeNext = (elements, className) => {
+        const selected = document.querySelector(`.${className}`);
+        let idx = Array.from(elements).indexOf(selected);
+        idx = (idx + 1) % elements.length;
+        elements.forEach(el => el.classList.remove(className));
+        elements[idx].classList.add(className);
+      };
+
+      const registerControls = (id) => {
+        const elements = document.querySelectorAll(`.character__${id}`);
+        const leftBtn = document.getElementById(`${id}-left`);
+        const rightBtn = document.getElementById(`${id}-right`);
+        if (leftBtn) leftBtn.addEventListener('click', () => changePrev(elements, `character__${id}--active`));
+        if (rightBtn) rightBtn.addEventListener('click', () => changeNext(elements, `character__${id}--active`));
+      };
+      ['hat','face','hair','eyebrows','eyes','glasses','nose','mole','ears','ear-rings','blush','beard','mouth']
+        .forEach(registerControls);
+
+      // --- Цвета ---
+      let skinIdx=0, hairIdx=0, bodyIdx=0, bgIdx=0;
+      const skinTones = ['#ffdbac','#f1c27d','#e0ac69','#c68642','#8d5524','#886666','#FFFFFF','#22BB22','#FED90F'];
+      const hairTones = ['#000038','#9a3300','#4f1a00','#241c11','#f5fccd','#aa8866','#e2e2e2','#80c0a1'];
+      const bodyTones = ['#ff7d66','#f5fccd','#eb80b1','#12486b','#80c0a1','#bdc3c6','#ffffff','#419197','#000038','#ffa500'];
+      const bgTones    = ['#419197','#ff7d66','#eb80b1','#12486b','#80c0a1','#bdc3c6','#000038','#ffa500','#78D6C6','#66777F'];
+
+      const root = document.documentElement;
+      const setCSS = () => {
+        root.style.setProperty('--skin', skinTones[skinIdx]);
+        root.style.setProperty('--hair', hairTones[hairIdx]);
+        root.style.setProperty('--body', bodyTones[bodyIdx]);
+        root.style.setProperty('--background', bgTones[bgIdx]);
+      };
+      setCSS(); // Начальная установка
+
+      document.getElementById('skin-left')?.addEventListener('click', () => { skinIdx = skinIdx-1<0 ? skinTones.length-1 : skinIdx-1; setCSS(); });
+      document.getElementById('skin-right')?.addEventListener('click', () => { skinIdx = (skinIdx+1)%skinTones.length; setCSS(); });
+      document.getElementById('hair-color-left')?.addEventListener('click', () => { hairIdx = hairIdx-1<0 ? hairTones.length-1 : hairIdx-1; setCSS(); });
+      document.getElementById('hair-color-right')?.addEventListener('click', () => { hairIdx = (hairIdx+1)%hairTones.length; setCSS(); });
+      document.getElementById('body-left')?.addEventListener('click', () => { bodyIdx = bodyIdx-1<0 ? bodyTones.length-1 : bodyIdx-1; setCSS(); });
+      document.getElementById('body-right')?.addEventListener('click', () => { bodyIdx = (bodyIdx+1)%bodyTones.length; setCSS(); });
+      document.getElementById('background-left')?.addEventListener('click', () => { bgIdx = bgIdx-1<0 ? bgTones.length-1 : bgIdx-1; setCSS(); });
+      document.getElementById('background-right')?.addEventListener('click', () => { bgIdx = (bgIdx+1)%bgTones.length; setCSS(); });
+
+      // --- Поза по движению мыши (исправлено) ---
+      const character = document.getElementById('character');
+      const frame = document.getElementById('frame');
+
+      const updatePose = (clientX, clientY) => {
+        const rect = frame.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        const w = rect.width;
+        const h = rect.height;
+
+        character.classList.toggle('character--right', x > w/2+20);
+        character.classList.toggle('character--left',  x < w/2-20);
+        character.classList.toggle('character--bottom', y > h/2+20);
+        character.classList.toggle('character--top',     y < h/2-20);
+
+        if (x <= w/2+20 && x >= w/2-20) {
+          character.classList.remove('character--right','character--left');
+        }
+        if (y <= h/2+20 && y >= h/2-20) {
+          character.classList.remove('character--bottom','character--top');
+        }
+      };
+
+      frame.addEventListener('mousemove', (e) => {
+        updatePose(e.clientX, e.clientY);
+      });
+
+      frame.addEventListener('touchmove', (e) => {
+        if (e.touches.length > 0) {
+          updatePose(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      });
+
+      frame.addEventListener('touchend', () => {
+        character.classList.remove('character--right','character--left','character--top','character--bottom');
+      });
+
+      // ===== НОВАЯ УЛУЧШЕННАЯ ФУНКЦИЯ СКАЧИВАНИЯ =====
+      document.getElementById('download-btn').addEventListener('click', function() {
+        const panel = document.querySelector('.characters-choose');
+        const body = document.body;
+        const originalBg = body.style.background;
+
+        // Скрываем панель и ставим белый фон для захвата
+        panel.style.display = 'none';
+        body.style.background = '#ffffff';
+
+        // Небольшая задержка, чтобы браузер перерисовал
+        setTimeout(() => {
+          // 1. Пробуем html2canvas с разными настройками
+          const html2canvasOptions = [
+            { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false },
+            { scale: 2, useCORS: true, allowTaint: false, backgroundColor: '#ffffff', logging: false },
+            { scale: 1, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false },
+            { scale: 3, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, foreignObjectRendering: true }
+          ];
+
+          let attemptIndex = 0;
+
+          function tryHtml2canvas() {
+            if (attemptIndex >= html2canvasOptions.length) {
+              // Все попытки html2canvas провалились → пробуем dom‑to‑image
+              tryDomToImage();
+              return;
+            }
+            const opts = html2canvasOptions[attemptIndex++];
+            html2canvas(body, opts)
+              .then(canvas => {
+                // Успех – скачиваем
+                restoreAndDownload(canvas.toDataURL('image/png'));
+              })
+              .catch(err => {
+                console.warn('html2canvas attempt failed:', err);
+                tryHtml2canvas();
+              });
+          }
+
+          function tryDomToImage() {
+            // Загружаем dom‑to‑image динамически, если ещё не загружена
+            if (typeof domtoimage !== 'undefined') {
+              domtoimage.toPng(body, { bgcolor: '#ffffff' })
+                .then(dataUrl => restoreAndDownload(dataUrl))
+                .catch(err => {
+                  console.error('dom-to-image failed:', err);
+                  restoreAndFallback();
+                });
+            } else {
+              const script = document.createElement('script');
+              script.src = 'https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js';
+              script.onload = function() {
+                if (typeof domtoimage !== 'undefined') {
+                  domtoimage.toPng(body, { bgcolor: '#ffffff' })
+                    .then(dataUrl => restoreAndDownload(dataUrl))
+                    .catch(err => {
+                      console.error('dom-to-image failed:', err);
+                      restoreAndFallback();
+                    });
+                } else {
+                  restoreAndFallback();
+                }
+              };
+              script.onerror = function() {
+                restoreAndFallback();
+              };
+              document.head.appendChild(script);
+            }
+          }
+
+          function restoreAndDownload(dataUrl) {
+            // Восстанавливаем интерфейс
+            panel.style.display = '';
+            body.style.background = originalBg;
+            // Создаём ссылку и скачиваем
+            const link = document.createElement('a');
+            link.download = 'character.png';
+            link.href = dataUrl;
+            link.click();
+          }
+
+          function restoreAndFallback() {
+            panel.style.display = '';
+            body.style.background = originalBg;
+            alert('Не удалось создать изображение. Попробуйте другой браузер или проверьте консоль.');
+          }
+
+          // Запускаем цепочку попыток
+          tryHtml2canvas();
+        }, 100); // задержка для перерисовки
+      });
+    })();
+  </script>
+</body>
+</html>

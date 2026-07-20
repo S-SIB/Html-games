@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>60 секунд до спасения</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #1a1a1a;
+            color: #ddd;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 16px;
+        }
+        #app {
+            max-width: 800px;
+            width: 100%;
+            background: #2d2d2d;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            border: 2px solid #5a5a5a;
+            position: relative;
+        }
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            letter-spacing: 3px;
+            color: #f5c542;
+            text-shadow: 0 0 10px #f5c54255;
+            margin: 0 0 8px 0;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 14px;
+            color: #aaa;
+            margin-top: -6px;
+            margin-bottom: 16px;
+            border-bottom: 1px dashed #555;
+            padding-bottom: 10px;
+        }
+        .phase {
+            display: none;
+        }
+        .phase.active {
+            display: block;
+        }
+        /* фаза сбора */
+        #collect-phase .timer {
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            color: #f5c542;
+            background: #1f1f1f;
+            padding: 8px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #555;
+        }
+        #collect-phase .items-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .item-btn {
+            background: #3a3a3a;
+            border: 2px solid #555;
+            border-radius: 12px;
+            padding: 12px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 14px;
+            color: #eee;
+        }
+        .item-btn:hover {
+            background: #4a4a4a;
+            border-color: #f5c542;
+            transform: scale(1.02);
+        }
+        .item-btn:active {
+            transform: scale(0.95);
+        }
+        .item-btn .icon {
+            font-size: 30px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .item-btn .count {
+            font-size: 12px;
+            color: #aaa;
+        }
+        .item-btn.taken {
+            opacity: 0.3;
+            pointer-events: none;
+            border-color: #666;
+            filter: grayscale(0.8);
+        }
+        #inventory-status {
+            background: #1f1f1f;
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #555;
+            margin-bottom: 12px;
+        }
+        #inventory-status span {
+            display: inline-block;
+            background: #3a3a3a;
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin: 4px 6px 4px 0;
+            border: 1px solid #666;
+            font-size: 14px;
+        }
+        #collect-phase .info-text {
+            text-align: center;
+            font-size: 14px;
+            color: #aaa;
+        }
+        /* фаза выживания */
+        #survive-phase .top-panel {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            background: #1f1f1f;
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #555;
+            margin-bottom: 12px;
+        }
+        .family-status {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .member {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 4px 10px;
+            border: 1px solid #444;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .member .health-bar {
+            display: inline-block;
+            width: 50px;
+            height: 8px;
+            background: #444;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .member .health-fill {
+            height: 100%;
+            background: #e74c3c;
+            transition: width 0.3s;
+        }
+        .member .health-fill.good {
+            background: #2ecc71;
+        }
+        .member .health-fill.medium {
+            background: #f1c40f;
+        }
+        .resources {
+            display: flex;
+            gap: 12px;
+            font-size: 14px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .resources span {
+            background: #2a2a2a;
+            padding: 2px 10px;
+            border-radius: 16px;
+            border: 1px solid #555;
+        }
+        #event-area {
+            background: #1f1f1f;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid #555;
+            margin-bottom: 12px;
+            min-height: 100px;
+        }
+        #event-text {
+            font-size: 18px;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        #event-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        #event-options button {
+            background: #3a3a3a;
+            border: 2px solid #666;
+            border-radius: 10px;
+            padding: 10px 20px;
+            color: #eee;
+            font-family: inherit;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+            flex: 1 0 auto;
+            max-width: 200px;
+        }
+        #event-options button:hover {
+            background: #4a4a4a;
+            border-color: #f5c542;
+        }
+        #event-options button:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        #day-counter {
+            text-align: center;
+            font-size: 14px;
+            color: #aaa;
+            margin-top: 8px;
+        }
+        #game-over {
+            text-align: center;
+            padding: 20px;
+            background: #1f1f1f;
+            border-radius: 12px;
+            border: 2px solid #e74c3c;
+        }
+        #game-over h2 {
+            color: #e74c3c;
+        }
+        .btn-restart {
+            background: #f5c542;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-family: inherit;
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a1a1a;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 10px;
+        }
+        .btn-restart:hover {
+            transform: scale(1.05);
+            background: #ffd966;
+        }
+        .log {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            max-height: 80px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            color: #aaa;
+            margin-top: 8px;
+        }
+        .log div {
+            border-bottom: 1px solid #2a2a2a;
+            padding: 2px 0;
+        }
+        @media (max-width: 600px) {
+            #collect-phase .items-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .member .health-bar {
+                width: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>☢️ 60 СЕКУНД</h1>
+        <div class="subtitle">до спасения</div>
+
+        <!-- ФАЗА СБОРА -->
+        <div id="collect-phase" class="phase active">
+            <div class="timer" id="timer">60</div>
+            <div class="items-grid" id="items-grid"></div>
+            <div id="inventory-status">
+                <strong>Инвентарь:</strong> <span id="inventory-display">(пусто)</span>
+            </div>
+            <div class="info-text">
+                Кликайте на предметы, чтобы взять их. Можно взять не более 8.
+                <br><small>Осталось мест: <span id="slots-left">8</span></small>
+            </div>
+            <button id="enter-bunker-btn" style="display:none; width:100%; padding:14px; background:#f5c542; border:none; border-radius:30px; font-family:inherit; font-size:20px; font-weight:bold; color:#1a1a1a; cursor:pointer; margin-top:12px;">
+                🚪 Войти в бункер
+            </button>
+        </div>
+
+        <!-- ФАЗА ВЫЖИВАНИЯ -->
+        <div id="survive-phase" class="phase">
+            <div class="top-panel">
+                <div class="family-status" id="family-status"></div>
+                <div class="resources" id="resource-display">
+                    <span>🍖 <span id="food-count">0</span></span>
+                    <span>💧 <span id="water-count">0</span></span>
+                    <span>💊 <span id="med-count">0</span></span>
+                    <span>📡 <span id="radio-count">0</span></span>
+                    <span>🔦 <span id="flash-count">0</span></span>
+                    <span>🗺️ <span id="map-count">0</span></span>
+                    <span>📖 <span id="book-count">0</span></span>
+                    <span>🪓 <span id="axe-count">0</span></span>
+                </div>
+            </div>
+            <div id="event-area">
+                <div id="event-text">День 1. Начинается выживание...</div>
+                <div id="event-options"></div>
+            </div>
+            <div id="day-counter">День: <span id="day-num">0</span></div>
+            <div class="log" id="log"></div>
+            <div id="game-over" style="display:none;">
+                <h2>💀 ВСЕ ПОГИБЛИ</h2>
+                <p>Вы продержались <span id="final-days">0</span> дней.</p>
+                <button class="btn-restart" onclick="location.reload()">Начать заново</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ------------------------------------ ДАННЫЕ ------------------------------------
+        const ITEMS = [
+            { id: 'food', label: 'Еда', icon: '🍖', max: 3 },
+            { id: 'water', label: 'Вода', icon: '💧', max: 3 },
+            { id: 'med', label: 'Аптечка', icon: '💊', max: 2 },
+            { id: 'radio', label: 'Радио', icon: '📡', max: 1 },
+            { id: 'flash', label: 'Фонарик', icon: '🔦', max: 1 },
+            { id: 'map', label: 'Карта', icon: '🗺️', max: 1 },
+            { id: 'book', label: 'Книга', icon: '📖', max: 1 },
+            { id: 'axe', label: 'Топор', icon: '🪓', max: 1 }
+        ];
+
+        // События: тип, текст, варианты выбора, эффекты
+        const EVENTS = [{
+            id: 'radiation',
+            text: '☢️ Радиационная буря! Нужен противогаз, но у вас его нет... Спрятаться негде.',
+            options: [
+                { label: 'Использовать книгу как щит', effect: (g) => { g.log('Книга сгорела, но защитила семью.'); g.removeItem('book'); } },
+                { label: 'Ничего не делать', effect: (g) => { g.hitAll(20); g.log('Все получили дозу радиации.'); } }
+            ]
+        }, {
+            id: 'hunger',
+            text: '🍽️ Закончилась еда. Кто-то должен пойти на поиски.',
+            options: [
+                { label: 'Раздать остатки (1 еда)', effect: (g) => { if (g.hasItem('food')) { g.removeItem('food');
+                        g.log('Раздали последнюю банку.'); } else { g.hitAll(15);
+                        g.log('Еды нет, голод ослабил всех.'); } } },
+                { label: 'Отправить отца на поиски', effect: (g) => { g.log('Отец ушёл и не вернулся...'); g.members[0].hp = 0; } }
+            ]
+        }, {
+            id: 'thirst',
+            text: '💧 Вода на исходе. Нужно рискнуть выйти за водой.',
+            options: [
+                { label: 'Использовать последнюю бутылку', effect: (g) => { if (g.hasItem('water')) { g.removeItem('water');
+                        g.log('Все напились.'); } else { g.hitAll(15);
+                        g.log('Жажда мучает всех.'); } } },
+                { label: 'Собрать дождевую воду', effect: (g) => { g.log('Собрали 2 бутылки воды.'); g.addItem('water', 2); } }
+            ]
+        }, {
+            id: 'fire',
+            text: '🔥 В бункере пожар! Нужно тушить.',
+            options: [
+                { label: 'Залить водой', effect: (g) => { if (g.hasItem('water')) { g.removeItem('water');
+                        g.log('Пожар потушен.'); } else { g.hitAll(10);
+                        g.log('Воды нет, все обожглись.'); } } },
+                { label: 'Использовать книгу как инструкцию', effect: (g) => { if (g.hasItem('book')) { g.removeItem('book');
+                        g.log('Книга помогла потушить пожар.'); } else { g.hitAll(10);
+                        g.log('Ничего не помогло.'); } } }
+            ]
+        }, {
+            id: 'thieves',
+            text: '🔪 Ночью в бункер вломились мародёры!',
+            options: [
+                { label: 'Защищаться топором', effect: (g) => { if (g.hasItem('axe')) { g.log('Мародёры отступили.'); } else { g
+                            .hitAll(15);
+                        g.log('Вас ограбили, потеряна еда.'); g.removeItem('food'); } } },
+                { label: 'Отдать им часть припасов', effect: (g) => { g.log('Отдали еду и воду.'); g.removeItem('food');
+                        g.removeItem('water'); } }
+            ]
+        }, {
+            id: 'signal',
+            text: '📡 Радио поймало сигнал бедствия! Может, это спасение?',
+            options: [
+                { label: 'Ответить на сигнал', effect: (g) => { if (g.hasItem('radio')) { g.log('Спасатели на пути! +30 к морали.');
+                        g.members.forEach(m => m.hp = Math.min(100, m.hp + 30)); } else { g.log('Нет радио, сигнал пропал.'); } } },
+                { label: 'Игнорировать', effect: (g) => { g.log('Вы упустили шанс.'); } }
+            ]
+        }, {
+            id: 'darkness',
+            text: '🌑 Отключилось электричество. Полная тьма.',
+            options: [
+                { label: 'Включить фонарик', effect: (g) => { if (g.hasItem('flash')) { g.removeItem('flash');
+                        g.log('Фонарик разрядился, но тьма отступила.'); } else { g.hitAll(10);
+                        g.log('В темноте все поранились.'); } } },
+                { label: 'Сидеть в темноте', effect: (g) => { g.hitAll(5);
+                    g.log('Психологическое давление растёт.'); } }
+            ]
+        }, {
+            id: 'sickness',
+            text: '🤒 Кто-то заболел. Нужно лекарство.',
+            options: [
+                { label: 'Дать аптечку', effect: (g) => { if (g.hasItem('med')) { g.removeItem('med');
+                        g.log('Больной выздоровел.'); } else { g.hitAll(15);
+                        g.log('Болезнь распространилась.'); } } },
+                { label: 'Лечить травами', effect: (g) => { g.log('Травы не помогли, состояние ухудшилось.'); g.hitAll(10); } }
+            ]
+        }, {
+            id: 'trader',
+            text: '🚚 К бункеру подошёл торговец. Предлагает обмен.',
+            options: [
+                { label: 'Обменять еду на воду', effect: (g) => { if (g.hasItem('food')) { g.removeItem('food');
+                        g.addItem('water', 2);
+                        g.log('Обменяли 1 еду на 2 воды.'); } else { g.log('Нет еды для обмена.'); } } },
+                { label: 'Обменять аптечку на радио', effect: (g) => { if (g.hasItem('med')) { g.removeItem('med');
+                        g.addItem('radio', 1);
+                        g.log('Обменяли аптечку на радио.'); } else { g.log('Нет аптечки.'); } } }
+            ]
+        }, {
+            id: 'crisis',
+            text: '😰 У всех нервный срыв. Нужно отвлечься.',
+            options: [
+                { label: 'Почитать книгу вслух', effect: (g) => { if (g.hasItem('book')) { g.log('Книга успокоила всех.');
+                        g.members.forEach(m => m.hp = Math.min(100, m.hp + 15)); } else { g.hitAll(10);
+                        g.log('Нечем отвлечься.'); } } },
+                { label: 'Включить радио', effect: (g) => { if (g.hasItem('radio')) { g.log('Музыка подняла дух.');
+                        g.members.forEach(m => m.hp = Math.min(100, m.hp + 20)); } else { g.hitAll(10);
+                        g.log('Тишина давит.'); } } }
+            ]
+        }];
+
+        // ------------------------------------ ИГРОВОЙ КЛАСС ------------------------------------
+        class Game {
+            constructor() {
+                this.day = 0;
+                this.inventory = {}; // {id: count}
+                this.members = [
+                    { name: 'Папа', hp: 100 },
+                    { name: 'Мама', hp: 100 },
+                    { name: 'Сын', hp: 100 },
+                    { name: 'Дочь', hp: 100 }
+                ];
+                this.logs = [];
+                this.gameOver = false;
+                this.eventInProgress = false;
+            }
+
+            // Инвентарь
+            hasItem(id) { return (this.inventory[id] || 0) > 0; }
+            getCount(id) { return this.inventory[id] || 0; }
+            addItem(id, count = 1) {
+                this.inventory[id] = (this.inventory[id] || 0) + count;
+            }
+            removeItem(id, count = 1) {
+                if (this.hasItem(id)) {
+                    this.inventory[id] = Math.max(0, this.inventory[id] - count);
+                    if (this.inventory[id] === 0) delete this.inventory[id];
+                    return true;
+                }
+                return false;
+            }
+
+            // Урон по всем
+            hitAll(dmg) {
+                this.members.forEach(m => {
+                    m.hp = Math.max(0, m.hp - dmg);
+                });
+            }
+
+            // Проверка конца игры
+            checkGameOver() {
+                if (this.members.every(m => m.hp <= 0)) {
+                    this.gameOver = true;
+                    return true;
+                }
+                return false;
+            }
+
+            // Логирование
+            log(msg) {
+                this.logs.unshift(msg);
+                if (this.logs.length > 20) this.logs.pop();
+            }
+
+            // Потребление ресурсов в конце дня
+            consumeDaily() {
+                // Еда и вода на всех: нужно по 1 на каждого? упростим: 1 еда и 1 вода на всех
+                if (this.hasItem('food')) {
+                    this.removeItem('food');
+                } else {
+                    this.hitAll(10);
+                    this.log('Не хватило еды!');
+                }
+                if (this.hasItem('water')) {
+                    this.removeItem('water');
+                } else {
+                    this.hitAll(10);
+                    this.log('Не хватило воды!');
+                }
+                // Проверка на конец игры после потребления
+                if (this.checkGameOver()) return;
+                // Восстановление здоровья на 5, если есть аптечка (автоматически)
+                if (this.hasItem('med') && this.members.some(m => m.hp < 80)) {
+                    this.removeItem('med');
+                    this.members.forEach(m => m.hp = Math.min(100, m.hp + 15));
+                    this.log('Использована аптечка для восстановления.');
+                }
+            }
+
+            // Получить случайное событие (не повторяется, пока все не пройдут)
+            getRandomEvent() {
+                // Просто случайное из списка, можно исключать уже использованные, но для простоты оставим повтор
+                return EVENTS[Math.floor(Math.random() * EVENTS.length)];
+            }
+        }
+
+        // ------------------------------------ УПРАВЛЕНИЕ ИГРОЙ ------------------------------------
+        let game = null;
+        let collectTimer = null;
+        let timeLeft = 60;
+        let maxSlots = 8;
+        let selectedItems = {}; // временно для сбора
+
+        // Элементы DOM
+        const collectPhase = document.getElementById('collect-phase');
+        const survivePhase = document.getElementById('survive-phase');
+        const timerEl = document.getElementById('timer');
+        const itemsGrid = document.getElementById('items-grid');
+        const inventoryDisplay = document.getElementById('inventory-display');
+        const slotsLeft = document.getElementById('slots-left');
+        const enterBtn = document.getElementById('enter-bunker-btn');
+        const familyStatus = document.getElementById('family-status');
+        const resourceDisplay = document.getElementById('resource-display');
+        const eventText = document.getElementById('event-text');
+        const eventOptions = document.getElementById('event-options');
+        const dayNum = document.getElementById('day-num');
+        const logEl = document.getElementById('log');
+        const gameOverDiv = document.getElementById('game-over');
+        const finalDays = document.getElementById('final-days');
+
+        // Инициализация фазы сбора
+        function initCollectPhase() {
+            selectedItems = {};
+            timeLeft = 60;
+            timerEl.textContent = timeLeft;
+            slotsLeft.textContent = maxSlots;
+            inventoryDisplay.textContent = '(пусто)';
+            enterBtn.style.display = 'none';
+
+            // Создаем кнопки предметов
+            itemsGrid.innerHTML = '';
+            ITEMS.forEach(item => {
+                const btn = document.createElement('div');
+                btn.className = 'item-btn';
+                btn.dataset.id = item.id;
+                btn.innerHTML = `
+                    <span class="icon">${item.icon}</span>
+                    ${item.label}
+                    <span class="count">(${item.max})</span>
+                `;
+                btn.addEventListener('click', () => takeItem(item.id));
+                itemsGrid.appendChild(btn);
+            });
+
+            // Запуск таймера
+            if (collectTimer) clearInterval(collectTimer);
+            collectTimer = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(collectTimer);
+                    timerEl.textContent = '0';
+                    enterBunker();
+                }
+            }, 1000);
+
+            // Фаза активна
+            collectPhase.classList.add('active');
+            survivePhase.classList.remove('active');
+            gameOverDiv.style.display = 'none';
+        }
+
+        function takeItem(id) {
+            if (timeLeft <= 0) return;
+            const totalTaken = Object.values(selectedItems).reduce((a, b) => a + b, 0);
+            if (totalTaken >= maxSlots) {
+                alert('Нельзя взять больше 8 предметов!');
+                return;
+            }
+            const item = ITEMS.find(i => i.id === id);
+            if (!item) return;
+            const current = selectedItems[id] || 0;
+            if (current >= item.max) {
+                alert(`Больше ${item.label} нет.`);
+                return;
+            }
+            selectedItems[id] = (selectedItems[id] || 0) + 1;
+            updateCollectUI();
+        }
+
+        function updateCollectUI() {
+            // Обновить отображение инвентаря
+            const items = Object.keys(selectedItems).map(id => {
+                const item = ITEMS.find(i => i.id === id);
+                return `${item.icon} ${item.label} x${selectedItems[id]}`;
+            });
+            inventoryDisplay.textContent = items.length ? items.join(', ') : '(пусто)';
+            const total = Object.values(selectedItems).reduce((a, b) => a + b, 0);
+            slotsLeft.textContent = maxSlots - total;
+
+            // Пометить взятые кнопки
+            document.querySelectorAll('.item-btn').forEach(btn => {
+                const id = btn.dataset.id;
+                const current = selectedItems[id] || 0;
+                const item = ITEMS.find(i => i.id === id);
+                if (current >= item.max) {
+                    btn.classList.add('taken');
+                } else {
+                    btn.classList.remove('taken');
+                }
+            });
+
+            // Показать кнопку входа, если взято хоть что-то
+            enterBtn.style.display = (total > 0) ? 'block' : 'none';
+        }
+
+        function enterBunker() {
+            clearInterval(collectTimer);
+            // Создаем игру с выбранными предметами
+            game = new Game();
+            // Переносим предметы в инвентарь
+            Object.keys(selectedItems).forEach(id => {
+                game.inventory[id] = selectedItems[id];
+            });
+
+            // Переключаем фазы
+            collectPhase.classList.remove('active');
+            survivePhase.classList.add('active');
+
+            // Запускаем выживание
+            startSurvival();
+        }
+
+        // ------------------------------------ ВЫЖИВАНИЕ ------------------------------------
+        function startSurvival() {
+            game.day = 0;
+            game.logs = [];
+            game.gameOver = false;
+            game.eventInProgress = false;
+            gameOverDiv.style.display = 'none';
+
+            // Отобразить состояние
+            renderSurvival();
+            // Первое событие
+            nextDay();
+        }
+
+        function renderSurvival() {
+            // Семья
+            familyStatus.innerHTML = game.members.map((m, i) => {
+                const hp = m.hp;
+                let cls = 'good';
+                if (hp < 30) cls = '';
+                else if (hp < 60) cls = 'medium';
+                return `<div class="member">
+                    <strong>${m.name}</strong>
+                    <span class="health-bar">
+                        <span class="health-fill ${cls}" style="width:${hp}%"></span>
+                    </span>
+                    ${hp}%
+                </div>`;
+            }).join('');
+
+            // Ресурсы
+            document.getElementById('food-count').textContent = game.getCount('food');
+            document.getElementById('water-count').textContent = game.getCount('water');
+            document.getElementById('med-count').textContent = game.getCount('med');
+            document.getElementById('radio-count').textContent = game.getCount('radio');
+            document.getElementById('flash-count').textContent = game.getCount('flash');
+            document.getElementById('map-count').textContent = game.getCount('map');
+            document.getElementById('book-count').textContent = game.getCount('book');
+            document.getElementById('axe-count').textContent = game.getCount('axe');
+
+            // Лог
+            logEl.innerHTML = game.logs.map(msg => `<div>${msg}</div>`).join('');
+        }
+
+        function nextDay() {
+            if (game.gameOver) {
+                showGameOver();
+                return;
+            }
+
+            game.day++;
+            dayNum.textContent = game.day;
+
+            // Потребление ресурсов
+            game.consumeDaily();
+            if (game.checkGameOver()) {
+                renderSurvival();
+                showGameOver();
+                return;
+            }
+
+            // Выбрать событие
+            const event = game.getRandomEvent();
+            game.eventInProgress = true;
+            eventText.textContent = `День ${game.day}: ${event.text}`;
+            eventOptions.innerHTML = '';
+
+            event.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.textContent = opt.label;
+                btn.addEventListener('click', () => {
+                    if (game.eventInProgress === false) return;
+                    game.eventInProgress = false;
+                    // Применить эффект
+                    opt.effect(game);
+                    // Проверка на конец игры
+                    if (game.checkGameOver()) {
+                        renderSurvival();
+                        showGameOver();
+                        return;
+                    }
+                    renderSurvival();
+                    // Следующий день
+                    setTimeout(() => {
+                        if (!game.gameOver) nextDay();
+                    }, 300);
+                });
+                eventOptions.appendChild(btn);
+            });
+
+            renderSurvival();
+        }
+
+        function showGameOver() {
+            gameOverDiv.style.display = 'block';
+            finalDays.textContent = game.day;
+            eventOptions.innerHTML = '';
+            eventText.textContent = 'Все погибли...';
+        }
+
+        // Обработчик кнопки входа
+        enterBtn.addEventListener('click', enterBunker);
+
+        // Запуск
+        initCollectPhase();
+
+        // При клике на "Начать заново" - перезагрузка страницы, уже есть в кнопке
+    </script>
+</body>
+</html>
